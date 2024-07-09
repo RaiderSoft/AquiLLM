@@ -1,0 +1,4 @@
+django
+psycopg2
+cohere
+python-dotenv
