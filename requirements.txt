@@ -1,4 +1,9 @@
 django
-psycopg2
+psycopg2-binary
 cohere
 python-dotenv
+pgvector
+pypdf
+django-extensions
+Werkzeug
+django-allauth[socialaccount]

@@ -1,0 +1,45 @@
+{% extends "aquillm/base.html" %}
+
+{% block title %}AquiLLM Search{% endblock %}
+
+{% block content %}
+    <h1>Search</h1>
+    <form action="/search/" method="post">
+        {% csrf_token %}
+        {{ form }}
+        <input type="submit" value="Submit">
+    </form>
+    {% if reranked_results %}
+    <h2>Reranked Search Results</h2>
+    <ul>
+
+        {% for item in reranked_results %}
+            <li>
+                {% include "aquillm/text_chunk.html" with item=item %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
+    {% if vector_results %}
+        <h2>Vector Search Results</h2>
+        <ul>
+
+            {% for item in vector_results %}
+                <li>
+                    {% include "aquillm/text_chunk.html" with item=item %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% if trigram_results %}
+        <h2>Trigram Search Results</h2>
+        <ul>
+            {% for item in trigram_results %}
+            <li>
+                {% include "aquillm/text_chunk.html" with item=item %}
+            </li>
+        {% endfor %}
+        </ul>
+
+    {% endif %}
+{% endblock %}
