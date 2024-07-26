@@ -25,5 +25,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('', views.index, name='index'),
     path('accounts/', include('allauth.urls')),
-    path("search/", views.search)
+    path("search/", views.search),
+    path("insert_arxiv/", views.insert_arxiv)
 ]

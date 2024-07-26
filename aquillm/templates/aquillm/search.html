@@ -4,6 +4,11 @@
 
 {% block content %}
     <h1>Search</h1>
+    {% if error_message %}
+        <div class="error_message">
+            {{ error_message }}
+        </div>
+    {% endif %}
     <form action="/search/" method="post">
         {% csrf_token %}
         {{ form }}
@@ -38,7 +43,7 @@
             <li>
                 {% include "aquillm/text_chunk.html" with item=item %}
             </li>
-        {% endfor %}
+            {% endfor %}
         </ul>
 
     {% endif %}

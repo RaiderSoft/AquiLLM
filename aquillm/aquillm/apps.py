@@ -1,5 +1,7 @@
 from django.apps import AppConfig
 import cohere
+import openai
+
 from dotenv import load_dotenv
 from os import getenv
 load_dotenv()
@@ -8,7 +10,7 @@ class AquillmConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'aquillm'
     cohere_client = None
-
+    openai_client = None
     vector_top_k = 30
     trigram_top_k = 30
 
@@ -21,5 +23,4 @@ class AquillmConfig(AppConfig):
     def ready(self):
 
         self.cohere_client = cohere.Client(getenv('COHERE_KEY'))
-
-        
+        self.openai_client = openai.OpenAI()

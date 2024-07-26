@@ -45,7 +45,6 @@ class Document(models.Model):
         content_type = ContentType.objects.get_for_model(self)
         TextChunk.objects.filter(content_type=content_type, object_id=self.id).delete()
         last_character = len(self.full_text) - 1
-        content_type = ContentType.objects.get_for_model(self)
         # Create new chunks
         chunks = list([TextChunk(
                     content = self.full_text[chunk_pitch * i : min((chunk_pitch * i) + chunk_size, last_character + 1)],
@@ -56,10 +55,61 @@ class Document(models.Model):
                     chunk_number = i) for i in range(last_character // chunk_pitch + 1)])
         for chunk in chunks:
             chunk.save()
+
 class STTDocument(Document):
     audio_file = models.FileField(upload_to='stt_audio/')
+    transcription = None
+    def save(self, *args, **kwargs):
+        self.extract_text()
+        super().save(*args, **kwargs)
 
+    def extract_text(self):
+        openai_client = apps.get_app_config('aquillm').openai_client
+        self.transcription = openai_client.audio.transcriptions.create(
+            model = "whisper-1",
+            language= 'en',
+            file = self.audio_file.read(),
+            response_format = 'verbose_json',
+            timestamp_granularities = ['segment']
+        )
+        self.full_text = '\n'.join([segment['text'] for segment in self.transcription['segments']])
 
+    def create_chunks(self):
+        chunk_size = apps.get_app_config('aquillm').chunk_size
+        overlap = apps.get_app_config('aquillm').chunk_overlap
+        chunk_pitch = chunk_size - overlap
+        
+        segments = self.transcription['segments']
+
+        length = 0
+        for segment in segments:
+            segment['start_char'] = length
+            length += len(segment['text'])
+            segment['end_char'] = length - 1
+        
+        def get_segment_index_by_offset(offset): # gets the segment containing the offset
+            for idx, segment in enumerate(segments):
+                if (segment['start_char'] <= offset and segment['end_char'] >= offset) or segment is segments[-1]:
+                    return idx
+        
+        content_type = ContentType.objects.get_for_model(self)
+        TextChunk.objects.filter(content_type=content_type, object_id=self.id).delete()
+        last_character = len(self.full_text) - 1
+
+        chunks = list([TextChunk(
+            content = '\n'.join([segment['text'] for segment in segments[get_segment_index_by_offset(chunk_pitch * i) : get_segment_index_by_offset(chunk_pitch * i + chunk_size)]]),
+            start_position = segments[get_segment_index_by_offset(chunk_pitch * i)]['start_char'],
+            end_position = segments[get_segment_index_by_offset(chunk_pitch * i + chunk_size)]['end_char'],
+            start_time = segments[get_segment_index_by_offset(chunk_pitch * i)]['start'],
+            content_type = content_type,
+            object_id = self.id,
+            chunk_number = i) for i in range(last_character // chunk_pitch + 1)
+        ])
+        for chunk in chunks:
+            chunk.save()
+                
+
+    
 
 class PDFDocument(Document):
     pdf_file = models.FileField(upload_to='pdfs/')
@@ -78,6 +128,8 @@ class PDFDocument(Document):
 
 
 class TeXDocument(Document):
+    pdf_file = models.FileField(upload_to='pdfs/', null=True)
+
     pass
 
 class RawTextDocument(Document):
@@ -87,6 +139,8 @@ class TextChunk(models.Model):
     content = models.TextField()
     start_position = models.PositiveIntegerField()
     end_position = models.PositiveIntegerField()
+
+    start_time = models.FloatField(null=True)
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
