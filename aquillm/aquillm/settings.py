@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     "django_extensions",
-    'django.contrib.postgres'
+    'django.contrib.postgres',
+    'debug_toolbar'
 ]
 
 MIDDLEWARE = [
@@ -58,7 +59,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'allauth.account.middleware.AccountMiddleware'
+    'allauth.account.middleware.AccountMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware'
 ]
 
 ROOT_URLCONF = "aquillm.urls"
@@ -172,3 +174,6 @@ SOCIALACCOUNT_PROVIDERS = {
 
 SITE_ID = 1
 
+INTERNAL_IPS = [
+    "127.0.0.1",
+]

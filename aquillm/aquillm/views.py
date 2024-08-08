@@ -12,19 +12,24 @@ import gzip
 import tarfile
 from xml.dom import minidom
 
-logger = logging.getLogger(__name__)
 
 
 from pgvector.django import L2Distance
 
 
 from .forms import SearchForm, ArXiVForm
-from .models import TextChunk, TeXDocument, PDFDocument
-
+from .models import TextChunk, TeXDocument, PDFDocument, Collection
+from .utils import get_user_accessible_documents
 import requests
+import functools
+
+logger = logging.getLogger(__name__)
 
 def index(request):
     return render(request, 'aquillm/index.html')
+
+
+
 
 
 def search(request):
@@ -53,24 +58,26 @@ def search(request):
         preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ranked_list)])
         return TextChunk.objects.filter(pk__in=ranked_list).order_by(preserved)
 
-    
+
+
     vector_results = []
     trigram_results = []
     reranked_results = []
     error_message = None
 
     if request.method == 'POST':
-        form = SearchForm(request.POST)
+        form = SearchForm(request.user, request.POST)
         if form.is_valid():
             query = form.cleaned_data['query']
             top_k = form.cleaned_data['top_k']
+            collections = form.cleaned_data['collections']
             vector_top_k = apps.get_app_config('aquillm').vector_top_k
             trigram_top_k = apps.get_app_config('aquillm').trigram_top_k
 
             try:
-              
-                vector_results = TextChunk.objects.order_by(L2Distance('embedding', get_embedding(query)))[:vector_top_k]
-                trigram_results = TextChunk.objects.annotate(similarity = TrigramSimilarity('content', query)
+                searchable_docs = get_user_accessible_documents(request.user, collections=collections)
+                vector_results = TextChunk.objects.filter_by_documents(searchable_docs).order_by(L2Distance('embedding', get_embedding(query)))[:vector_top_k]
+                trigram_results = TextChunk.objects.filter_by_documents(searchable_docs).annotate(similarity = TrigramSimilarity('content', query)
                 ).filter(similarity__gt=0.000001).order_by('-similarity')[:trigram_top_k]
 
                 for chunk in vector_results | trigram_results:
@@ -91,7 +98,7 @@ def search(request):
         else:
             error_message = "Invalid form submisison"
     else:
-        form = SearchForm()
+        form = SearchForm(request.user)
 
     context = {
         'form': form,

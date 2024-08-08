@@ -18,7 +18,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
-
+from debug_toolbar.toolbar import debug_toolbar_urls
 from . import views
 
 urlpatterns = [
@@ -27,4 +27,4 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path("search/", views.search),
     path("insert_arxiv/", views.insert_arxiv)
-]
+] + debug_toolbar_urls()

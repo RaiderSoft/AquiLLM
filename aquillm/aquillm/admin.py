@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import RawTextDocument, PDFDocument, STTDocument, TeXDocument, TextChunk
+from .models import RawTextDocument, PDFDocument, STTDocument, TeXDocument, TextChunk, Collection, CollectionPermission
 
 class TextChunkInline(GenericTabularInline):
     model = TextChunk
@@ -38,3 +38,12 @@ class TextChunkAdmin(admin.ModelAdmin):
     list_display = ('chunk_number', 'start_position', 'end_position', 'content_type', 'object_id', 'embedding')
     list_filter = ('content_type',)
     search_fields = ('content',)
+
+@admin.register(Collection)
+class CollectionAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+
+@admin.register(CollectionPermission)
+class CollectionPermissionAdmin(admin.ModelAdmin):
+    list_display = ('collection', 'user', 'permission')

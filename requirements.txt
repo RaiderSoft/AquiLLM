@@ -8,3 +8,4 @@ django-extensions
 Werkzeug
 django-allauth[socialaccount]
 openai
+django-debug-toolbar
