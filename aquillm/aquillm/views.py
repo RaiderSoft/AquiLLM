@@ -19,7 +19,7 @@ from pgvector.django import L2Distance
 
 from .forms import SearchForm, ArXiVForm
 from .models import TextChunk, TeXDocument, PDFDocument, Collection
-from .utils import get_user_accessible_documents
+from .utils import get_user_accessible_documents, text_chunk_search
 import requests
 import functools
 
@@ -34,30 +34,6 @@ def index(request):
 
 def search(request):
     
-    def get_embedding(query):
-        cohere = apps.get_app_config('aquillm').cohere_client
-        response = cohere.embed(
-            texts=[query],
-            model="embed-english-v3.0",
-            input_type="search_query"
-        )
-        return response.embeddings[0]
-    
-    def rerank(query, chunks, top_k):
-        cohere = apps.get_app_config('aquillm').cohere_client
-        response = cohere.rerank(
-            model="rerank-english-v3.0",
-            query=query,
-            documents=list([{"content": chunk.content, "id": chunk.pk} for chunk in chunks]),
-            rank_fields=['content'],
-            top_n=top_k,
-            return_documents=True 
-        )
-        #breakpoint()
-        ranked_list = list([result.document.id for result in response.results])
-        preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ranked_list)])
-        return TextChunk.objects.filter(pk__in=ranked_list).order_by(preserved)
-
 
 
     vector_results = []
@@ -71,30 +47,8 @@ def search(request):
             query = form.cleaned_data['query']
             top_k = form.cleaned_data['top_k']
             collections = form.cleaned_data['collections']
-            vector_top_k = apps.get_app_config('aquillm').vector_top_k
-            trigram_top_k = apps.get_app_config('aquillm').trigram_top_k
-
-            try:
-                searchable_docs = get_user_accessible_documents(request.user, collections=collections)
-                vector_results = TextChunk.objects.filter_by_documents(searchable_docs).order_by(L2Distance('embedding', get_embedding(query)))[:vector_top_k]
-                trigram_results = TextChunk.objects.filter_by_documents(searchable_docs).annotate(similarity = TrigramSimilarity('content', query)
-                ).filter(similarity__gt=0.000001).order_by('-similarity')[:trigram_top_k]
-
-                for chunk in vector_results | trigram_results:
-                    content_type = chunk.content_type
-                    model = content_type.model_class()
-                    chunk.document = model.objects.get(id=chunk.object_id)
-
-                reranked_results = rerank(query, vector_results | trigram_results, top_k)
-            except DatabaseError as e:
-                logger.error(f"Database error during search: {str(e)}")
-                error_message = "An error occurred while searching the database. Please try again later."
-            except ValidationError as e:
-                logger.error(f"Validation error during search: {str(e)}")
-                error_message = "Invalid search parameters. Please check your input and try again."
-            except Exception as e:
-                logger.error(f"Unexpected error during search: {str(e)}")
-                error_message = "An unexpected error occurred. Please try again later."
+            searchable_docs = get_user_accessible_documents(request.user, collections=collections)
+            vector_results, trigram_results, reranked_results = text_chunk_search(query, top_k, searchable_docs)
         else:
             error_message = "Invalid form submisison"
     else:
@@ -109,6 +63,38 @@ def search(request):
     }
 
     return render(request, 'aquillm/search.html', context)
+
+
+def llm_convo(request):
+
+
+    reranked_results = []
+    error_message = None
+    llm_response = None
+    if request.method == 'POST':
+        form = SearchForm(request.user, request.POST)
+        if form.is_valid():
+            query = form.cleaned_data['query']
+            top_k = form.cleaned_data['top_k']
+            collections = form.cleaned_data['collections']
+            searchable_docs = get_user_accessible_documents(request.user, collections=collections)
+            _, _, reranked_results = text_chunk_search(query, top_k, searchable_docs)
+        else:
+            error_message = "Invalid form submisison"
+    else:
+        form = SearchForm(request.user)
+
+    context = {
+        'form': form,
+        'reranked_results': reranked_results,
+        'vector_results': vector_results,
+        'trigram_results': trigram_results,
+        'error_message': error_message
+    }
+
+    return render(request, 'aquillm/llm_convo.html', context)
+
+
 
 def insert_one_from_arxiv(arxiv_id):
     status_message = ""

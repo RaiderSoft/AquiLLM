@@ -5,21 +5,24 @@ from django.contrib.postgres.fields import ArrayField
 from pgvector.django import VectorField
 from django.apps import apps
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
+
+import uuid
+
 from django.contrib.auth.models import User
 from pypdf import PdfReader
 
 from django.db.models import Q
 import functools 
 # for deleting documents when they are removed from the last collection they are in. 
-from django.dispatch import receiver
-from django.db.models.signals import m2m_changed
 
 # for hashing full_text of documents to ensure unique contents
 import hashlib
 
+from django.template import Context
+from django.core.serializers.json import DjangoJSONEncoder
+import json
 
-from io import BytesIO
-
+get_embedding = apps.get_app_config('aquillm').get_embedding
 
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW'):
@@ -89,6 +92,15 @@ class CollectionPermission(models.Model):
 
             super().save(*args, **kwargs)
             
+# returns a list of objects, not a queryset!
+def get_user_accessible_documents(user, collections=None, perm='VIEW'):
+
+    if collections is None:
+        collections = Collection.objects.all()
+
+    collections = collections.filter_by_user_perm(user, perm)
+    documents = functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection__in=collections)) for x in DESCENDED_FROM_DOCUMENT])
+    return documents
 
 
 class Document(models.Model):
@@ -315,11 +327,48 @@ class TextChunk(models.Model):
         super().save(*args, **kwargs)
 
     
-    def get_embedding(self):
-        cohere = apps.get_app_config('aquillm').cohere_client
-        response = cohere.embed(
-            texts=[self.content], model="embed-english-v3.0", input_type="search_document"
-        )
-        self.embedding = response.embeddings[0]
+    def get_chunk_embedding(self):
+        self.embedding = get_embedding(self.content, input_type='search_document')
 
 
+class LLMConversation(models.Model):
+    owner = models.ForeignKey(User, related_name='conversations', on_delete=models.CASCADE)
+    uuid = models.
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    system_prompt = models.TextField(blank=True)
+    
+    
+    def __str__(self):
+        return f"{self.owner.usernmame}'s conversation created at {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+
+    def to_list(self):
+        return list([message.to_dict() for message in self.messages])
+
+    def to_json(self):
+
+
+class Message(models.Model):
+
+    SENDER_CHOICES = [
+        ('user', 'User'),
+        ('assistant', 'Aquillm')
+        ]
+
+    conversation = models.ForeignKey(LLMConversation, related_name='messages', on_delete=models.CASCADE)
+    sender = models.CharField(max_length=10, choices=SENDER_CHOICES)
+    content = models.TextField()
+    context_chunks = ArrayField(
+        models.ForeignKey(TextChunk),
+        null=True
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def to_dict(self):
+        template = apps.get_app_config('aquillm').rag_prompt_template
+        return {
+            'role': self.sender,
+            'content': template.render(Context({'message': self}))}

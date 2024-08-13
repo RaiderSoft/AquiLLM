@@ -9,3 +9,6 @@ Werkzeug
 django-allauth[socialaccount]
 openai
 django-debug-toolbar
+mypy
+django-stubs
+anthropic
