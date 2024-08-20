@@ -1,0 +1,22 @@
+{% extends "aquillm/base.html" %}
+
+{% block title %}Your Conversations{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Your Conversations</h1>
+    {% if conversations %}
+        <ul class="conversation-list">
+        {% for conversation in conversations %}
+            <li class="conversation-item">
+                <a href="{% url 'convo' convo_id=conversation.pk %}" class="conversation-link">
+                    Conversation from {{ conversation.created_at|date:"F j, Y, g:i a" }}
+                </a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p class="no-conversations">You don't have any conversations yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

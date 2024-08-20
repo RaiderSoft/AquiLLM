@@ -333,22 +333,29 @@ class TextChunk(models.Model):
 
 class LLMConversation(models.Model):
     owner = models.ForeignKey(User, related_name='conversations', on_delete=models.CASCADE)
-    uuid = models.
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     system_prompt = models.TextField(blank=True)
     
+    class Meta:
+        ordering = ['updated_at']
     
     def __str__(self):
-        return f"{self.owner.usernmame}'s conversation created at {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+        return f"{self.owner.username}'s conversation created at {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
-    def to_list(self):
-        return list([message.to_dict() for message in self.messages])
+    def to_dict(self):
+        return {'system': self.system_prompt,
+                'messages': list([message.to_dict() for message in self.messages.all()])}
 
     def to_json(self):
+        return json.dumps(self.to_dict(), cls=DjangoJSONEncoder)
+    
+    
 
 
-class Message(models.Model):
+
+class LLMConvoMessage(models.Model):
 
     SENDER_CHOICES = [
         ('user', 'User'),
@@ -358,14 +365,11 @@ class Message(models.Model):
     conversation = models.ForeignKey(LLMConversation, related_name='messages', on_delete=models.CASCADE)
     sender = models.CharField(max_length=10, choices=SENDER_CHOICES)
     content = models.TextField()
-    context_chunks = ArrayField(
-        models.ForeignKey(TextChunk),
-        null=True
-    )
+    context_chunks = models.ManyToManyField(TextChunk)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['timestamp']
+        ordering = ['conversation', 'timestamp']
 
     def to_dict(self):
         template = apps.get_app_config('aquillm').rag_prompt_template

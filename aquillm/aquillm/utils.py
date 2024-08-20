@@ -21,17 +21,17 @@ anthropic_client = apps.get_app_config('aquillm').anthropic_client
 logger = logging.getLogger(__name__)
 
 
-def get_llm_response(query, context: QuerySet[TextChunk]=None):
-    system = 
-    messages = [{
-        'role' : 'user',
-        'content' : [
-            {
-                'type' : 'text',
-                'text' : query
-            }
-        ]
-    }]
+# def get_llm_response(query, context: QuerySet[TextChunk]=None):
+#     system = 
+#     messages = [{
+#         'role' : 'user',
+#         'content' : [
+#             {
+#                 'type' : 'text',
+#                 'text' : query
+#             }
+#         ]
+#     }]
     
 
 

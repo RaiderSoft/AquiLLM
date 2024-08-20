@@ -18,7 +18,7 @@ The user's retrieval augmented generation system has provided these document seg
 </instructions>
 RAG Search Results:
 
-{% for chunk in message.context_chunks %}
+{% for chunk in message.context_chunks.all %}
     [{{ forloop.counter }}] {{ chunk.document.title }} chunk #{{chunk.chunk_number}}
 
     {{ chunk.content }}

@@ -26,5 +26,8 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('accounts/', include('allauth.urls')),
     path("search/", views.search),
-    path("insert_arxiv/", views.insert_arxiv)
+    path("insert_arxiv/", views.insert_arxiv),
+    path('user_conversations', views.user_conversations, name="user_conversations"),
+    path("raw_convo/<int:convo_id>", views.raw_convo, name="raw_convo"),
+    path("convo/<int:convo_id>", views.convo, name="convo")
 ] + debug_toolbar_urls()

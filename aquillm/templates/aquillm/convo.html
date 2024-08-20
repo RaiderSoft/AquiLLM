@@ -1,0 +1,46 @@
+{% extends "aquillm/base.html" %}
+
+{% block title %}Conversation{% endblock %}
+
+{% block content %}
+<div id="conversation-container"></div>
+<form id="message-form">
+    <textarea id="message-input" rows="3"></textarea>
+    <button type="submit">Send</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function loadConversation() {
+        fetch("{% url 'raw_convo' convo_id %}")
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById("conversation-container").innerHTML = data;
+            });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        loadConversation();
+{% comment %}
+        document.getElementById("message-form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            var message = document.getElementById("message-input").value;
+            fetch("{% url 'send_message' conversation.id %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: 'message=' + encodeURIComponent(message)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("message-input").value = "";
+                loadConversation();
+            });
+        });
+{% endcomment %}
+    });
+</script>
+{% endblock %}

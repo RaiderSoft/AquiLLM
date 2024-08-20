@@ -12,13 +12,13 @@ import gzip
 import tarfile
 from xml.dom import minidom
 
-
-
+from django.shortcuts import get_object_or_404
+from django.http import HttpResponseForbidden, Http404
 from pgvector.django import L2Distance
-
+from django.contrib.auth.decorators import login_required
 
 from .forms import SearchForm, ArXiVForm
-from .models import TextChunk, TeXDocument, PDFDocument, Collection
+from .models import TextChunk, TeXDocument, PDFDocument, Collection, LLMConversation
 from .utils import get_user_accessible_documents, text_chunk_search
 import requests
 import functools
@@ -31,7 +31,7 @@ def index(request):
 
 
 
-
+@login_required
 def search(request):
     
 
@@ -65,36 +65,53 @@ def search(request):
     return render(request, 'aquillm/search.html', context)
 
 
-def llm_convo(request):
+# def llm_convo(request):
 
 
-    reranked_results = []
-    error_message = None
-    llm_response = None
-    if request.method == 'POST':
-        form = SearchForm(request.user, request.POST)
-        if form.is_valid():
-            query = form.cleaned_data['query']
-            top_k = form.cleaned_data['top_k']
-            collections = form.cleaned_data['collections']
-            searchable_docs = get_user_accessible_documents(request.user, collections=collections)
-            _, _, reranked_results = text_chunk_search(query, top_k, searchable_docs)
-        else:
-            error_message = "Invalid form submisison"
-    else:
-        form = SearchForm(request.user)
+#     reranked_results = []
+#     error_message = None
+#     llm_response = None
+#     if request.method == 'POST':
+#         form = SearchForm(request.user, request.POST)
+#         if form.is_valid():
+#             query = form.cleaned_data['query']
+#             top_k = form.cleaned_data['top_k']
+#             collections = form.cleaned_data['collections']
+#             searchable_docs = get_user_accessible_documents(request.user, collections=collections)
+#             _, _, reranked_results = text_chunk_search(query, top_k, searchable_docs)
+#         else:
+#             error_message = "Invalid form submisison"
+#     else:
+#         form = SearchForm(request.user)
 
-    context = {
-        'form': form,
-        'reranked_results': reranked_results,
-        'vector_results': vector_results,
-        'trigram_results': trigram_results,
-        'error_message': error_message
-    }
+#     context = {
+#         'form': form,
+#         'reranked_results': reranked_results,
+#         'vector_results': vector_results,
+#         'trigram_results': trigram_results,
+#         'error_message': error_message
+#     }
 
-    return render(request, 'aquillm/llm_convo.html', context)
+#     return render(request, 'aquillm/llm_convo.html', context)
 
+@login_required
+def convo(request, convo_id):
+    if not LLMConversation.objects.filter(pk=convo_id).exists():
+        return Http404("the requested conversation does not exist")
+    return render(request, 'aquillm/convo.html', {'convo_id' : convo_id})
 
+@login_required
+def raw_convo(request, convo_id):
+    convo = get_object_or_404(LLMConversation, pk=convo_id)
+    if convo.owner != request.user:
+        return HttpResponseForbidden("You don't own this conversation")
+    context = {'conversation': convo}
+    return render(request, 'aquillm/raw_convo.html', context)
+
+@login_required
+def user_conversations(request):
+    conversations = LLMConversation.objects.filter(owner=request.user).order_by('-updated_at')
+    return render(request, 'aquillm/user_conversations.html', {'conversations': conversations})
 
 def insert_one_from_arxiv(arxiv_id):
     status_message = ""
@@ -140,7 +157,7 @@ def insert_one_from_arxiv(arxiv_id):
     return status_message
 
 
-
+@login_required
 def insert_arxiv(request):
     status_message = None
     if request.method == 'POST':
