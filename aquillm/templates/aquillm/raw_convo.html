@@ -5,7 +5,7 @@
             <p class="message-timestamp">{{ message.timestamp|date:"Y-m-d H:i:s" }}</p>
             {% if message.context_chunks.exists %}
             <div class="context-chunks">
-                <h4>Related Context:</h4>
+                <strong>Related Context:</strong>
                 {% for chunk in message.context_chunks.all %}
                     <div class="context-chunk">
                         <details>

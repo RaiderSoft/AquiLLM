@@ -1,9 +1,6 @@
 from django.shortcuts import render
 from django.apps import apps
-from django.contrib.postgres.search import TrigramSimilarity
-from django.db.models import Case, When
-from django.db import DatabaseError
-from django.core.exceptions import ValidationError
+
 from django.core.files.base import ContentFile
 import logging
 import re
@@ -13,15 +10,15 @@ import tarfile
 from xml.dom import minidom
 
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponseForbidden, Http404
+from django.http import HttpResponseForbidden
 from pgvector.django import L2Distance
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
 
 from .forms import SearchForm, ArXiVForm
 from .models import TextChunk, TeXDocument, PDFDocument, Collection, LLMConversation
-from .utils import get_user_accessible_documents, text_chunk_search
 import requests
-import functools
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +44,8 @@ def search(request):
             query = form.cleaned_data['query']
             top_k = form.cleaned_data['top_k']
             collections = form.cleaned_data['collections']
-            searchable_docs = get_user_accessible_documents(request.user, collections=collections)
-            vector_results, trigram_results, reranked_results = text_chunk_search(query, top_k, searchable_docs)
+            searchable_docs = Collection.get_user_accessible_documents(request.user, collections=collections)
+            vector_results, trigram_results, reranked_results = TextChunk.text_chunk_search(query, top_k, searchable_docs)
         else:
             error_message = "Invalid form submisison"
     else:
@@ -94,19 +91,38 @@ def search(request):
 
 #     return render(request, 'aquillm/llm_convo.html', context)
 
-@login_required
-def convo(request, convo_id):
-    if not LLMConversation.objects.filter(pk=convo_id).exists():
-        return Http404("the requested conversation does not exist")
-    return render(request, 'aquillm/convo.html', {'convo_id' : convo_id})
 
 @login_required
 def raw_convo(request, convo_id):
     convo = get_object_or_404(LLMConversation, pk=convo_id)
     if convo.owner != request.user:
-        return HttpResponseForbidden("You don't own this conversation")
+        return HttpResponseForbidden("User does not own this conversation")
     context = {'conversation': convo}
     return render(request, 'aquillm/raw_convo.html', context)
+
+@login_required
+def convo(request, convo_id):
+    convo = get_object_or_404(LLMConversation, pk=convo_id)
+    if convo.owner != request.user:
+        return HttpResponseForbidden("User does not own this conversation")
+   
+    return render(request, 'aquillm/convo.html', {'convo_id' : convo_id,
+                                                  'form' : SearchForm(request.user)})
+
+@require_http_methods(['POST'])
+@login_required
+def send_message(request, convo_id):
+    convo = get_object_or_404(LLMConversation, pk=convo_id)
+    if convo.owner != request.user:
+        return HttpResponseForbidden("User does not own this conversation")
+    form = SearchForm(request.user, request.POST)
+    if form.is_valid():
+        collections = form.cleaned_data['collections']
+        content = form.cleaned_data['query']
+        top_k = form.cleaned_data['top_k']
+        docs = Collection.get_user_accessible_documents(request.user, collections)
+        convo = convo.send_message(content, top_k, docs)
+        return render(request, 'aquillm/raw_convo.html', {'conversation' : convo})
 
 @login_required
 def user_conversations(request):
@@ -155,6 +171,8 @@ def insert_one_from_arxiv(arxiv_id):
             doc.pdf_file.save(f'arxiv:{arxiv_id}.pdf', ContentFile(pdf_req.content), save=False)
             doc.save()
     return status_message
+
+
 
 
 @login_required

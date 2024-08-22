@@ -6,6 +6,7 @@ from pgvector.django import VectorField
 from django.apps import apps
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
+
 import uuid
 
 from django.contrib.auth.models import User
@@ -13,7 +14,6 @@ from pypdf import PdfReader
 
 from django.db.models import Q
 import functools 
-# for deleting documents when they are removed from the last collection they are in. 
 
 # for hashing full_text of documents to ensure unique contents
 import hashlib
@@ -21,8 +21,22 @@ import hashlib
 from django.template import Context
 from django.core.serializers.json import DjangoJSONEncoder
 import json
+import logging
+from django.db.models.query import QuerySet
+from typing import  List, Type, Tuple
 
-get_embedding = apps.get_app_config('aquillm').get_embedding
+
+from django.core.exceptions import ValidationError
+from django.contrib.postgres.search import TrigramSimilarity
+from pgvector.django import L2Distance
+
+
+from django.db import DatabaseError
+from django.db.models import Case, When
+
+from .utils import get_embedding
+
+logger = logging.getLogger(__name__)
 
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW'):
@@ -59,6 +73,19 @@ class Collection(models.Model):
     def user_can_manage(self, user):
         return self.user_has_permission_in(user, ['MANAGE'])
     
+    # returns a list of documents, not a queryset.
+    @staticmethod
+    def get_user_accessible_documents(user, collections=None, perm='VIEW'):
+        if collections is None:
+            collections = Collection.objects.all()
+
+        collections = collections.filter_by_user_perm(user, perm)
+        documents = functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection__in=collections)) for x in DESCENDED_FROM_DOCUMENT])
+        return documents
+
+
+
+
     def __str__(self):
         return f'{self.name}'
     
@@ -330,6 +357,49 @@ class TextChunk(models.Model):
     def get_chunk_embedding(self):
         self.embedding = get_embedding(self.content, input_type='search_document')
 
+    @staticmethod
+    def rerank(query:str, chunks, top_k: int):
+        cohere = apps.get_app_config('aquillm').cohere_client
+        response = cohere.rerank(
+            model="rerank-english-v3.0",
+            query=query,
+            documents=list([{"content": chunk.content, "id": chunk.pk} for chunk in chunks]),
+            rank_fields=['content'],
+            top_n=top_k,
+            return_documents=True 
+        )
+        ranked_list = list([result.document.id for result in response.results])
+        preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ranked_list)])
+        return TextChunk.objects.filter(pk__in=ranked_list).order_by(preserved)
+
+
+    @staticmethod
+    def text_chunk_search(query:str, top_k: int, docs: List[Type[Document]]):
+        vector_top_k = apps.get_app_config('aquillm').vector_top_k
+        trigram_top_k = apps.get_app_config('aquillm').trigram_top_k
+
+        try:
+            vector_results = TextChunk.objects.filter_by_documents(docs).order_by(L2Distance('embedding', get_embedding(query)))[:vector_top_k]
+            trigram_results = TextChunk.objects.filter_by_documents(docs).annotate(similarity = TrigramSimilarity('content', query)
+            ).filter(similarity__gt=0.000001).order_by('-similarity')[:trigram_top_k]
+
+            for chunk in vector_results | trigram_results:
+                content_type = chunk.content_type
+                model = content_type.model_class()
+                chunk.document = model.objects.get(id=chunk.object_id)
+
+            reranked_results = TextChunk.rerank(query, vector_results | trigram_results, top_k)
+            return vector_results, trigram_results, reranked_results
+        except DatabaseError as e:
+            logger.error(f"Database error during search: {str(e)}")
+            raise e
+        except ValidationError as e:
+            logger.error(f"Validation error during search: {str(e)}")
+            raise e
+        except Exception as e:
+            logger.error(f"Unexpected error during search: {str(e)}")
+            raise e
+
 
 class LLMConversation(models.Model):
     owner = models.ForeignKey(User, related_name='conversations', on_delete=models.CASCADE)
@@ -350,8 +420,33 @@ class LLMConversation(models.Model):
 
     def to_json(self):
         return json.dumps(self.to_dict(), cls=DjangoJSONEncoder)
+
+    def get_llm_completion(self):
+        anthropic_client = apps.get_app_config('aquillm').anthropic_client
+        claude_args = {'model': 'claude-3-5-sonnet-20240620',
+                       'max_tokens' : 1024} | self.to_dict()
+        message = anthropic_client.messages.create(**claude_args)
+        return(message.content[0].text)
     
-    
+    def send_message(self, content: str, top_k: int, docs: List[Type[Document]]=None):
+        context_chunks = None
+        if docs:
+            _, _, context_chunks = TextChunk.text_chunk_search(content, top_k, docs)
+        
+        with transaction.atomic():
+            user_msg = LLMConvoMessage(conversation=self,
+                                    sender='user',
+                                    content=content)
+            user_msg.save()
+            user_msg.context_chunks.add(*context_chunks)
+
+            asst_message = LLMConvoMessage(conversation=self,
+                                        sender='assistant',
+                                        content=self.get_llm_completion())
+            if not asst_message:
+                raise Exception("Assistant message was empty or none")
+            asst_message.save()
+        return self
 
 
 
@@ -375,4 +470,5 @@ class LLMConvoMessage(models.Model):
         template = apps.get_app_config('aquillm').rag_prompt_template
         return {
             'role': self.sender,
-            'content': template.render(Context({'message': self}))}
+            'content': template.render(Context({'message': self}))
+            }

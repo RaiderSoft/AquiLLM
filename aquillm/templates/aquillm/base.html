@@ -37,6 +37,60 @@
                 margin-left: -15rem;
             }
         }
+        
+        .conversation {
+            display: flex;
+            flex-direction: column;
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        .message {
+            max-width: 70%;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        
+        .user-message {
+            align-self: flex-start;
+            background-color: #f8acf3;
+        }
+        
+        .assistant-message {
+            align-self: flex-end;
+            background-color: #65aef6;
+        }
+        
+        .message-content {
+            margin: 0;
+        }
+        
+        .message-timestamp {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .context-chunks {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        
+        .context-chunk {
+            margin-top: 5px;
+        }
+        
+        .chunk-title {
+            cursor: pointer;
+            color: #0066cc;
+        }
+        
+        .chunk-content {
+            margin-top: 5px;
+            padding-left: 10px;
+            border-left: 2px solid #ccc;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -51,7 +105,7 @@
             </div>
         </div>
         <!-- /#sidebar-wrapper -->
-
+        
         <!-- Page Content -->
         <div id="page-content-wrapper">
             <nav class="navbar navbar-expand-lg navbar-light bg-secondary border-bottom">
@@ -78,7 +132,7 @@
                     </div>
                 </div>
             </nav>
-
+            
             <div class="container-fluid">
                 {% block content %}
                 <!-- Your page content goes here -->
@@ -88,7 +142,7 @@
         <!-- /#page-content-wrapper -->
     </div>
     <!-- /#wrapper -->
-
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>    <!-- Custom JavaScript -->
     <script>
         document.getElementById("menu-toggle").addEventListener("click", function(e) {
