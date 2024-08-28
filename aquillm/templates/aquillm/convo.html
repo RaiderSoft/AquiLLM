@@ -3,6 +3,7 @@
 {% block title %}Conversation{% endblock %}
 
 {% block content %}
+<div id="error-container"></div>
 <div id="conversation-container"></div>
 <form id="message-form" action="{% url 'send_message' convo_id %}" method="post">
     {% csrf_token %}
@@ -21,10 +22,33 @@
             });
     }
     document.addEventListener("DOMContentLoaded", function() {
+        const form = document.getElementById('message-form');
+        const errorDiv = document.getElementById('error-container');
         loadConversation();
         document.getElementById("message-form").addEventListener("submit", function(e) {
-            loadConversation();
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadConversation();
+                } else {
+                    errorDiv.textContent = 'An error occurred. Please reload the page.';
+                }
+             })
+            .catch(error => {
+                console.error('Error:', error);
+                errorDiv.textContent = 'An error occurred. Please reload the page or try again later.';
+            })
+            })
         });
-    });
 </script>
 {% endblock %}

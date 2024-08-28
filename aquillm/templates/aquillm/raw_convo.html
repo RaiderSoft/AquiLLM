@@ -2,7 +2,6 @@
     {% for message in conversation.messages.all %}
         <div class="message {% if message.sender == 'user' %}user-message{% else %}assistant-message{% endif %}">
             <p class="message-content">{{ message.content }}</p>
-            <p class="message-timestamp">{{ message.timestamp|date:"Y-m-d H:i:s" }}</p>
             {% if message.context_chunks.exists %}
             <div class="context-chunks">
                 <strong>Related Context:</strong>
@@ -15,7 +14,8 @@
                     </div>
                 {% endfor %}
             </div>
-        {% endif %}
+            {% endif %}
+            <p class="message-timestamp">{{ message.timestamp|date:"Y-m-d H:i:s" }}</p>
         </div>
     {% endfor %}
 </div>

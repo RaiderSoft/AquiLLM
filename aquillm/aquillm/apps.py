@@ -14,7 +14,7 @@ RAG_PROMPT_STRING = """
 {% if message.context_chunks %}
 <context>
 <instructions>
-The user's retrieval augmented generation system has provided these document segments, which are relevant to their message. Base your answer on the information in these segments. If these do not include the information required to ask the user's question, do not go off-script, simply inform the user that the retrieval augmented generation system did not provide the relevant information.
+The user's retrieval augmented generation system has provided these document segments, which are relevant to their message. Base your answer on the information in these segments. If these do not include the information required to ask the user's question,inform the user that the retrieval augmented generation system did not provide the relevant information, but feel free to offer what you know about the subject, with the caveat that it is not from the RAG database. Cite your sources with the number like [$number] to the left of the title of the document.
 </instructions>
 RAG Search Results:
 

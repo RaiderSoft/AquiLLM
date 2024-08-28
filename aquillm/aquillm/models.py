@@ -44,9 +44,9 @@ class CollectionQuerySet(models.QuerySet):
         if perm == 'VIEW':
             perm_options = ['VIEW', 'EDIT', 'MANAGE']
         elif perm == 'EDIT':
-            perm_options = ['EDIT', 'MANAGE'],
+            perm_options = ['EDIT', 'MANAGE']
         elif perm == 'MANAGE':
-            perm_options == ['MANAGE']
+            perm_options = ['MANAGE']
         else:
             raise ValueError(f"Invalid Permission type {perm}")
 
@@ -161,6 +161,7 @@ class Document(models.Model):
         #     if existing_document:
         #         existing_document.full_text_hash = "IF THIS IS IN THE DATABASE SOMETHING IS FUCKED"
         #         existing_document.save()
+            is_new = self.pk is None
 
             super().save(*args, **kwargs)
 
@@ -169,7 +170,6 @@ class Document(models.Model):
             #                 self.collections.add(collection)
             #             existing_document.delete()
 
-            is_new = self.pk is None
             if is_new or 'full_text' in kwargs.get('update_fields', []):
                 self.create_chunks()
 
@@ -349,7 +349,7 @@ class TextChunk(models.Model):
     def save(self, *args, **kwargs):
         if self.start_position >= self.end_position:
             raise ValueError("end_position must be greater than start_position")
-        self.get_embedding()
+        self.get_chunk_embedding()
 
         super().save(*args, **kwargs)
 
@@ -387,7 +387,6 @@ class TextChunk(models.Model):
                 content_type = chunk.content_type
                 model = content_type.model_class()
                 chunk.document = model.objects.get(id=chunk.object_id)
-
             reranked_results = TextChunk.rerank(query, vector_results | trigram_results, top_k)
             return vector_results, trigram_results, reranked_results
         except DatabaseError as e:
@@ -438,7 +437,8 @@ class LLMConversation(models.Model):
                                     sender='user',
                                     content=content)
             user_msg.save()
-            user_msg.context_chunks.add(*context_chunks)
+            if context_chunks:
+                user_msg.context_chunks.add(*context_chunks)
 
             asst_message = LLMConvoMessage(conversation=self,
                                         sender='assistant',

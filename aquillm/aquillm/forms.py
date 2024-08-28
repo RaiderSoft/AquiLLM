@@ -21,11 +21,18 @@ class SearchForm(forms.Form):
         self.fields['collections'] = UserCollectionMultipleChoiceField(
             user=user,
             widget=forms.CheckboxSelectMultiple,
-            queryset=Collection.objects.none() # this is weird but necessary
+            queryset=Collection.objects.none(), # this is weird but necessary
+            required=False
         )
     query = forms.CharField(label="Search Query", max_length=10000)
     top_k = forms.IntegerField(min_value=1, max_value=200, initial=5)
 
 
 class ArXiVForm(forms.Form):
+    collection = forms.ChoiceField(widget=forms.RadioSelect)
     arxiv_id = forms.CharField(label="Article arXiv Identifier", max_length=100)
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['collection'].choices = [(col.id, col.name) for col in Collection.objects.filter_by_user_perm(user, perm="EDIT")]
+

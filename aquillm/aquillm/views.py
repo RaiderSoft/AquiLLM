@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.apps import apps
 
 from django.core.files.base import ContentFile
@@ -19,6 +19,7 @@ from .forms import SearchForm, ArXiVForm
 from .models import TextChunk, TeXDocument, PDFDocument, Collection, LLMConversation
 import requests
 
+from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
@@ -112,24 +113,35 @@ def convo(request, convo_id):
 @require_http_methods(['POST'])
 @login_required
 def send_message(request, convo_id):
-    convo = get_object_or_404(LLMConversation, pk=convo_id)
-    if convo.owner != request.user:
-        return HttpResponseForbidden("User does not own this conversation")
-    form = SearchForm(request.user, request.POST)
-    if form.is_valid():
-        collections = form.cleaned_data['collections']
-        content = form.cleaned_data['query']
-        top_k = form.cleaned_data['top_k']
-        docs = Collection.get_user_accessible_documents(request.user, collections)
-        convo = convo.send_message(content, top_k, docs)
-        return render(request, 'aquillm/raw_convo.html', {'conversation' : convo})
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        convo = get_object_or_404(LLMConversation, pk=convo_id)
+        if convo.owner != request.user:
+            return HttpResponseForbidden("User does not own this conversation")
+        form = SearchForm(request.user, request.POST)
+        if form.is_valid():
+            collections = form.cleaned_data['collections']
+            content = form.cleaned_data['query']
+            top_k = form.cleaned_data['top_k']
+            docs = Collection.get_user_accessible_documents(request.user, collections)
+            convo = convo.send_message(content, top_k, docs)
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'error': form.errors})
+    logger.error(f"Wrong x-requested-with: {request.headers.get('x-requested-with')}")
+    return JsonResponse({'success': False, 'error': 'Invalid Request'})
 
 @login_required
 def user_conversations(request):
     conversations = LLMConversation.objects.filter(owner=request.user).order_by('-updated_at')
     return render(request, 'aquillm/user_conversations.html', {'conversations': conversations})
 
-def insert_one_from_arxiv(arxiv_id):
+@login_required
+def new_convo(request):
+    convo = LLMConversation(owner=request.user) # TODO: let user set system prompt
+    convo.save()
+    return redirect('convo', convo_id=convo.id)
+
+def insert_one_from_arxiv(arxiv_id, collection):
     status_message = ""
     tex_req = requests.get('https://arxiv.org/src/' + arxiv_id)
     pdf_req = requests.get('https://arxiv.org/pdf/' + arxiv_id)
@@ -156,6 +168,7 @@ def insert_one_from_arxiv(arxiv_id):
                                 content = f.read().decode('utf-8')
                                 tex_str += content + '\n\n'
             doc = TeXDocument(
+                collection = collection,
                 title = title,
                 full_text = tex_str
             )
@@ -166,6 +179,7 @@ def insert_one_from_arxiv(arxiv_id):
         elif pdf_req.status_code == 200:
             status_message += f'Got PDF for {arxiv_id}\n'
             doc = PDFDocument(
+                collection = collection,
                 title = title
             )
             doc.pdf_file.save(f'arxiv:{arxiv_id}.pdf', ContentFile(pdf_req.content), save=False)
@@ -179,12 +193,13 @@ def insert_one_from_arxiv(arxiv_id):
 def insert_arxiv(request):
     status_message = None
     if request.method == 'POST':
-        form = ArXiVForm(request.POST)
+        form = ArXiVForm(request.user, request.POST)
         if form.is_valid():
-            arxiv_id = re.sub(r'[^\d.]', '', form.cleaned_data['arxiv_id'])
-            status_message = insert_one_from_arxiv(arxiv_id)
+            arxiv_id = re.sub(r'[^\d.]', '', form.cleaned_data['arxiv_id']).lstrip('.')
+            collection = Collection.objects.get(id=form.cleaned_data['collection'])
+            status_message = insert_one_from_arxiv(arxiv_id, collection)
     else:
-        form = ArXiVForm()
+        form = ArXiVForm(request.user)
 
     context = {
         'status_message' : status_message,
