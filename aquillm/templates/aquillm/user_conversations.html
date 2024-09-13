@@ -4,17 +4,29 @@
 
 {% block content %}
 <div class="container">
-    <h1>Your Conversations</h1>
+    <h1 class="font-black text-3xl">Your Conversations</h1>
     {% if conversations %}
-        <ul class="conversation-list">
-        {% for conversation in conversations %}
-            <li class="conversation-item">
-                <a href="{% url 'convo' convo_id=conversation.pk %}" class="conversation-link">
-                    Conversation from {{ conversation.created_at|date:"F j, Y, g:i a" }}
-                </a>
-            </li>
-        {% endfor %}
-        </ul>
+        <table class="w-full mt-6">
+            <thead>
+
+            </thead>
+            <tbody>
+            {% for conversation in conversations %}
+                <tr>
+                    <td class="py-2">
+                        <a href="{% url 'convo' convo_id=conversation.pk %}" class="font-black">
+                            {% if conversation.name %}
+                                {{ conversation.name }}
+                            {% else %}
+                                Untitled Conversation
+                            {% endif %}
+                        </a>
+                    </td>
+                    <td class="py-2 text-right">{{ conversation.created_at|date:"F j, Y, g:i a" }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
     {% else %}
         <p class="no-conversations">You don't have any conversations yet.</p>
     {% endif %}

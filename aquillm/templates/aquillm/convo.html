@@ -5,11 +5,13 @@
 {% block content %}
 <div id="error-container"></div>
 <div id="conversation-container"></div>
+<div id="form-container" class="bg-lighter-primary rounded-lg p-6">
 <form id="message-form" action="{% url 'send_message' convo_id %}" method="post">
     {% csrf_token %}
     {{ form }}
     <input type="submit" value="Submit">
 </form>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -41,6 +43,7 @@
                 if (data.success) {
                     loadConversation();
                 } else {
+                    console.error('Error', data)
                     errorDiv.textContent = 'An error occurred. Please reload the page.';
                 }
              })

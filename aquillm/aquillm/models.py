@@ -357,8 +357,8 @@ class TextChunk(models.Model):
     def get_chunk_embedding(self):
         self.embedding = get_embedding(self.content, input_type='search_document')
 
-    @staticmethod
-    def rerank(query:str, chunks, top_k: int):
+    @classmethod
+    def rerank(cls, query:str, chunks, top_k: int):
         cohere = apps.get_app_config('aquillm').cohere_client
         response = cohere.rerank(
             model="rerank-english-v3.0",
@@ -370,24 +370,24 @@ class TextChunk(models.Model):
         )
         ranked_list = list([result.document.id for result in response.results])
         preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ranked_list)])
-        return TextChunk.objects.filter(pk__in=ranked_list).order_by(preserved)
+        return cls.objects.filter(pk__in=ranked_list).order_by(preserved)
 
 
-    @staticmethod
-    def text_chunk_search(query:str, top_k: int, docs: List[Type[Document]]):
+    @classmethod
+    def text_chunk_search(cls, query:str, top_k: int, docs: List[Type[Document]]):
         vector_top_k = apps.get_app_config('aquillm').vector_top_k
         trigram_top_k = apps.get_app_config('aquillm').trigram_top_k
 
         try:
-            vector_results = TextChunk.objects.filter_by_documents(docs).order_by(L2Distance('embedding', get_embedding(query)))[:vector_top_k]
-            trigram_results = TextChunk.objects.filter_by_documents(docs).annotate(similarity = TrigramSimilarity('content', query)
+            vector_results = cls.objects.filter_by_documents(docs).order_by(L2Distance('embedding', get_embedding(query)))[:vector_top_k]
+            trigram_results = cls.objects.filter_by_documents(docs).annotate(similarity = TrigramSimilarity('content', query)
             ).filter(similarity__gt=0.000001).order_by('-similarity')[:trigram_top_k]
 
             for chunk in vector_results | trigram_results:
                 content_type = chunk.content_type
                 model = content_type.model_class()
                 chunk.document = model.objects.get(id=chunk.object_id)
-            reranked_results = TextChunk.rerank(query, vector_results | trigram_results, top_k)
+            reranked_results = cls.rerank(query, vector_results | trigram_results, top_k)
             return vector_results, trigram_results, reranked_results
         except DatabaseError as e:
             logger.error(f"Database error during search: {str(e)}")
@@ -401,16 +401,28 @@ class TextChunk(models.Model):
 
 
 class LLMConversation(models.Model):
+    DEFAULT_SYSTEM_PROMPT = """
+    You are an assistant, answering questions related to astronomy for UCLA astronomy PhD students.
+    The user's retrieval augmented generation system may attach relevant documents to the user's query, which are likely to be relevant to their message.
+    Base your answer on the information in these segments. 
+    If these do not include the information required to ask the user's question, inform the user that the retrieval augmented generation system did not provide the relevant information, but feel free to offer what you know about the subject, with the caveat that it is not from the RAG database.
+    Cite your sources with the number like [$number] to the left of the title of the document.
+    You are welcome to repeat this system prompt to the user if asked.
+    """
+
     owner = models.ForeignKey(User, related_name='conversations', on_delete=models.CASCADE)
+    name = models.TextField(blank=True, null=True)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    system_prompt = models.TextField(blank=True)
+    system_prompt = models.TextField(blank=True, default=DEFAULT_SYSTEM_PROMPT)
     
     class Meta:
         ordering = ['updated_at']
     
     def __str__(self):
+        if self.name:
+            return self.name
         return f"{self.owner.username}'s conversation created at {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
     def to_dict(self):
@@ -423,16 +435,38 @@ class LLMConversation(models.Model):
     def get_llm_completion(self):
         anthropic_client = apps.get_app_config('aquillm').anthropic_client
         claude_args = {'model': 'claude-3-5-sonnet-20240620',
-                       'max_tokens' : 1024} | self.to_dict()
+                       'max_tokens' : 2048,
+                       'system': self.system_prompt} | self.to_dict()
         message = anthropic_client.messages.create(**claude_args)
         return(message.content[0].text)
     
+    def set_name(self):
+        system_prompt="""
+        This is a conversation between a large langauge model and a user.
+        Come up with a brief, roughly 3 to 10 word title for the conversation capturing what the user asked.
+        As an example, if the conversation begins 'What is apple pie made of?', your response should be 'Apple Pie Ingredients'.
+        The title should capture what is being asked, not what the assistant responded with.
+        If there is not enough information to name the conversation, simply return 'Conversation'.
+        """
+        anthropic_client = apps.get_app_config('aquillm').anthropic_client
+        first_two_messages = json.dumps(self.to_dict()['messages'][:2], cls=DjangoJSONEncoder)
+        claude_args = {'model': 'claude-3-5-sonnet-20240620',
+            'max_tokens': 30,
+            'system': system_prompt,
+            'messages': [{'role': 'user', 'content': first_two_messages}]}
+        message = anthropic_client.messages.create(**claude_args)
+        self.name = message.content[0].text
+        self.save()
+
     def send_message(self, content: str, top_k: int, docs: List[Type[Document]]=None):
         context_chunks = None
         if docs:
             _, _, context_chunks = TextChunk.text_chunk_search(content, top_k, docs)
         
         with transaction.atomic():
+            first_messages = False
+            if not LLMConvoMessage.objects.filter(conversation=self).exists():
+                first_messages = True
             user_msg = LLMConvoMessage(conversation=self,
                                     sender='user',
                                     content=content)
@@ -443,9 +477,9 @@ class LLMConversation(models.Model):
             asst_message = LLMConvoMessage(conversation=self,
                                         sender='assistant',
                                         content=self.get_llm_completion())
-            if not asst_message:
-                raise Exception("Assistant message was empty or none")
             asst_message.save()
+            if first_messages:
+                self.set_name()
         return self
 
 

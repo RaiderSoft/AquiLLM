@@ -1,465 +1,115 @@
+{% load static %}
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full overflow-hidden">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AquiLLM{% endblock %}</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">    <!-- Custom CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="{% static 'images/aquila-small-light.ico' %}" media="(prefers-color-scheme: dark)"/>
+    <link rel="icon" type="image/png" href="{% static 'images/aquila-small-dark.ico' %}" media="(prefers-color-scheme: light)"/>
+
     <link rel="stylesheet" href="https://lalten.github.io/lmweb/style/latinmodern-mono.css" type="text/css" charset="utf-8" />
-    
-    <style>
-        :root {
-            --deep-primary: #2f6e55;
-            --lighter-primary: #acc5bb;
-            --lightest-primary: #d5e2dd;
-
-            --deep-secondary: #533a44;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['Latin Modern Roman']
+                    },
+                    colors: {
+                        'deep-primary': '#2f6e55',
+                        'lighter-primary': '#acc5bb',
+                        'lightest-primary': '#d5e2dd',
+                        'deep-secondary': '#533a44',
+                        'lighter-secondary': '#644e57'
+                    },
+                },
+            },
         }
-        html, body {
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--lightest-primary);
-            font-family: 'Latin Modern Roman', 'Times New Roman', Serif;
-        }
-        
-        .bg-secondary {
-            background-color: #2f6e55 !important;
-        }
-        
-        .btn {
-            background-color: var(--deep-secondary);
-        }
-        
-        #wrapper {
-            display: flex;
-            height: 100%;
-        }
-        
-        #page-content-wrapper {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: scroll;
-        }
-        .navbar {
-            margin: 10px;
-            border-radius: 20px;
-            flex-shrink: 0;
-        }
-        .content-block {
-            flex-grow: 1;
-            overflow-y: hidden;
-            padding: 20px;
-        }
-        
-        #sidebar-wrapper {
-            margin: 10px;
-            border-radius: 20px;
-            flex-shrink: 0;
-            width: 15rem;
-            display: flex;
-            flex-direction: column;
-            min-height: calc(100vh - 20px);
-            overflow-y: hidden;
-            font-weight: bold;
-        }
-        
-        .navbar-heading{
-            padding: 0.875rem 1.25rem;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-        #sidebar-wrapper .list-group {
-            width: 15rem;
-        }
-        body.sb-sidenav-toggled #wrapper #sidebar-wrapper {
-            margin: 0;
-            width: 0;
-        }
-        @media (max-width: 768px) {
-            #sidebar-wrapper {
-                margin-left: -15rem;
-            }
-            body.sb-sidenav-toggled #wrapper #sidebar-wrapper {
-                margin-left: 0;
-            }
-        }
-        
-        .main-block {
-            padding-top: 15px;
-        }
-        
-        .conversation {
-            display: flex;
-            flex-direction: column;
-            max-width: 100%;
-            height: 100%;
-            margin: 0 auto;
-            overflow-y: auto;
-        }
-        
-        
-        .message {
-            width: 70%;
-            margin-bottom: 20px;
-            padding: 10px;
-            border-radius: 10px;
-
-            background-color: var(--lighter-primary);
-
-            
-        }
-        
-        .user-message {
-            border: dashed;
-            align-self: flex-end;
-        }
-        
-        .assistant-message {
-            align-self: flex-start;
-            background-color: var(--deep-secondary);
-            color: #fff;
- 
-        }
-        
-        .message-content {
-            margin: 0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .message-timestamp {
-            font-size: 0.8em;
-            margin-top: 5px;
-        }
-
-        .user-message > .message-timestamp {
-            color: #000;
-        }
-
-        .assistant-message > .message-timestamp {
-            color: #fff;
-        }
-
-        .user-message .message-timestamp {
-            text-align: right;
-        }
-        .context-chunks {
-            margin-top: 10px;
-            font-size: 0.9em;
-        }
-        
-        .context-chunk {
-            margin-top: 5px;
-        }
-        
-        .chunk-title {
-            cursor: pointer;
-            color: #0066cc;
-        }
-        
-        .chunk-content {
-            margin-top: 5px;
-            padding-left: 10px;
-            border-left: 2px solid #ccc;
-        }
-
-        .logo-container {
-            display: flex;
-            justify-content: center;
-            padding-top: 20px;
-        }
-        a {
-            text-decoration: none !important;
-        }
-
-        a:hover {
-            text-decoration: underline !important;
-        }
-    </style>
-    {% block extra_css %}{% endblock %}
+    </script>
 </head>
-<body>
-    <div class="d-flex" id="wrapper">
+<body class="h-full overflow-hidden bg-lightest-primary font-serif">
+    <div class="flex h-full" id="wrapper">
         <!-- Sidebar -->
-        <div class="bg-secondary border-right" id="sidebar-wrapper">
-            <div class="logo-container">
-                <svg
-                width="156.48067"
-                height="182.37354"
-                version="1.1"
-                id="svg3393"
-                sodipodi:version="0.32"
-                inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
-                sodipodi:docname="ConstellationAquila.svg"
-                inkscape:output_extension="org.inkscape.output.svg.inkscape"
-                xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-                xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-                xmlns="http://www.w3.org/2000/svg"
-                xmlns:svg="http://www.w3.org/2000/svg"
-                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                xmlns:cc="http://creativecommons.org/ns#"
-                xmlns:dc="http://purl.org/dc/elements/1.1/">
-                <sodipodi:namedview
-                inkscape:window-height="2130"
-                inkscape:window-width="3832"
-                inkscape:pageshadow="2"
-                inkscape:pageopacity="0.0"
-                guidetolerance="10.0"
-                gridtolerance="10.0"
-                objecttolerance="10.0"
-                borderopacity="1.0"
-                bordercolor="#666666"
-                pagecolor="#ffffff"
-                id="base"
-                inkscape:zoom="8.14"
-                inkscape:cx="89.68059"
-                inkscape:cy="110.01229"
-                inkscape:window-x="0"
-                inkscape:window-y="0"
-                inkscape:current-layer="svg3393"
-                inkscape:showpageshadow="0"
-                inkscape:pagecheckerboard="0"
-                inkscape:deskcolor="#d1d1d1"
-                showgrid="false"
-                inkscape:window-maximized="1" />
-                <metadata
-                id="metadata3440">
-                <rdf:RDF>
-                <cc:Work
-                rdf:about="">
-                <dc:format>image/svg+xml</dc:format>
-                <dc:type
-                rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-            </cc:Work>
-        </rdf:RDF>
-    </metadata>
-    <defs
-    id="defs3438" />
-    <circle
-    cy="178.57104"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3397"
-    cx="151.19119"
-    r="3.8024919" />
-    <circle
-    cy="171.51404"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3399"
-    cx="141.6804"
-    r="4.9355569" />
-    <line
-    y2="171.51404"
-    x2="141.6804"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="178.57104"
-    x1="151.19119"
-    id="line3401" />
-    <circle
-    cy="104.94088"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3403"
-    cx="101.26838"
-    r="5.0699887" />
-    <line
-    y2="104.94088"
-    x2="101.26838"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="171.51404"
-    x1="141.6804"
-    id="line3405" />
-    <circle
-    cy="14.202157"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3407"
-    cx="141.32016"
-    r="5.7805557" />
-    <line
-    y2="14.202174"
-    x2="141.32016"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="104.94088"
-    x1="101.26838"
-    id="line3409" />
-    <circle
-    cy="42.193165"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3411"
-    cx="58.021805"
-    r="6.299077" />
-    <line
-    y2="42.193165"
-    x2="58.021805"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="14.202174"
-    x1="141.32016"
-    id="line3413" />
-    <circle
-    cy="56.774632"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3415"
-    cx="48.606808"
-    r="10.063159" />
-    <line
-    y2="56.774632"
-    x2="48.606808"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="42.193165"
-    x1="58.021805"
-    id="line3417" />
-    <circle
-    cy="77.324051"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3419"
-    cx="39.043919"
-    r="4.3978314" />
-    <line
-    y2="77.324051"
-    x2="39.043915"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="56.774632"
-    x1="48.606808"
-    id="line3421" />
-    <circle
-    cy="123.81154"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3423"
-    cx="5.3004436"
-    r="5.3004427" />
-    <line
-    y2="123.81154"
-    x2="5.3004436"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="77.324051"
-    x1="39.043915"
-    id="line3425" />
-    <circle
-    cy="122.62862"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3427"
-    cx="44.759087"
-    r="4.090559" />
-    <line
-    y2="122.62862"
-    x2="44.759087"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="123.81154"
-    x1="5.3004436"
-    id="line3429" />
-    <line
-    y2="104.94088"
-    x2="101.26838"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="122.62862"
-    x1="44.759087"
-    id="line3431" />
-    <circle
-    cy="3.8024921"
-    fill="#000000"
-    stroke-width="0"
-    stroke="#000000"
-    id="circle3433"
-    cx="152.67818"
-    r="3.8024919" />
-    <line
-    y2="14.202174"
-    x2="141.32016"
-    style="stroke:#000000;stroke-width:1.92045"
-    y1="3.8024921"
-    x1="152.67818"
-    id="line3435" />
-    <g
-    id="g3467"
-    transform="matrix(2.4005628,0,0,2.4005628,-178.57699,-30.728308)">
-    <g
-    id="g3469"
-    transform="matrix(0.2857143,0,0,-0.2857143,-50,150)"
-    style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;letter-spacing:normal;word-spacing:normal;text-anchor:start;fill:none;fill-opacity:1;stroke:#000000;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10.433;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-    xml:space="preserve"><path
-    id="path3471"
-    d="m 479.76,417.76 v 0.36 l -0.01,0.36 -0.02,0.34 -0.02,0.34 -0.07,0.66 -0.08,0.62 -0.12,0.6 -0.13,0.57 -0.15,0.54 -0.18,0.51 -0.19,0.48 -0.22,0.46 -0.22,0.43 -0.25,0.41 -0.26,0.38 -0.27,0.36 -0.29,0.33 -0.3,0.31 -0.3,0.29 -0.32,0.26 -0.33,0.24 -0.34,0.22 -0.34,0.2 -0.34,0.18 -0.36,0.16 -0.35,0.14 -0.36,0.13 -0.36,0.1 -0.36,0.09 -0.36,0.07 -0.36,0.05 -0.36,0.04 -0.35,0.02 -0.35,0.01 -0.05,-1.1 c 4.93,0 4.93,-6.53 4.93,-10.41 0,-1.84 0,-4.73 0.1,-5.58 v 0 c -4.38,-3.83 -8.22,-4.38 -10.21,-4.38 -2.99,0 -4.48,2.24 -4.48,5.43 0,2.44 1.29,7.82 2.89,10.36 2.34,3.64 5.03,4.58 6.77,4.58 l 0.05,1.1 c -6.82,0 -13.4,-7.13 -13.4,-14.15 0,-4.63 2.99,-8.42 8.07,-8.42 3.14,0 6.73,1.15 10.51,4.19 0.65,-2.64 2.29,-4.19 4.54,-4.19 2.64,0 4.18,2.74 4.18,3.54 0,0.35 -0.3,0.5 -0.6,0.5 -0.35,0 -0.5,-0.15 -0.65,-0.5 -0.89,-2.44 -2.68,-2.44 -2.79,-2.44 -1.54,0 -1.54,3.88 -1.54,5.08 0,1.05 0,1.14 0.5,1.74 4.68,5.88 5.73,11.66 5.73,11.71 0,0.1 -0.05,0.5 -0.6,0.5 -0.5,0 -0.5,-0.15 -0.75,-1.05 -0.89,-3.14 -2.54,-6.92 -4.88,-9.86 z"
-    style="fill:#000000;stroke-width:0" /></g>
-</g>
-                </svg>
-</div>
-<div class="list-group list-group-flush">
-    {% if user.is_authenticated %}
-    <a href="{% url 'new_convo' %}" class="list-group-item list-group-item-action bg-secondary">New Conversation</a>
-    <a href="{% url 'user_conversations' %}" class="list-group-item list-group-item-action bg-secondary">Old Conversations</a>
-    <a href="{% url 'search' %}" class="list-group-item list-group-item-action bg-secondary">Search</a>
-    <a href="{% url 'insert_arxiv' %}" class="list-group-item list-group-item-action bg-secondary">Ingest from arXiv</a>
-    {% endif %}
-</div>
-</div>
-<!-- /#sidebar-wrapper -->
+        <div id= "aq-sidebar" class="flex flex-col w-60 bg-lighter-primary text-black m-2.5 rounded-lg flex-shrink-0 min-h-[calc(100vh-20px)] overflow-y-hidden border border-dashed border-black border-2" id="sidebar-wrapper">
+            <a href="{% url 'index' %}" class="text-2xl font-bold hover:bg-lighter-primary flex justify-center items-center p-6 hover:underline">
+                <div class="flex justify-center items-center">
+                    <img class="h-20 object-scale-down" src="{% static 'images/aquila-medium.svg' %}" alt="AquiLLM Logo">
+                    <span class="py-2">AquiLLM</span>
+                </div>
+            </a>
+            <div class="flex flex-col">
+                {% if user.is_authenticated %}
+                    {% for link in nav_links %}
+                        <a href="{% url link.url %}" class="px-5 py-2 text-lg font-bold hover:underline hover:bg-lighter-primary hover:outline-t-2 hover:outline-b-2 hover:outline-black hover:outline-dashed">{{ link.text }}</a>
+                    {% endfor %}
+                {% endif %}
+            </div>
 
-<!-- Page Content -->
-<div id="page-content-wrapper">
-    <nav class="navbar navbar-expand-lg navbar-light bg-secondary border-bottom">
-        <div class="container-fluid">
-            <button class="btn btn-primary" id="menu-toggle">&lt;-&gt;</button>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="navbar-heading">AquiLLM</div>
-
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav ms-auto mt-2 mt-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="#">Home</a></li>    
-                    {% if user.is_authenticated %}
-                    <li class="nav-item"><form method="post" action="{% url 'account_logout' %}">
-                        {% csrf_token %}
-                        <button class="btn btn-primary" type="submit">Log Out</button>
-                    </form>
-                    {% else %}
-                    <li class="nav-item"><form method="post" action="{% url 'account_login' %}">
-                        {% csrf_token %}
-                        <button class="btn btn-primary" type="submit">Log In</button>
-                    </form>                            
-                    {% endif %}
-                </ul>
+            <div class="flex justify-center p-5 mt-auto">
+                <img id="aquillm-logo" src="{% static 'images/aquila.svg' %}" alt="AquiLLM Logo">
             </div>
         </div>
-    </nav>
-    
-    <div class="container-fluid main-block">
-        {% block content %}
-        <!-- Your page content goes here -->
-        {% endblock %}
-    </div>
-</div>
-<!-- /#page-content-wrapper -->
-</div>
-<!-- /#wrapper -->
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>    <!-- Custom JavaScript -->
-<script>
-    document.getElementById("menu-toggle").addEventListener("click", function(e) {
+        <!-- Page Content -->
+        <div class="flex-grow flex flex-col h-full overflow-scroll" id="page-content-wrapper">
+            <nav class="bg-deep-primary text-black m-2.5 rounded-lg flex-shrink-0 px-4">
+                <div class="mx-auto flex justify-between items-center max-w-full">
+                    <button class="bg-deep-secondary my-2 hover:bg-lighter-secondary px-3 py-1 rounded-lg" id="menu-toggle">
+                        <img id="menu-open-icon" class="h-6 hidden" src="{% static 'images/latex-implies.svg' %}" alt="Open Menu" class="">
+                        <img id="menu-close-icon" class="h-6 -scale-x-100" src="{% static 'images/latex-implies.svg' %}" alt="Close Menu" class="hidden">
+                    </button>
+
+                    <a id="navbar-aquillm-button-container" href="{% url 'index' %}" class="text-2xl text-lightest-primary px-2 rounded-lg font-bold hover:bg-lighter-primary flex justify-center items-center hover:underline hidden">
+                        <div class="flex justify-center items-center">
+                            <img class="h-6 object-scale-down" src="{% static 'images/aquila-small-lightest.svg' %}" alt="AquiLLM Logo">
+                            <span class="pl-2">AquiLLM</span>
+                        </div>
+                    </a>
+                    <div class="flex items-center my-2 text-lightest-primary">
+                        {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'account_logout' %}">
+                            {% csrf_token %}
+                            <button class="bg-deep-secondary hover:bg-lighter-secondary hover:underline text-lg px-3 py-1 rounded-lg font-black" type="submit">Log Out</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="{% url 'account_login' %}">
+                            {% csrf_token %}
+                            <button class="bg-deep-secondary hover:bg-lighter-secondary hover:underline text-lg px-3 py-1 rounded-lg font-black" type="submit">Log In</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </nav>
+
+            <div class="flex-grow overflow-y-auto p-5">
+                {% block content %}
+                <!-- Your page content goes here -->
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const menuToggle = document.getElementById("menu-toggle");
+    const sidebar = document.getElementById("aq-sidebar");
+    const openIcon = document.getElementById("menu-open-icon")
+    const closeIcon = document.getElementById("menu-close-icon")
+    const navBarAquiLLMButtonContainer = document.getElementById("navbar-aquillm-button-container")
+    menuToggle.addEventListener("click", function(e) {
         e.preventDefault();
-        document.body.classList.toggle("sb-sidenav-toggled");
+        sidebar.classList.toggle("hidden");
+        openIcon.classList.toggle("hidden");
+        closeIcon.classList.toggle("hidden");
+        navBarAquiLLMButtonContainer.classList.toggle("hidden")
     });
+});
 </script>
-{% block scripts %}{% endblock %}
-{% block extra_js %}{% endblock %}
+    </script>
+    {% block scripts %}{% endblock %}
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

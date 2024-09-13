@@ -24,7 +24,11 @@ class SearchForm(forms.Form):
             queryset=Collection.objects.none(), # this is weird but necessary
             required=False
         )
-    query = forms.CharField(label="Search Query", max_length=10000)
+
+    query_attrs = {'class': 'w-full p-3 mb-3 rounded-md bg-lightest-primary text-wrap',
+                   'rows': 4,
+                   'placeholder': 'Send a message'}
+    query = forms.CharField(label="", widget=forms.Textarea(attrs=query_attrs), max_length=10000)
     top_k = forms.IntegerField(min_value=1, max_value=200, initial=5)
 
 

@@ -1,21 +1,21 @@
-<div class="conversation">
+<div class="flex flex-col max-w-full h-full mx-auto overflow-y-auto">
     {% for message in conversation.messages.all %}
-        <div class="message {% if message.sender == 'user' %}user-message{% else %}assistant-message{% endif %}">
-            <p class="message-content">{{ message.content }}</p>
+        <div class="w-4/5 mb-5 p-2.5 rounded-lg {% if message.sender == 'user' %}user-message self-end bg-lighter-primary border border-dashed border-black border-2{% else %}assistant-message bg-deep-secondary text-white{% endif %}">
+            <p class="whitespace-pre-wrap break-words">{{ message.content }}</p>
             {% if message.context_chunks.exists %}
-            <div class="context-chunks">
+            <div class="mt-2.5 text-sm">
                 <strong>Related Context:</strong>
                 {% for chunk in message.context_chunks.all %}
-                    <div class="context-chunk">
+                    <div class="mt-1.5">
                         <details>
-                            <summary class="chunk-title">{{ chunk.document.title|default:"Untitled Document" }} ({{ chunk.start_position }}-{{ chunk.end_position }})</summary>
-                            <p class="chunk-content">{{ chunk.content }}</p>
+                            <summary class="cursor-pointer text-blue-600">{{ chunk.document.title|default:"Untitled Document" }} ({{ chunk.start_position }}-{{ chunk.end_position }})</summary>
+                            <p class="mt-1.5 pl-2.5 border-l-2 border-gray-300">{{ chunk.content }}</p>
                         </details>
                     </div>
                 {% endfor %}
             </div>
             {% endif %}
-            <p class="message-timestamp">{{ message.timestamp|date:"Y-m-d H:i:s" }}</p>
+            <p class="text-xs mt-1.5 {% if message.sender == 'user' %}text-right{% endif %}">{{ message.timestamp|date:"Y-m-d H:i:s" }}</p>
         </div>
     {% endfor %}
 </div>
