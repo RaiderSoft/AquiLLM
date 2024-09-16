@@ -3,14 +3,20 @@
 {% block title %}Conversation{% endblock %}
 
 {% block content %}
-<div id="error-container"></div>
-<div id="conversation-container"></div>
-<div id="form-container" class="bg-lighter-primary rounded-lg p-6">
-<form id="message-form" action="{% url 'send_message' convo_id %}" method="post">
-    {% csrf_token %}
-    {{ form }}
-    <input type="submit" value="Submit">
-</form>
+<div class="flex flex-col h-full">
+    <div id="error-container" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" style="display: none;" role="alert">
+        <span class="block sm:inline" id="error-message"></span>
+    </div>
+    <div id="conversation-container" class="flex-grow overflow-y-auto"></div>
+    <div id="form-container" class="bg-lighter-primary rounded-lg p-6 sticky bottom-0">
+        <form id="message-form" action="{% url 'send_message' convo_id %}" method="post" class="flex">
+            {% csrf_token %}
+            {{ form }}
+            <button type="submit" class="bg-deep-secondary hover:bg-lighter-secondary text-white font-bold py-2 px-4 rounded ml-2">
+                Send
+            </button>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
@@ -21,13 +27,22 @@
             .then(response => response.text())
             .then(data => {
                 document.getElementById("conversation-container").innerHTML = data;
+                scrollToBottom();
             });
     }
+
+    function scrollToBottom() {
+        const conversationContainer = document.getElementById("conversation-container");
+        conversationContainer.scrollTop = conversationContainer.scrollHeight;
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
         const form = document.getElementById('message-form');
         const errorDiv = document.getElementById('error-container');
+        const errorMessage = document.getElementById('error-message');
         loadConversation();
-        document.getElementById("message-form").addEventListener("submit", function(e) {
+
+        form.addEventListener("submit", function(e) {
             e.preventDefault();
             const formData = new FormData(form);
 
@@ -42,16 +57,19 @@
             .then(data => {
                 if (data.success) {
                     loadConversation();
+                    form.reset();
                 } else {
-                    console.error('Error', data)
-                    errorDiv.textContent = 'An error occurred. Please reload the page.';
+                    console.error('Error', data);
+                    errorMessage.textContent = 'An error occurred. Please try again.';
+                    errorDiv.style.display = 'block';
                 }
              })
             .catch(error => {
                 console.error('Error:', error);
-                errorDiv.textContent = 'An error occurred. Please reload the page or try again later.';
-            })
-            })
+                errorMessage.textContent = 'An error occurred. Please reload the page or try again later.';
+                errorDiv.style.display = 'block';
+            });
         });
+    });
 </script>
 {% endblock %}

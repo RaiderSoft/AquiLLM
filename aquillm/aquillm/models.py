@@ -74,10 +74,10 @@ class Collection(models.Model):
         return self.user_has_permission_in(user, ['MANAGE'])
     
     # returns a list of documents, not a queryset.
-    @staticmethod
-    def get_user_accessible_documents(user, collections=None, perm='VIEW'):
+    @classmethod
+    def get_user_accessible_documents(cls, user, collections=None, perm='VIEW'):
         if collections is None:
-            collections = Collection.objects.all()
+            collections = cls.objects.all()
 
         collections = collections.filter_by_user_perm(user, perm)
         documents = functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection__in=collections)) for x in DESCENDED_FROM_DOCUMENT])
@@ -132,6 +132,7 @@ def get_user_accessible_documents(user, collections=None, perm='VIEW'):
 
 class Document(models.Model):
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
 
     title = models.CharField(max_length=200)
     full_text = models.TextField()
@@ -180,7 +181,9 @@ class Document(models.Model):
 #                       <-----chunk_pitch-->                               == chunk_size - chunk_overlap
 #                       |-----------CHUNK-----------|
 #                                           |-----------CHUNK-----------|
-    
+    def delete(self, *args, **kwargs):
+        TextChunk.objects.filter(doc_uuid=self.uuid).delete()
+        super().delete(*args, **kwargs)
 
     def create_chunks(self): #naive method, just number of characters
 
@@ -188,16 +191,15 @@ class Document(models.Model):
         overlap = apps.get_app_config('aquillm').chunk_overlap
         chunk_pitch = chunk_size - overlap
         # Delete existing chunks for this document
-        content_type = ContentType.objects.get_for_model(self)
-        TextChunk.objects.filter(content_type=content_type, object_id=self.id).delete()
+        TextChunk.objects.filter(doc_uuid=uuid).delete()
         last_character = len(self.full_text) - 1
         # Create new chunks
+
         chunks = list([TextChunk(
                     content = self.full_text[chunk_pitch * i : min((chunk_pitch * i) + chunk_size, last_character + 1)],
                     start_position=chunk_pitch * i,
                     end_position=min((chunk_pitch * i) + chunk_size, last_character + 1),
-                    content_type= content_type,
-                    object_id = self.id,
+                    doc_uuid = self.uuid,
                     chunk_number = i) for i in range(last_character // chunk_pitch + 1)])
         for chunk in chunks:
             chunk.save()
@@ -221,56 +223,57 @@ class Document(models.Model):
 
 
 class STTDocument(Document):
-    audio_file = models.FileField(upload_to='stt_audio/')
-    transcription = None
-    def save(self, *args, **kwargs):
-        self.extract_text()
-        super().save(*args, **kwargs)
+    pass
+    # audio_file = models.FileField(upload_to='stt_audio/')
+    # transcription = None
+    # def save(self, *args, **kwargs):
+    #     self.extract_text()
+    #     super().save(*args, **kwargs)
 
-    def extract_text(self):
-        openai_client = apps.get_app_config('aquillm').openai_client
-        self.transcription = openai_client.audio.transcriptions.create(
-            model = "whisper-1",
-            language= 'en',
-            file = self.audio_file.read(),
-            response_format = 'verbose_json',
-            timestamp_granularities = ['segment']
-        )
-        self.full_text = '\n'.join([segment['text'] for segment in self.transcription['segments']])
+    # def extract_text(self):
+    #     openai_client = apps.get_app_config('aquillm').openai_client
+    #     self.transcription = openai_client.audio.transcriptions.create(
+    #         model = "whisper-1",
+    #         language= 'en',
+    #         file = self.audio_file.read(),
+    #         response_format = 'verbose_json',
+    #         timestamp_granularities = ['segment']
+    #     )
+    #     self.full_text = '\n'.join([segment['text'] for segment in self.transcription['segments']])
 
-    def create_chunks(self):
-        chunk_size = apps.get_app_config('aquillm').chunk_size
-        overlap = apps.get_app_config('aquillm').chunk_overlap
-        chunk_pitch = chunk_size - overlap
+    # def create_chunks(self):
+    #     chunk_size = apps.get_app_config('aquillm').chunk_size
+    #     overlap = apps.get_app_config('aquillm').chunk_overlap
+    #     chunk_pitch = chunk_size - overlap
         
-        segments = self.transcription['segments']
+    #     segments = self.transcription['segments']
 
-        length = 0
-        for segment in segments:
-            segment['start_char'] = length
-            length += len(segment['text'])
-            segment['end_char'] = length - 1
+    #     length = 0
+    #     for segment in segments:
+    #         segment['start_char'] = length
+    #         length += len(segment['text'])
+    #         segment['end_char'] = length - 1
         
-        def get_segment_index_by_offset(offset): # gets the segment containing the offset
-            for idx, segment in enumerate(segments):
-                if (segment['start_char'] <= offset and segment['end_char'] >= offset) or segment is segments[-1]:
-                    return idx
+    #     def get_segment_index_by_offset(offset): # gets the segment containing the offset
+    #         for idx, segment in enumerate(segments):
+    #             if (segment['start_char'] <= offset and segment['end_char'] >= offset) or segment is segments[-1]:
+    #                 return idx
         
-        content_type = ContentType.objects.get_for_model(self)
-        TextChunk.objects.filter(content_type=content_type, object_id=self.id).delete()
-        last_character = len(self.full_text) - 1
+    #     content_type = ContentType.objects.get_for_model(self)
+    #     TextChunk.objects.filter(content_type=content_type, object_id=self.id).delete()
+    #     last_character = len(self.full_text) - 1
 
-        chunks = list([TextChunk(
-            content = '\n'.join([segment['text'] for segment in segments[get_segment_index_by_offset(chunk_pitch * i) : get_segment_index_by_offset(chunk_pitch * i + chunk_size)]]),
-            start_position = segments[get_segment_index_by_offset(chunk_pitch * i)]['start_char'],
-            end_position = segments[get_segment_index_by_offset(chunk_pitch * i + chunk_size)]['end_char'],
-            start_time = segments[get_segment_index_by_offset(chunk_pitch * i)]['start'],
-            content_type = content_type,
-            object_id = self.id,
-            chunk_number = i) for i in range(last_character // chunk_pitch + 1)
-        ])
-        for chunk in chunks:
-            chunk.save()
+    #     chunks = list([TextChunk(
+    #         content = '\n'.join([segment['text'] for segment in segments[get_segment_index_by_offset(chunk_pitch * i) : get_segment_index_by_offset(chunk_pitch * i + chunk_size)]]),
+    #         start_position = segments[get_segment_index_by_offset(chunk_pitch * i)]['start_char'],
+    #         end_position = segments[get_segment_index_by_offset(chunk_pitch * i + chunk_size)]['end_char'],
+    #         start_time = segments[get_segment_index_by_offset(chunk_pitch * i)]['start'],
+    #         content_type = content_type,
+    #         object_id = self.id,
+    #         chunk_number = i) for i in range(last_character // chunk_pitch + 1)
+    #     ])
+    #     for chunk in chunks:
+    #         chunk.save()
                 
 
     
@@ -304,10 +307,8 @@ DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, STTDocumen
 
 class TextChunkQuerySet(models.QuerySet):
     def filter_by_documents(self, docs):
-        hashes = [doc.full_text_hash for doc in docs]
-        q = functools.reduce(lambda l, r: l | r, [Q(content_type=ContentType.objects.get_for_model(model),
-                                                    object_id__in=model.objects.filter(full_text_hash__in=hashes).values_list('id', flat=True))
-                                                    for model in DESCENDED_FROM_DOCUMENT])
+        uuids = [doc.uuid for doc in docs]
+        self.filter(doc_uuid__in=uuids)
         return self.filter(q)
 
 
@@ -319,11 +320,33 @@ class TextChunk(models.Model):
 
     start_time = models.FloatField(null=True)
 
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    document = GenericForeignKey('content_type', 'object_id')
+
+    # these only exist to make creating TextChunks work and to support deletion cascade -- DO NOT use them to reference the document
+    # __content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    # __object_id = models.PositiveIntegerField()
+    # __doc_fk = GenericForeignKey('__content_type', '__object_id')
+
+
+    def uuid_validator(uuid):
+        if sum([t.objects.filter(uuid=uuid).exists() for t in DESCENDED_FROM_DOCUMENT]) != 1:
+            raise ValidationError("Invalid Document UUID -- either no such document or multiple")
+        
+
+    doc_uuid = models.UUIDField(editable=False,
+                                validators=[uuid_validator])
     
+
+    @property
+    def document(self):
+        ret = None
+        for t in DESCENDED_FROM_DOCUMENT:
+            ret = t.objects.filter(uuid=self.doc_uuid).first()
+        return ret
     chunk_number = models.PositiveIntegerField()
+
+    @document.setter
+    def document(self, doc):
+        self.doc_uuid = doc.uuid
 
     keywords = ArrayField(
         models.CharField(max_length=100),
@@ -338,12 +361,12 @@ class TextChunk(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['content_type', 'object_id', 'start_position', 'end_position'],
+                fields=['doc_uuid', 'object_id', 'start_position', 'end_position'],
                 name='unique_chunk_position_per_document'
             )
         ]
         indexes = [
-            models.Index(fields=['content_type', 'object_id', 'start_position', 'end_position'])
+            models.Index(fields=['doc_uuid', 'start_position', 'end_position'])
         ]
 
     def save(self, *args, **kwargs):
@@ -383,10 +406,11 @@ class TextChunk(models.Model):
             trigram_results = cls.objects.filter_by_documents(docs).annotate(similarity = TrigramSimilarity('content', query)
             ).filter(similarity__gt=0.000001).order_by('-similarity')[:trigram_top_k]
 
-            for chunk in vector_results | trigram_results:
-                content_type = chunk.content_type
-                model = content_type.model_class()
-                chunk.document = model.objects.get(id=chunk.object_id)
+            # TODO: make sure this isn't needed anymore, then delete it
+            # for chunk in vector_results | trigram_results:
+            #     content_type = chunk.content_type
+            #     model = content_type.model_class()
+            #     chunk.document = model.objects.get(id=chunk.object_id)
             reranked_results = cls.rerank(query, vector_results | trigram_results, top_k)
             return vector_results, trigram_results, reranked_results
         except DatabaseError as e:

@@ -29,6 +29,10 @@ def index(request):
 
 
 
+
+
+
+
 @login_required
 def search(request):
     
@@ -93,6 +97,7 @@ def search(request):
 #     return render(request, 'aquillm/llm_convo.html', context)
 
 
+
 @login_required
 def raw_convo(request, convo_id):
     convo = get_object_or_404(LLMConversation, pk=convo_id)
@@ -140,6 +145,12 @@ def new_convo(request):
     convo = LLMConversation(owner=request.user) # TODO: let user set system prompt
     convo.save()
     return redirect('convo', convo_id=convo.id)
+
+
+@login_required
+def pdf(request, doc_id):
+    doc = get_object_or_404()
+
 
 def insert_one_from_arxiv(arxiv_id, collection):
     status_message = ""
