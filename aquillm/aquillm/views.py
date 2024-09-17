@@ -97,11 +97,7 @@ def search(request):
 
 #     return render(request, 'aquillm/llm_convo.html', context)
 
-
-
-@require_http_methods(['GET'])
-@login_required
-def pdf(request, doc_id):
+def get_doc(request, doc_id):
     doc = None
     for t in DESCENDED_FROM_DOCUMENT:
         doc = t.objects.filter(id=doc_id).first()
@@ -111,15 +107,25 @@ def pdf(request, doc_id):
         raise Http404("Requested document does not exist")
     if not doc.collection.user_can_view(request.user):
         raise HttpResponseForbidden("You don't have access to the collection containing this document")
+    return doc
+
+@require_http_methods(['GET'])
+@login_required
+def pdf(request, doc_id):
+    doc = get_doc(request, doc_id)
     if doc.pdf_file:
-        filename = doc.pdf_file.name.split('/')[-1]
         response = HttpResponse(doc.pdf_file, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename={filename}'
         return response
     else:
         raise Http404("Requested document does not have an associated PDF")
     
     
+@require_http_methods(['GET'])
+@login_required
+def document(request, doc_id):
+    doc = get_doc(request, doc_id)
+    context = {'document': doc}
+    return render(request, 'aquillm/document.html', context)
 
 
 

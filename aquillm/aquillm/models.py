@@ -2,17 +2,16 @@ from django.db import models, transaction
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
-from pgvector.django import VectorField
+from pgvector.django import VectorField, L2Distance, HnswIndex
 from django.apps import apps
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
-
+from tenacity import retry, wait_exponential
 import uuid
 
 from django.contrib.auth.models import User
 from pypdf import PdfReader
 
-from django.db.models import Q
 import functools 
 
 # for hashing full_text of documents to ensure unique contents
@@ -28,8 +27,8 @@ from typing import  List, Type, Tuple
 
 from django.core.exceptions import ValidationError
 from django.contrib.postgres.search import TrigramSimilarity
-from pgvector.django import L2Distance
 
+import concurrent.futures
 
 from django.db import DatabaseError
 from django.db.models import Case, When
@@ -138,7 +137,8 @@ class Document(models.Model):
     full_text = models.TextField()
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
     full_text_hash = models.CharField(max_length=64, db_index=True)
-
+    ingested_by = models.ForeignKey(User, on_delete=models.RESTRICT)
+    ingestion_date = models.DateTimeField(auto_now_add=True)
     class Meta:
         abstract = True
         constraints = [
@@ -199,8 +199,11 @@ class Document(models.Model):
                     end_position=min((chunk_pitch * i) + chunk_size, last_character + 1),
                     doc_id = self.id,
                     chunk_number = i) for i in range(last_character // chunk_pitch + 1)])
-        for chunk in chunks:
-            chunk.save()
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as e:
+            e.map(TextChunk.get_chunk_embedding, chunks)
+        
+        TextChunk.objects.bulk_create(chunks)
 
     def __str__(self):
         return f'{ContentType.objects.get_for_model(self)} -- {self.title} in {self.collection.name}'
@@ -321,12 +324,6 @@ class TextChunk(models.Model):
     embedding = VectorField(dimensions=1024, blank=True, null=True)
 
 
-    # these only exist to make creating TextChunks work and to support deletion cascade -- DO NOT use them to reference the document
-    # __content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    # __object_id = models.PositiveIntegerField()
-    # __doc_fk = GenericForeignKey('__content_type', '__object_id')
-
-
     def doc_id_validator(id):
         if sum([t.objects.filter(id=id).exists() for t in DESCENDED_FROM_DOCUMENT]) != 1:
             raise ValidationError("Invalid Document UUID -- either no such document or multiple")
@@ -366,17 +363,25 @@ class TextChunk(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=['doc_id', 'start_position', 'end_position'])
+            models.Index(fields=['doc_id', 'start_position', 'end_position']),
+            HnswIndex(
+                name='chunk_embedding_index',
+                fields=['embedding'],
+                m=16,
+                ef_construction=64,
+                opclasses=['vector_l2_ops']
+            ),
         ]
 
     def save(self, *args, **kwargs):
         if self.start_position >= self.end_position:
             raise ValueError("end_position must be greater than start_position")
-        self.get_chunk_embedding()
+        if not self.embedding:
+            self.get_chunk_embedding()
 
         super().save(*args, **kwargs)
 
-    
+    @retry(wait=wait_exponential())
     def get_chunk_embedding(self):
         self.embedding = get_embedding(self.content, input_type='search_document')
 
@@ -405,12 +410,6 @@ class TextChunk(models.Model):
             vector_results = cls.objects.filter_by_documents(docs).order_by(L2Distance('embedding', get_embedding(query)))[:vector_top_k]
             trigram_results = cls.objects.filter_by_documents(docs).annotate(similarity = TrigramSimilarity('content', query)
             ).filter(similarity__gt=0.000001).order_by('-similarity')[:trigram_top_k]
-
-            # TODO: make sure this isn't needed anymore, then delete it
-            # for chunk in vector_results | trigram_results:
-            #     content_type = chunk.content_type
-            #     model = content_type.model_class()
-            #     chunk.document = model.objects.get(id=chunk.object_id)
             reranked_results = cls.rerank(query, vector_results | trigram_results, top_k)
             return vector_results, trigram_results, reranked_results
         except DatabaseError as e:
