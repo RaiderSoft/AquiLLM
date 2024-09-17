@@ -131,8 +131,8 @@ def get_user_accessible_documents(user, collections=None, perm='VIEW'):
 
 
 class Document(models.Model):
-
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
+    pkid = models.BigAutoField(primary_key=True, editable=False)
+    id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
 
     title = models.CharField(max_length=200)
     full_text = models.TextField()
@@ -170,9 +170,7 @@ class Document(models.Model):
             #             for collection in existing_document.collections.all():
             #                 self.collections.add(collection)
             #             existing_document.delete()
-
-            if is_new or 'full_text' in kwargs.get('update_fields', []):
-                self.create_chunks()
+            self.create_chunks()
 
 
 #   |-----------CHUNK-----------|
@@ -182,7 +180,7 @@ class Document(models.Model):
 #                       |-----------CHUNK-----------|
 #                                           |-----------CHUNK-----------|
     def delete(self, *args, **kwargs):
-        TextChunk.objects.filter(doc_uuid=self.uuid).delete()
+        TextChunk.objects.filter(doc_id=self.id).delete()
         super().delete(*args, **kwargs)
 
     def create_chunks(self): #naive method, just number of characters
@@ -191,7 +189,7 @@ class Document(models.Model):
         overlap = apps.get_app_config('aquillm').chunk_overlap
         chunk_pitch = chunk_size - overlap
         # Delete existing chunks for this document
-        TextChunk.objects.filter(doc_uuid=uuid).delete()
+        TextChunk.objects.filter(doc_id=self.id).delete()
         last_character = len(self.full_text) - 1
         # Create new chunks
 
@@ -199,7 +197,7 @@ class Document(models.Model):
                     content = self.full_text[chunk_pitch * i : min((chunk_pitch * i) + chunk_size, last_character + 1)],
                     start_position=chunk_pitch * i,
                     end_position=min((chunk_pitch * i) + chunk_size, last_character + 1),
-                    doc_uuid = self.uuid,
+                    doc_id = self.id,
                     chunk_number = i) for i in range(last_character // chunk_pitch + 1)])
         for chunk in chunks:
             chunk.save()
@@ -307,9 +305,9 @@ DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, STTDocumen
 
 class TextChunkQuerySet(models.QuerySet):
     def filter_by_documents(self, docs):
-        uuids = [doc.uuid for doc in docs]
-        self.filter(doc_uuid__in=uuids)
-        return self.filter(q)
+        ids = [doc.id for doc in docs]
+        return self.filter(doc_id__in=ids)
+
 
 
 
@@ -319,6 +317,8 @@ class TextChunk(models.Model):
     end_position = models.PositiveIntegerField()
 
     start_time = models.FloatField(null=True)
+    chunk_number = models.PositiveIntegerField()
+    embedding = VectorField(dimensions=1024, blank=True, null=True)
 
 
     # these only exist to make creating TextChunks work and to support deletion cascade -- DO NOT use them to reference the document
@@ -327,26 +327,27 @@ class TextChunk(models.Model):
     # __doc_fk = GenericForeignKey('__content_type', '__object_id')
 
 
-    def uuid_validator(uuid):
-        if sum([t.objects.filter(uuid=uuid).exists() for t in DESCENDED_FROM_DOCUMENT]) != 1:
+    def doc_id_validator(id):
+        if sum([t.objects.filter(id=id).exists() for t in DESCENDED_FROM_DOCUMENT]) != 1:
             raise ValidationError("Invalid Document UUID -- either no such document or multiple")
         
 
-    doc_uuid = models.UUIDField(editable=False,
-                                validators=[uuid_validator])
+    doc_id = models.UUIDField(editable=False,
+                                validators=[doc_id_validator])
     
 
     @property
     def document(self):
         ret = None
         for t in DESCENDED_FROM_DOCUMENT:
-            ret = t.objects.filter(uuid=self.doc_uuid).first()
+            doc = t.objects.filter(id=self.doc_id).first()
+            if doc:
+                ret = doc
         return ret
-    chunk_number = models.PositiveIntegerField()
 
     @document.setter
     def document(self, doc):
-        self.doc_uuid = doc.uuid
+        self.doc_id = doc.id
 
     keywords = ArrayField(
         models.CharField(max_length=100),
@@ -354,19 +355,18 @@ class TextChunk(models.Model):
         blank=True,
         null=True
     )
-    embedding = VectorField(dimensions=1024,blank=True, null=True)
 
     objects = TextChunkQuerySet.as_manager()
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['doc_uuid', 'object_id', 'start_position', 'end_position'],
+                fields=['doc_id', 'start_position', 'end_position'],
                 name='unique_chunk_position_per_document'
             )
         ]
         indexes = [
-            models.Index(fields=['doc_uuid', 'start_position', 'end_position'])
+            models.Index(fields=['doc_id', 'start_position', 'end_position'])
         ]
 
     def save(self, *args, **kwargs):

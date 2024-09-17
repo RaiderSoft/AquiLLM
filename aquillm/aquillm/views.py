@@ -9,6 +9,7 @@ import gzip
 import tarfile
 from xml.dom import minidom
 
+from django.http import HttpResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseForbidden
 from pgvector.django import L2Distance
@@ -16,7 +17,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 
 from .forms import SearchForm, ArXiVForm
-from .models import TextChunk, TeXDocument, PDFDocument, Collection, LLMConversation
+from .models import TextChunk, TeXDocument, PDFDocument, Collection, LLMConversation, DESCENDED_FROM_DOCUMENT
 import requests
 
 from django.http import JsonResponse
@@ -98,58 +99,28 @@ def search(request):
 
 
 
-@login_required
-def raw_convo(request, convo_id):
-    convo = get_object_or_404(LLMConversation, pk=convo_id)
-    if convo.owner != request.user:
-        return HttpResponseForbidden("User does not own this conversation")
-    context = {'conversation': convo}
-    return render(request, 'aquillm/raw_convo.html', context)
-
-@login_required
-def convo(request, convo_id):
-    convo = get_object_or_404(LLMConversation, pk=convo_id)
-    if convo.owner != request.user:
-        return HttpResponseForbidden("User does not own this conversation")
-   
-    return render(request, 'aquillm/convo.html', {'convo_id' : convo_id,
-                                                  'form' : SearchForm(request.user)})
-
-@require_http_methods(['POST'])
-@login_required
-def send_message(request, convo_id):
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        convo = get_object_or_404(LLMConversation, pk=convo_id)
-        if convo.owner != request.user:
-            return HttpResponseForbidden("User does not own this conversation")
-        form = SearchForm(request.user, request.POST)
-        if form.is_valid():
-            collections = form.cleaned_data['collections']
-            content = form.cleaned_data['query']
-            top_k = form.cleaned_data['top_k']
-            docs = Collection.get_user_accessible_documents(request.user, collections)
-            convo = convo.send_message(content, top_k, docs)
-            return JsonResponse({'success': True})
-        else:
-            return JsonResponse({'success': False, 'error': form.errors})
-    logger.error(f"Wrong x-requested-with: {request.headers.get('x-requested-with')}")
-    return JsonResponse({'success': False, 'error': 'Invalid Request'})
-
-@login_required
-def user_conversations(request):
-    conversations = LLMConversation.objects.filter(owner=request.user).order_by('-updated_at')
-    return render(request, 'aquillm/user_conversations.html', {'conversations': conversations})
-
-@login_required
-def new_convo(request):
-    convo = LLMConversation(owner=request.user) # TODO: let user set system prompt
-    convo.save()
-    return redirect('convo', convo_id=convo.id)
-
-
+@require_http_methods(['GET'])
 @login_required
 def pdf(request, doc_id):
-    doc = get_object_or_404()
+    doc = None
+    for t in DESCENDED_FROM_DOCUMENT:
+        doc = t.objects.filter(id=doc_id).first()
+        if doc:
+            break
+    if not doc:
+        raise Http404("Requested document does not exist")
+    if not doc.collection.user_can_view(request.user):
+        raise HttpResponseForbidden("You don't have access to the collection containing this document")
+    if doc.pdf_file:
+        filename = doc.pdf_file.name.split('/')[-1]
+        response = HttpResponse(doc.pdf_file, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        return response
+    else:
+        raise Http404("Requested document does not have an associated PDF")
+    
+    
+
 
 
 def insert_one_from_arxiv(arxiv_id, collection):
@@ -218,3 +189,53 @@ def insert_arxiv(request):
     }
 
     return render(request, 'aquillm/insert_arxiv.html', context)
+
+
+
+@login_required
+def raw_convo(request, convo_id):
+    convo = get_object_or_404(LLMConversation, pk=convo_id)
+    if convo.owner != request.user:
+        return HttpResponseForbidden("User does not own this conversation")
+    context = {'conversation': convo}
+    return render(request, 'aquillm/raw_convo.html', context)
+
+@login_required
+def convo(request, convo_id):
+    convo = get_object_or_404(LLMConversation, pk=convo_id)
+    if convo.owner != request.user:
+        return HttpResponseForbidden("User does not own this conversation")
+   
+    return render(request, 'aquillm/convo.html', {'convo_id' : convo_id,
+                                                  'form' : SearchForm(request.user)})
+
+@require_http_methods(['POST'])
+@login_required
+def send_message(request, convo_id):
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        convo = get_object_or_404(LLMConversation, pk=convo_id)
+        if convo.owner != request.user:
+            return HttpResponseForbidden("User does not own this conversation")
+        form = SearchForm(request.user, request.POST)
+        if form.is_valid():
+            collections = form.cleaned_data['collections']
+            content = form.cleaned_data['query']
+            top_k = form.cleaned_data['top_k']
+            docs = Collection.get_user_accessible_documents(request.user, collections)
+            convo = convo.send_message(content, top_k, docs)
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'error': form.errors})
+    logger.error(f"Wrong x-requested-with: {request.headers.get('x-requested-with')}")
+    return JsonResponse({'success': False, 'error': 'Invalid Request'})
+
+@login_required
+def user_conversations(request):
+    conversations = LLMConversation.objects.filter(owner=request.user).order_by('-updated_at')
+    return render(request, 'aquillm/user_conversations.html', {'conversations': conversations})
+
+@login_required
+def new_convo(request):
+    convo = LLMConversation(owner=request.user) # TODO: let user set system prompt
+    convo.save()
+    return redirect('convo', convo_id=convo.id)

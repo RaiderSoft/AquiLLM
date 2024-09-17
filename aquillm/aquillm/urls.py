@@ -31,5 +31,6 @@ urlpatterns = [
     path("raw_convo/<int:convo_id>", views.raw_convo, name="raw_convo"),
     path("convo/<int:convo_id>", views.convo, name="convo"),
     path("new_convo", views.new_convo, name="new_convo"),
-    path("send_message/<int:convo_id>", views.send_message, name="send_message")
+    path("send_message/<int:convo_id>", views.send_message, name="send_message"),
+    path("pdf/<uuid:doc_id>", views.pdf, name="pdf")
 ] + debug_toolbar_urls()
