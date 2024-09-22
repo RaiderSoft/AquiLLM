@@ -27,11 +27,13 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path("search/", views.search, name='search'),
     path("insert_arxiv/", views.insert_arxiv, name='insert_arxiv'),
-    path('user_conversations', views.user_conversations, name="user_conversations"),
-    path("raw_convo/<int:convo_id>", views.raw_convo, name="raw_convo"),
-    path("convo/<int:convo_id>", views.convo, name="convo"),
-    path("new_convo", views.new_convo, name="new_convo"),
-    path("send_message/<int:convo_id>", views.send_message, name="send_message"),
-    path("pdf/<uuid:doc_id>", views.pdf, name="pdf"),
-    path("document/<uuid:doc_id>", views.document, name="document")
+    path('user_conversations/', views.user_conversations, name="user_conversations"),
+    path("raw_convo/<int:convo_id>/", views.raw_convo, name="raw_convo"),
+    path("convo/<int:convo_id>/", views.convo, name="convo"),
+    path("new_convo/", views.new_convo, name="new_convo"),
+    path("send_message/<int:convo_id>/", views.send_message, name="send_message"),
+    path("pdf/<uuid:doc_id>/", views.pdf, name="pdf"),
+    path("document/<uuid:doc_id>/", views.document, name="document"),
+    path("user_collections/", views.user_collections, name="user_collections"),
+    path("collection/<int:col_id>/", views.collection, name="collection")
 ] + debug_toolbar_urls()

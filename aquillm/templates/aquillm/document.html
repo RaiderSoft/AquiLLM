@@ -16,7 +16,9 @@
 </details>
 {% if document.pdf_file %}
 <iframe src="{% url 'pdf' document.id %}" class="w-full h-full"></iframe>
-{% elif %}
+{% else %}
+<h1 class ="text-xl w-full">Full Text:</h1>
 <div>{{ document.full_text|linebreaks }}</div>
+{% endif %}
 </div>
 {% endblock %}

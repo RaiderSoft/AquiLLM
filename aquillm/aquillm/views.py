@@ -17,13 +17,16 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 
 from .forms import SearchForm, ArXiVForm
-from .models import TextChunk, TeXDocument, PDFDocument, Collection, LLMConversation, DESCENDED_FROM_DOCUMENT
+from .models import TextChunk, TeXDocument, PDFDocument, Collection, CollectionPermission, LLMConversation, DESCENDED_FROM_DOCUMENT
 import requests
 
 from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
+
+
+@require_http_methods(['GET'])
 def index(request):
     return render(request, 'aquillm/index.html')
 
@@ -33,7 +36,7 @@ def index(request):
 
 
 
-
+@require_http_methods(['GET', 'POST'])
 @login_required
 def search(request):
     
@@ -97,6 +100,8 @@ def search(request):
 
 #     return render(request, 'aquillm/llm_convo.html', context)
 
+
+# helper func, not a view
 def get_doc(request, doc_id):
     doc = None
     for t in DESCENDED_FROM_DOCUMENT:
@@ -128,7 +133,7 @@ def document(request, doc_id):
     return render(request, 'aquillm/document.html', context)
 
 
-
+# helper func, not a view
 def insert_one_from_arxiv(arxiv_id, collection):
     status_message = ""
     tex_req = requests.get('https://arxiv.org/src/' + arxiv_id)
@@ -176,7 +181,7 @@ def insert_one_from_arxiv(arxiv_id, collection):
 
 
 
-
+@require_http_methods(['GET', 'POST'])
 @login_required
 def insert_arxiv(request):
     status_message = None
@@ -197,7 +202,7 @@ def insert_arxiv(request):
     return render(request, 'aquillm/insert_arxiv.html', context)
 
 
-
+@require_http_methods(['GET'])
 @login_required
 def raw_convo(request, convo_id):
     convo = get_object_or_404(LLMConversation, pk=convo_id)
@@ -206,6 +211,7 @@ def raw_convo(request, convo_id):
     context = {'conversation': convo}
     return render(request, 'aquillm/raw_convo.html', context)
 
+@require_http_methods(['GET'])
 @login_required
 def convo(request, convo_id):
     convo = get_object_or_404(LLMConversation, pk=convo_id)
@@ -235,6 +241,8 @@ def send_message(request, convo_id):
     logger.error(f"Wrong x-requested-with: {request.headers.get('x-requested-with')}")
     return JsonResponse({'success': False, 'error': 'Invalid Request'})
 
+
+@require_http_methods(['GET'])
 @login_required
 def user_conversations(request):
     conversations = LLMConversation.objects.filter(owner=request.user).order_by('-updated_at')
@@ -245,3 +253,18 @@ def new_convo(request):
     convo = LLMConversation(owner=request.user) # TODO: let user set system prompt
     convo.save()
     return redirect('convo', convo_id=convo.id)
+
+@require_http_methods(['GET'])
+@login_required
+def user_collections(request):
+    colperms = CollectionPermission.objects.filter(user=request.user)
+    return render(request, "aquillm/user_collections.html", {'col_perms': colperms}) 
+
+
+@require_http_methods(['GET'])
+@login_required
+def collection(request, col_id):
+    col = get_object_or_404(Collection, pk=col_id)
+    if not col.user_can_view(request.user):
+        return HttpResponseForbidden("User does not have permission to view this collection.")
+    return render(request, 'aquillm/collection.html', {'collection': col})

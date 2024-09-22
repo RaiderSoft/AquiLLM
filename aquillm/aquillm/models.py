@@ -56,6 +56,12 @@ class Collection(models.Model):
     name = models.CharField(max_length=100)
     users = models.ManyToManyField(User, through='CollectionPermission')
     objects = CollectionQuerySet.as_manager()
+
+    # returns a list of documents, not a queryset.
+    @property
+    def documents(self):
+        return functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection=self)) for x in DESCENDED_FROM_DOCUMENT])
+
     def user_has_permission_in(self, user, permissions):
         return CollectionPermission.objects.filter(
             user=user,
@@ -63,6 +69,7 @@ class Collection(models.Model):
             permission__in=permissions
         ).exists()
     
+
     def user_can_view(self, user):
         return self.user_has_permission_in(user, ['VIEW', 'EDIT', 'MANAGE'])
     
@@ -81,8 +88,6 @@ class Collection(models.Model):
         collections = collections.filter_by_user_perm(user, perm)
         documents = functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection__in=collections)) for x in DESCENDED_FROM_DOCUMENT])
         return documents
-
-
 
 
     def __str__(self):
@@ -118,15 +123,6 @@ class CollectionPermission(models.Model):
 
             super().save(*args, **kwargs)
             
-# returns a list of objects, not a queryset!
-def get_user_accessible_documents(user, collections=None, perm='VIEW'):
-
-    if collections is None:
-        collections = Collection.objects.all()
-
-    collections = collections.filter_by_user_perm(user, perm)
-    documents = functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection__in=collections)) for x in DESCENDED_FROM_DOCUMENT])
-    return documents
 
 
 class Document(models.Model):
@@ -147,6 +143,11 @@ class Document(models.Model):
                 name='%(class)s_document_collection_unique'
             )
         ]
+        ordering = ['-ingestion_date', 'title']
+
+    @property
+    def chunks(self):
+        return TextChunk.objects.filter(doc_id=self.id)
 
     def save(self, *args, **kwargs):
         if len(self.full_text) < 100:
@@ -208,19 +209,6 @@ class Document(models.Model):
     def __str__(self):
         return f'{ContentType.objects.get_for_model(self)} -- {self.title} in {self.collection.name}'
 
-# # this is run when the many-to-many relationship between a document and collection changes
-# # if a document is no longer in any collections, it is deleted. 
-# @receiver(m2m_changed, sender=Document.collections.through)
-# def last_guy_cleans_up(sender, instance, action, reverse, model, pk_set, **kwargs):
-#         if action == "post_remove":
-#             if not reverse:
-#                 if instance.collections.count() == 0:
-#                     instance.delete()
-#             else:
-#                 for document_id in pk_set:
-#                     document = Document.objects.get(id=document_id)
-#                     if document.collections.count() == 0:
-#                         document.delete()
 
 
 class STTDocument(Document):
@@ -360,6 +348,10 @@ class TextChunk(models.Model):
             models.UniqueConstraint(
                 fields=['doc_id', 'start_position', 'end_position'],
                 name='unique_chunk_position_per_document'
+            ),
+            models.UniqueConstraint(
+                fields=['doc_id', 'chunk_number'],
+                name='uniqe_chunk_per_document'
             )
         ]
         indexes = [
@@ -372,6 +364,7 @@ class TextChunk(models.Model):
                 opclasses=['vector_l2_ops']
             ),
         ]
+        ordering = ['doc_id', 'chunk_number']
 
     def save(self, *args, **kwargs):
         if self.start_position >= self.end_position:

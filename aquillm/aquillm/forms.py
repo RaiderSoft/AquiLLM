@@ -18,18 +18,25 @@ class UserCollectionMultipleChoiceField(forms.ModelMultipleChoiceField):
 class SearchForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        collections_attrs = {
+            'class': 'rounded-md bg-lightest-primary',
+        }
         self.fields['collections'] = UserCollectionMultipleChoiceField(
             user=user,
-            widget=forms.CheckboxSelectMultiple,
+            widget=forms.CheckboxSelectMultiple(attrs=collections_attrs),
             queryset=Collection.objects.none(), # this is weird but necessary
-            required=False
+            required=False,
         )
 
-    query_attrs = {'class': 'w-full p-3 mb-3 rounded-md bg-lightest-primary text-wrap',
-                   'rows': 4,
-                   'placeholder': 'Send a message'}
+    query_attrs = {
+        'class': 'w-full h-full resize-none p-3 mb-3 rounded-md bg-lightest-primary text-wrap',
+        'rows': 4,
+        'placeholder': 'Send a message'}
     query = forms.CharField(label="", widget=forms.Textarea(attrs=query_attrs), max_length=10000)
-    top_k = forms.IntegerField(min_value=1, max_value=200, initial=5)
+    top_k_attrs = {
+        'class': 'w-full m-2 p-2 rounded-md bg-lightest-primary'
+    }
+    top_k = forms.IntegerField(widget=forms.NumberInput(attrs=top_k_attrs), min_value=1, max_value=200, initial=5)
 
 
 class ArXiVForm(forms.Form):
@@ -39,4 +46,5 @@ class ArXiVForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['collection'].choices = [(col.id, col.name) for col in Collection.objects.filter_by_user_perm(user, perm="EDIT")]
+
 
