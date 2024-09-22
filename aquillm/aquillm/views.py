@@ -9,6 +9,7 @@ import gzip
 import tarfile
 from xml.dom import minidom
 
+from django.http import HttpResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseForbidden
 from pgvector.django import L2Distance
@@ -16,19 +17,26 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 
 from .forms import SearchForm, ArXiVForm
-from .models import TextChunk, TeXDocument, PDFDocument, Collection, LLMConversation
+from .models import TextChunk, TeXDocument, PDFDocument, Collection, CollectionPermission, LLMConversation, DESCENDED_FROM_DOCUMENT
 import requests
 
 from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
+
+
+@require_http_methods(['GET'])
 def index(request):
     return render(request, 'aquillm/index.html')
 
 
 
 
+
+
+
+@require_http_methods(['GET', 'POST'])
 @login_required
 def search(request):
     
@@ -93,54 +101,39 @@ def search(request):
 #     return render(request, 'aquillm/llm_convo.html', context)
 
 
-@login_required
-def raw_convo(request, convo_id):
-    convo = get_object_or_404(LLMConversation, pk=convo_id)
-    if convo.owner != request.user:
-        return HttpResponseForbidden("User does not own this conversation")
-    context = {'conversation': convo}
-    return render(request, 'aquillm/raw_convo.html', context)
+# helper func, not a view
+def get_doc(request, doc_id):
+    doc = None
+    for t in DESCENDED_FROM_DOCUMENT:
+        doc = t.objects.filter(id=doc_id).first()
+        if doc:
+            break
+    if not doc:
+        raise Http404("Requested document does not exist")
+    if not doc.collection.user_can_view(request.user):
+        raise HttpResponseForbidden("You don't have access to the collection containing this document")
+    return doc
 
+@require_http_methods(['GET'])
 @login_required
-def convo(request, convo_id):
-    convo = get_object_or_404(LLMConversation, pk=convo_id)
-    if convo.owner != request.user:
-        return HttpResponseForbidden("User does not own this conversation")
-   
-    return render(request, 'aquillm/convo.html', {'convo_id' : convo_id,
-                                                  'form' : SearchForm(request.user)})
-
-@require_http_methods(['POST'])
+def pdf(request, doc_id):
+    doc = get_doc(request, doc_id)
+    if doc.pdf_file:
+        response = HttpResponse(doc.pdf_file, content_type='application/pdf')
+        return response
+    else:
+        raise Http404("Requested document does not have an associated PDF")
+    
+    
+@require_http_methods(['GET'])
 @login_required
-def send_message(request, convo_id):
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        convo = get_object_or_404(LLMConversation, pk=convo_id)
-        if convo.owner != request.user:
-            return HttpResponseForbidden("User does not own this conversation")
-        form = SearchForm(request.user, request.POST)
-        if form.is_valid():
-            collections = form.cleaned_data['collections']
-            content = form.cleaned_data['query']
-            top_k = form.cleaned_data['top_k']
-            docs = Collection.get_user_accessible_documents(request.user, collections)
-            convo = convo.send_message(content, top_k, docs)
-            return JsonResponse({'success': True})
-        else:
-            return JsonResponse({'success': False, 'error': form.errors})
-    logger.error(f"Wrong x-requested-with: {request.headers.get('x-requested-with')}")
-    return JsonResponse({'success': False, 'error': 'Invalid Request'})
+def document(request, doc_id):
+    doc = get_doc(request, doc_id)
+    context = {'document': doc}
+    return render(request, 'aquillm/document.html', context)
 
-@login_required
-def user_conversations(request):
-    conversations = LLMConversation.objects.filter(owner=request.user).order_by('-updated_at')
-    return render(request, 'aquillm/user_conversations.html', {'conversations': conversations})
 
-@login_required
-def new_convo(request):
-    convo = LLMConversation(owner=request.user) # TODO: let user set system prompt
-    convo.save()
-    return redirect('convo', convo_id=convo.id)
-
+# helper func, not a view
 def insert_one_from_arxiv(arxiv_id, collection):
     status_message = ""
     tex_req = requests.get('https://arxiv.org/src/' + arxiv_id)
@@ -188,7 +181,7 @@ def insert_one_from_arxiv(arxiv_id, collection):
 
 
 
-
+@require_http_methods(['GET', 'POST'])
 @login_required
 def insert_arxiv(request):
     status_message = None
@@ -207,3 +200,71 @@ def insert_arxiv(request):
     }
 
     return render(request, 'aquillm/insert_arxiv.html', context)
+
+
+@require_http_methods(['GET'])
+@login_required
+def raw_convo(request, convo_id):
+    convo = get_object_or_404(LLMConversation, pk=convo_id)
+    if convo.owner != request.user:
+        return HttpResponseForbidden("User does not own this conversation")
+    context = {'conversation': convo}
+    return render(request, 'aquillm/raw_convo.html', context)
+
+@require_http_methods(['GET'])
+@login_required
+def convo(request, convo_id):
+    convo = get_object_or_404(LLMConversation, pk=convo_id)
+    if convo.owner != request.user:
+        return HttpResponseForbidden("User does not own this conversation")
+   
+    return render(request, 'aquillm/convo.html', {'convo_id' : convo_id,
+                                                  'form' : SearchForm(request.user)})
+
+@require_http_methods(['POST'])
+@login_required
+def send_message(request, convo_id):
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        convo = get_object_or_404(LLMConversation, pk=convo_id)
+        if convo.owner != request.user:
+            return HttpResponseForbidden("User does not own this conversation")
+        form = SearchForm(request.user, request.POST)
+        if form.is_valid():
+            collections = form.cleaned_data['collections']
+            content = form.cleaned_data['query']
+            top_k = form.cleaned_data['top_k']
+            docs = Collection.get_user_accessible_documents(request.user, collections)
+            convo = convo.send_message(content, top_k, docs)
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'error': form.errors})
+    logger.error(f"Wrong x-requested-with: {request.headers.get('x-requested-with')}")
+    return JsonResponse({'success': False, 'error': 'Invalid Request'})
+
+
+@require_http_methods(['GET'])
+@login_required
+def user_conversations(request):
+    conversations = LLMConversation.objects.filter(owner=request.user).order_by('-updated_at')
+    return render(request, 'aquillm/user_conversations.html', {'conversations': conversations})
+
+@login_required
+def new_convo(request):
+    convo = LLMConversation(owner=request.user) # TODO: let user set system prompt
+    convo.save()
+    return redirect('convo', convo_id=convo.id)
+
+@require_http_methods(['GET'])
+@login_required
+def user_collections(request):
+    colperms = CollectionPermission.objects.filter(user=request.user)
+    return render(request, "aquillm/user_collections.html", {'col_perms': colperms}) 
+
+
+@require_http_methods(['GET'])
+@login_required
+def collection(request, col_id):
+    col = get_object_or_404(Collection, pk=col_id)
+    if not col.user_can_view(request.user):
+        return HttpResponseForbidden("User does not have permission to view this collection.")
+    return render(request, 'aquillm/collection.html', {'collection': col})

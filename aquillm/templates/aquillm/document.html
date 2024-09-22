@@ -1,0 +1,24 @@
+{% extends "aquillm/base.html" %}
+{% load tz %}
+
+{% block title %}AquiLLM {{ document.title }}{% endblock %}
+
+{% block content %}
+<div class="w-full h-full">
+<h1 class="text-2xl">{{ document.title|default:"Untitled Document" }}</h1>
+<details>
+    <summary class="font-black">Details</summary>
+    <ul>
+        <li><span class="font-black">Collection:</span> {{ document.collection.name }}</li>
+        <li><span class="font-black">Ingested By:</span> {{ document.ingested_by }}</li>
+        <li><span class="font-black">Date Ingested:</span> {{ document.ingestion_date|localtime|date:"F j, Y, g:i a e" }}</li>
+    </ul>
+</details>
+{% if document.pdf_file %}
+<iframe src="{% url 'pdf' document.id %}" class="w-full h-full"></iframe>
+{% else %}
+<h1 class ="text-xl w-full">Full Text:</h1>
+<div>{{ document.full_text|linebreaks }}</div>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "aquillm/base.html" %}
+
+{% block title %}Document Collections{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Collections</h1>
+    
+    {% if col_perms %}
+        <ul class="space-y-4">
+            {% for col_perm in col_perms %}
+                <li class="bg-white shadow-md rounded-lg p-4">
+                    <a href="{% url 'collection' col_perm.collection.id %}">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-xl font-black">{{ col_perm.collection.name }}</h2>
+                        <span class="">
+                            {{ col_perm.collection.documents|length }} document{{ col_perm.collection.documents|length|pluralize }}
+                        </span>
+                    </div>
+                    <p class=" mt-2">
+                        Your role: {{ col_perm.permission }}
+                    </p>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-gray-600">No collections found. Were you given access to the collections you expected to find?</p>
+    {% endif %}
+
+{% endblock %}
