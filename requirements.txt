@@ -13,3 +13,5 @@ mypy
 django-stubs
 anthropic
 tenacity
+uvicorn
+whitenoise

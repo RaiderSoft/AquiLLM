@@ -53,6 +53,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -182,3 +183,4 @@ INTERNAL_IPS = [
 X_FRAME_OPTIONS = "SAMEORIGIN"
 USE_TZ=True
 DATA_UPLOAD_MAX_MEMORY_SIZE=  268435456
+ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space']
