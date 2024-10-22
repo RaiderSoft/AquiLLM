@@ -161,5 +161,8 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-
 aquillm/pdfs/
+# TODO: fix this, PDFs are going in weird places depending on PWD when running server
+pdfs/
+
+aquillm/prod_static

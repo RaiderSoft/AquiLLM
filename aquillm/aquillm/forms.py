@@ -1,5 +1,6 @@
 from django import forms
-from .models import Collection, CollectionPermission
+from .models import Collection, CollectionPermission, PDFDocument
+from django.core.exceptions import ValidationError
 
 class UserCollectionMultipleChoiceField(forms.ModelMultipleChoiceField):
     def __init__(self, user, *args, **kwargs):
@@ -7,6 +8,17 @@ class UserCollectionMultipleChoiceField(forms.ModelMultipleChoiceField):
         self.user = user
         self.queryset = self._get_queryset()
         self.initial = self._get_queryset()
+
+    def _get_queryset(self):
+        return Collection.objects.filter(
+            pk__in=[perm.collection.id for perm in CollectionPermission.objects.filter(user=self.user).distinct()]
+        )
+    
+class UserCollectionSingleChoiceField(forms.ModelChoiceField):
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.queryset = self._get_queryset()
 
     def _get_queryset(self):
         return Collection.objects.filter(
@@ -48,3 +60,19 @@ class ArXiVForm(forms.Form):
         self.fields['collection'].choices = [(col.id, col.name) for col in Collection.objects.filter_by_user_perm(user, perm="EDIT")]
 
 
+class PDFDocumentForm(forms.Form):
+    title = forms.CharField(label="Article Title")
+    pdf_file = forms.FileField(label="PDF File")
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        collections_attrs = {
+           'class': 'rounded-md bg-lightest-primary',
+        }
+        self.fields['collection'] = UserCollectionSingleChoiceField(
+            user=user,
+            widget=forms.RadioSelect(attrs=collections_attrs),
+            queryset=Collection.objects.none(), # this is weird but necessary
+            required=True,
+        )
+    

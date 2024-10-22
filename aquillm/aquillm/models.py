@@ -34,6 +34,7 @@ from django.db import DatabaseError
 from django.db.models import Case, When
 
 from .utils import get_embedding
+from .settings import BASE_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -265,10 +266,14 @@ class STTDocument(Document):
     #         chunk.save()
                 
 
+def validate_pdf_extension(value):
+    if not value.name.endswith('.pdf'):
+        raise ValidationError('File must be a PDF')
+    
     
 
 class PDFDocument(Document):
-    pdf_file = models.FileField(upload_to='pdfs/')
+    pdf_file = models.FileField(upload_to= 'pdfs/', validators=[validate_pdf_extension])
 
     def save(self, *args, **kwargs):
         self.extract_text()
@@ -284,7 +289,7 @@ class PDFDocument(Document):
 
 
 class TeXDocument(Document):
-    pdf_file = models.FileField(upload_to='pdfs/', null=True)
+    pdf_file = models.FileField(upload_to= 'pdfs/', null=True)
 
     pass
 
@@ -427,12 +432,14 @@ class LLMConversation(models.Model):
     """
 
     owner = models.ForeignKey(User, related_name='conversations', on_delete=models.CASCADE)
+    tokens = models.PositiveIntegerField(null=True)
     name = models.TextField(blank=True, null=True)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     system_prompt = models.TextField(blank=True, default=DEFAULT_SYSTEM_PROMPT)
     
+
     class Meta:
         ordering = ['updated_at']
     
@@ -451,15 +458,16 @@ class LLMConversation(models.Model):
     def get_llm_completion(self):
         anthropic_client = apps.get_app_config('aquillm').anthropic_client
         claude_args = {'model': 'claude-3-5-sonnet-20240620',
-                       'max_tokens' : 2048,
+                       'max_tokens' : 4096,
                        'system': self.system_prompt} | self.to_dict()
         message = anthropic_client.messages.create(**claude_args)
-        return(message.content[0].text)
+        return(message.content[0].text, message.usage)
     
     def set_name(self):
         system_prompt="""
         This is a conversation between a large langauge model and a user.
         Come up with a brief, roughly 3 to 10 word title for the conversation capturing what the user asked.
+        Respond only with the title. 
         As an example, if the conversation begins 'What is apple pie made of?', your response should be 'Apple Pie Ingredients'.
         The title should capture what is being asked, not what the assistant responded with.
         If there is not enough information to name the conversation, simply return 'Conversation'.
@@ -489,11 +497,14 @@ class LLMConversation(models.Model):
             user_msg.save()
             if context_chunks:
                 user_msg.context_chunks.add(*context_chunks)
-
+            completion = self.get_llm_completion()
             asst_message = LLMConvoMessage(conversation=self,
                                         sender='assistant',
-                                        content=self.get_llm_completion())
+                                        content=completion[0])
             asst_message.save()
+            self.tokens = completion[1].input_tokens + completion[1].input_tokens
+
+            self.save()
             if first_messages:
                 self.set_name()
         return self

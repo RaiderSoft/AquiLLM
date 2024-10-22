@@ -75,7 +75,7 @@
         .then(response => response.text())
         .then(data => {
             document.getElementById("conversation-container").innerHTML = data;
-            scrollToBottom();
+                   
         });
     }
     
@@ -85,6 +85,9 @@
     }
     
     document.addEventListener("DOMContentLoaded", function() {
+        const conversationContainer = document.getElementById("conversation-container");
+        const observer = new MutationObserver(scrollToBottom);
+        observer.observe(conversationContainer, { childList: true, subtree: true });
         const form = document.getElementById('message-form');
         const errorDiv = document.getElementById('error-container');
         const errorMessage = document.getElementById('error-message');

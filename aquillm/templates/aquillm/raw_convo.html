@@ -1,3 +1,4 @@
+{% load humanize %}
 <div class="flex flex-col max-w-full h-full mx-auto overflow-y-auto">
     {% for message in conversation.messages.all %}
         <div class="w-4/5 mb-5 p-2.5 rounded-lg shadow-md {% if message.sender == 'user' %}user-message self-end bg-lighter-primary border border-dashed border-black border-2{% else %}assistant-message bg-deep-secondary text-white{% endif %}">
@@ -18,4 +19,5 @@
             <p class="text-xs mt-1.5 {% if message.sender == 'user' %}text-right{% endif %}">{{ message.timestamp|date:"Y-m-d H:i:s" }}</p>
         </div>
     {% endfor %}
+    <div id="token-counter">{{ conversation.tokens|intcomma }} out of 200,000 tokens used</div>
 </div>

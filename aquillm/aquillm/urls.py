@@ -35,5 +35,6 @@ urlpatterns = [
     path("pdf/<uuid:doc_id>/", views.pdf, name="pdf"),
     path("document/<uuid:doc_id>/", views.document, name="document"),
     path("user_collections/", views.user_collections, name="user_collections"),
-    path("collection/<int:col_id>/", views.collection, name="collection")
+    path("collection/<int:col_id>/", views.collection, name="collection"),
+    path("ingest_pdf/", views.ingest_pdf, name="ingest_pdf")
 ] + debug_toolbar_urls()

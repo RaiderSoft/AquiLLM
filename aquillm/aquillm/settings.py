@@ -26,9 +26,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-_fj8e0)w#wu48c673prc3$%+h36!df0#)0upbl6t%x#_w3zk60"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+DEBUG = False
+if os.environ.get('DJANGO_DEBUG'):
+    print("Debug is enabled.")
+    DEBUG = True
 
 
 # Application definition
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     "aquillm",
     'allauth',
     'allauth.account',
@@ -48,7 +50,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     "django_extensions",
     'django.contrib.postgres',
-    'debug_toolbar'
+    'debug_toolbar',
 ]
 
 MIDDLEWARE = [
@@ -136,6 +138,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = "prod_static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -183,4 +186,4 @@ INTERNAL_IPS = [
 X_FRAME_OPTIONS = "SAMEORIGIN"
 USE_TZ=True
 DATA_UPLOAD_MAX_MEMORY_SIZE=  268435456
-ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space']
+ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space', 'localhost']

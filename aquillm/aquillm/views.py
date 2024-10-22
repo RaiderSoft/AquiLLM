@@ -16,7 +16,7 @@ from pgvector.django import L2Distance
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 
-from .forms import SearchForm, ArXiVForm
+from .forms import SearchForm, ArXiVForm, PDFDocumentForm
 from .models import TextChunk, TeXDocument, PDFDocument, Collection, CollectionPermission, LLMConversation, DESCENDED_FROM_DOCUMENT
 import requests
 
@@ -218,7 +218,8 @@ def convo(request, convo_id):
     if convo.owner != request.user:
         return HttpResponseForbidden("User does not own this conversation")
    
-    return render(request, 'aquillm/convo.html', {'convo_id' : convo_id,
+    return render(request, 'aquillm/convo.html', {'conversation': convo,
+                                                  'convo_id' : convo_id,
                                                   'form' : SearchForm(request.user)})
 
 @require_http_methods(['POST'])
@@ -268,3 +269,28 @@ def collection(request, col_id):
     if not col.user_can_view(request.user):
         return HttpResponseForbidden("User does not have permission to view this collection.")
     return render(request, 'aquillm/collection.html', {'collection': col})
+
+@require_http_methods(['GET', 'POST'])
+@login_required
+def ingest_pdf(request):
+    status_message = None
+    if request.method == 'POST':
+        form = PDFDocumentForm(request.user, request.POST, request.FILES)
+        if form.is_valid():
+            pdf_file = form.cleaned_data['pdf_file']
+            collection = form.cleaned_data['collection']
+            title = form.cleaned_data['title'].strip()
+            PDFDocument(title=title, pdf_file=pdf_file, collection=collection, ingested_by=request.user).save()
+            status_message = "Success"
+        else:
+            status_message = "Invalid Form Input"
+    else:
+        form = PDFDocumentForm(request.user)
+    
+    context = {
+        'status_message' : status_message,
+        'form' : form
+    }
+
+    return render(request, 'aquillm/ingest_pdf.html', context)
+
