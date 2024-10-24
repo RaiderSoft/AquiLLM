@@ -10,7 +10,7 @@
                     <div class="mt-1.5">
                         <details>
                             <summary class="cursor-pointer text-blue-600">{{ chunk.document.title|default:"Untitled Document" }} ({{ chunk.start_position }}-{{ chunk.end_position }})</summary>
-                            <p class="mt-1.5 pl-2.5 border-l-2 border-gray-300">{{ chunk.content }}</p>
+                            <p class="mt-1.5 pl-2.5 border-l-2 border-gray-300 whitespace-pre-wrap break-words">{{ chunk.content }}</p>
                         </details>
                     </div>
                 {% endfor %}

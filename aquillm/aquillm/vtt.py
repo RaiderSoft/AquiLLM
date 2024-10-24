@@ -33,142 +33,148 @@ class Caption:
         
         return (other_start - this_end) <= max_gap
 
-class VTTParser:
-    def __init__(self, file_path: str):
-        self.file_path = file_path
+
+def parse_timestamp(timestamp: str) -> timedelta:
+    """Convert VTT timestamp to timedelta"""
+    match = re.match(r'(\d{2}):(\d{2}):(\d{2})\.(\d{3})', timestamp)
+    if not match:
+        raise ValueError(f"Invalid timestamp format: {timestamp}")
     
-    def parse_timestamp(self, timestamp: str) -> timedelta:
-        """Convert VTT timestamp to timedelta"""
-        match = re.match(r'(\d{2}):(\d{2}):(\d{2})\.(\d{3})', timestamp)
-        if not match:
-            raise ValueError(f"Invalid timestamp format: {timestamp}")
-        
-        hours, minutes, seconds, milliseconds = map(int, match.groups())
-        
-        return timedelta(
-            hours=hours,
-            minutes=minutes,
-            seconds=seconds,
-            milliseconds=milliseconds
-        )
-    def parse_content(self, text: str) -> tuple[Optional[str], str]:
-        """Separates speaker from content if present"""
-        if ':' in text:
-            speaker, content = text.split(':', 1)
-            return speaker.strip(), content.strip()
-        return None, text.strip()
+    hours, minutes, seconds, milliseconds = map(int, match.groups())
     
-    def parse(self) -> List[Caption]:
-        captions = []
-        current_caption = None
-        
-        with open(self.file_path, 'r', encoding='utf-8') as file:
-            lines = [line.strip() for line in file.readlines()]
-            
-            # Skip WEBVTT header
-            if lines[0] != 'WEBVTT':
-                raise ValueError("File must start with WEBVTT")
-            
-            i = 1
-            while i < len(lines):
-                line = lines[i]
-                
-                # Skip empty lines
-                if not line:
-                    i += 1
-                    continue
-                
-                # Parse index
-                if line.isdigit():
-                    _ = int(line)
-                    
-                    # Parse timestamp line
-                    i += 1
-                    if i >= len(lines):
-                        break
-                    
-                    timestamp_line = lines[i]
-                    try:
-                        start_time, end_time = timestamp_line.split(' --> ')
-                        start_time = self.parse_timestamp(start_time)
-                        end_time = self.parse_timestamp(end_time)
-                    except Exception as e:
-                        raise ValueError(f"Invalid timestamp line: {timestamp_line}") from e
-                    
-                    # Parse content
-                    i += 1
-                    if i >= len(lines):
-                        break
-                    
-                    content_line = lines[i]
-                    speaker, text = self.parse_content(content_line)
-                    
-                    caption = Caption(
-                        start_time=start_time,
-                        end_time=end_time,
-                        text=text,
-                        speaker=speaker
-                    )
-                    captions.append(caption)
-                
-                i += 1
-                
-        return captions
+    return timedelta(
+        hours=hours,
+        minutes=minutes,
+        seconds=seconds,
+        milliseconds=milliseconds
+    )
 
-    @staticmethod
-    def coalesce_captions(captions: List[Caption], max_gap: float = 20.0, max_size: int = 1024) -> List[Caption]:
-        """
-        Coalesce adjacent captions from the same speaker if they're within max_gap seconds.
-        
-        Args:
-            captions: List of Caption objects
-            max_gap: Maximum gap in seconds between captions to consider them for merging
-            
-        Returns:
-            List of coalesced Caption objects
-        """
-        if not captions:
-            return []
-            
-        coalesced = []
-        current = captions[0]
-        
-        for next_caption in captions[1:]:
-            if current.can_merge_with(next_caption, max_gap, max_size):
-                current = current.merge_with(next_caption)
-            else:
-                coalesced.append(current)
-                current = next_caption
-                
-        coalesced.append(current)
-        
+def parse_content(text: str) -> tuple[Optional[str], str]:
+    """Separates speaker from content if present"""
+    if ':' in text:
+        speaker, content = text.split(':', 1)
+        return speaker.strip(), content.strip()
+    return None, text.strip()
 
-        return coalesced
+def parse(file) -> List[Caption]:
+    captions = []
+    current_caption = None
+
+    lines = [line.decode('UTF-8').strip() for line in file.readlines()]
+    # Skip WEBVTT header
+    if lines[0] != 'WEBVTT':
+        raise ValueError("File must start with WEBVTT")
     
-    @staticmethod
-    def chunk(captions: List[Caption], chunk_size: int) -> List[List[Caption]]:
-        """
-        Combine captions into lists of captions of approximately the right chunk size. 
-        Chunk size is not required to be less than the exact max chunk size, depending on if I decide to reimplement this later 
-        """
+    i = 1
+    while i < len(lines):
+        line = lines[i]
         
-        if not captions:
-            return []
+        # Skip empty lines
+        if not line:
+            i += 1
+            continue
         
-        # making each element in captions a list of captions containing only one member
-        captions = [[c,] for c in captions]
+        # Parse index
+        if line.isdigit():
+            _ = int(line)
+            
+            # Parse timestamp line
+            i += 1
+            if i >= len(lines):
+                break
+            
+            timestamp_line = lines[i]
+            try:
+                start_time, end_time = timestamp_line.split(' --> ')
+                start_time = parse_timestamp(start_time)
+                end_time = parse_timestamp(end_time)
+            except Exception as e:
+                raise ValueError(f"Invalid timestamp line: {timestamp_line}") from e
+            
+            # Parse content
+            i += 1
+            if i >= len(lines):
+                break
+            
+            content_line = lines[i]
+            speaker, text = parse_content(content_line)
+            
+            caption = Caption(
+                start_time=start_time,
+                end_time=end_time,
+                text=text,
+                speaker=speaker
+            )
+            captions.append(caption)
         
-        chunked = []
-        current = captions[0]
+        i += 1
+        
+    return captions
 
-        for next_caption in captions[1:]:
-            total_length = sum(len(c.text) for c in current + next_caption)
-            if  total_length < chunk_size:
-                current = current + next_caption
-            else:
-                chunked.append(current)
-                current = next_caption
-        chunked.append(current)
+def coalesce_captions(captions: List[Caption], max_gap: float = 20.0, max_size: int = 1024) -> List[Caption]:
+    """
+    Coalesce adjacent captions from the same speaker if they're within max_gap seconds.
+    
+    Args:
+        captions: List of Caption objects
+        max_gap: Maximum gap in seconds between captions to consider them for merging
+        
+    Returns:
+        List of coalesced Caption objects
+    """
+    if not captions:
+        return []
+        
+    coalesced = []
+    current = captions[0]
+    
+    for next_caption in captions[1:]:
+        if current.can_merge_with(next_caption, max_gap, max_size):
+            current = current.merge_with(next_caption)
+        else:
+            coalesced.append(current)
+            current = next_caption
+            
+    coalesced.append(current)
+    
 
-        return chunked
-      
+    return coalesced
+
+
+# This is not currently being used for chunking because it has no overlap. 
+def chunk(captions: List[Caption], chunk_size: int) -> List[List[Caption]]:
+    """
+    Combine captions into lists of captions of approximately the right chunk size. 
+    Chunk size is not required to be less than the exact max chunk size, depending on if I decide to reimplement this later 
+    """
+    
+    if not captions:
+        return []
+    
+    # making each element in captions a list of captions containing only one member
+    captions = [[c,] for c in captions]
+    
+    chunked = []
+    current = captions[0]
+
+    for next_caption in captions[1:]:
+        total_length = sum(len(c.text) for c in current + next_caption)
+        if  total_length < chunk_size:
+            current = current + next_caption
+        else:
+            chunked.append(current)
+            current = next_caption
+    chunked.append(current)
+
+    return chunked
+    
+def to_text(captions: List[Caption]) -> str:
+    ret = ""
+    for caption in captions:
+        total_seconds = caption.start_time.total_seconds()
+        hours = int(total_seconds // 3600)
+        minutes = int((total_seconds % 3600) // 60)
+        seconds = int(total_seconds % 60)
+        ret += '{:02}:{:02}:{:02} '.format(hours, minutes, seconds) + f'{caption.speaker}: {caption.text}\n\n'
+    return ret
+

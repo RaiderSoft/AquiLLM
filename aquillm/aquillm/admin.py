@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import RawTextDocument, PDFDocument, STTDocument, TeXDocument, TextChunk, Collection, CollectionPermission, LLMConversation, LLMConvoMessage
+from .models import RawTextDocument, PDFDocument, VTTDocument, TeXDocument, TextChunk, Collection, CollectionPermission, LLMConversation, LLMConvoMessage
 
 # class TextChunkInline(GenericTabularInline):
 #     model = TextChunk
@@ -22,7 +22,7 @@ from .models import RawTextDocument, PDFDocument, STTDocument, TeXDocument, Text
 #     admin_link.short_description = 'Details'
 
 
-@admin.register(STTDocument)
+@admin.register(VTTDocument)
 @admin.register(TeXDocument)
 @admin.register(PDFDocument)
 @admin.register(RawTextDocument)

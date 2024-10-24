@@ -76,3 +76,21 @@ class PDFDocumentForm(forms.Form):
             required=True,
         )
     
+class VTTDocumentForm(forms.Form):
+    title = forms.CharField(label="Transcript Title")
+    audio_file = forms.FileField(label="Audio File (optional)", required=False)
+    vtt_file = forms.FileField(label=".vtt Transcript File")
+    
+
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        collections_attrs = {
+           'class': 'rounded-md bg-lightest-primary',
+        }
+        self.fields['collection'] = UserCollectionSingleChoiceField(
+            user=user,
+            widget=forms.RadioSelect(attrs=collections_attrs),
+            queryset=Collection.objects.none(), # this is weird but necessary
+            required=True,
+        )

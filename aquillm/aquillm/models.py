@@ -27,7 +27,7 @@ from typing import  List, Type, Tuple
 
 from django.core.exceptions import ValidationError
 from django.contrib.postgres.search import TrigramSimilarity
-
+from django.core.validators import FileExtensionValidator
 import concurrent.futures
 
 from django.db import DatabaseError
@@ -212,24 +212,23 @@ class Document(models.Model):
 
 
 
-class STTDocument(Document):
-    pass
-    # audio_file = models.FileField(upload_to='stt_audio/')
-    # transcription = None
+class VTTDocument(Document):
+    audio_file = models.FileField(upload_to='stt_audio/',
+                                null=True,
+                                validators=[FileExtensionValidator(['mp4',
+                                                                    'ogg',
+                                                                    'opus',
+                                                                    'm4a',
+                                                                    'aac'
+                                                                    ])])
+
+
+    
+
+
     # def save(self, *args, **kwargs):
     #     self.extract_text()
     #     super().save(*args, **kwargs)
-
-    # def extract_text(self):
-    #     openai_client = apps.get_app_config('aquillm').openai_client
-    #     self.transcription = openai_client.audio.transcriptions.create(
-    #         model = "whisper-1",
-    #         language= 'en',
-    #         file = self.audio_file.read(),
-    #         response_format = 'verbose_json',
-    #         timestamp_granularities = ['segment']
-    #     )
-    #     self.full_text = '\n'.join([segment['text'] for segment in self.transcription['segments']])
 
     # def create_chunks(self):
     #     chunk_size = apps.get_app_config('aquillm').chunk_size
@@ -266,6 +265,8 @@ class STTDocument(Document):
     #         chunk.save()
                 
 
+
+# TODO: figure out how to get rid of this without breaking migrations
 def validate_pdf_extension(value):
     if not value.name.endswith('.pdf'):
         raise ValidationError('File must be a PDF')
@@ -273,7 +274,7 @@ def validate_pdf_extension(value):
     
 
 class PDFDocument(Document):
-    pdf_file = models.FileField(upload_to= 'pdfs/', validators=[validate_pdf_extension])
+    pdf_file = models.FileField(upload_to= 'pdfs/',validators=[FileExtensionValidator(['pdf'])])
 
     def save(self, *args, **kwargs):
         self.extract_text()
@@ -296,7 +297,7 @@ class TeXDocument(Document):
 class RawTextDocument(Document):
     pass
 
-DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, STTDocument]
+DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, VTTDocument]
 
 
 class TextChunkQuerySet(models.QuerySet):

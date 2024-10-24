@@ -16,8 +16,9 @@ from pgvector.django import L2Distance
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 
-from .forms import SearchForm, ArXiVForm, PDFDocumentForm
-from .models import TextChunk, TeXDocument, PDFDocument, Collection, CollectionPermission, LLMConversation, DESCENDED_FROM_DOCUMENT
+from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm
+from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, DESCENDED_FROM_DOCUMENT
+from . import vtt
 import requests
 
 from django.http import JsonResponse
@@ -294,3 +295,32 @@ def ingest_pdf(request):
 
     return render(request, 'aquillm/ingest_pdf.html', context)
 
+@require_http_methods(['GET', 'POST'])
+@login_required
+def ingest_vtt(request):
+    status_message = None
+    if request.method == 'POST':
+        form = VTTDocumentForm(request.user, request.POST, request.FILES)
+        if form.is_valid():
+            audio_file = form.cleaned_data['audio_file']
+            vtt_file = form.cleaned_data['vtt_file']
+            title = form.cleaned_data['title'].strip()
+            collection = form.cleaned_data['collection']
+            full_text = vtt.to_text(vtt.coalesce_captions(vtt.parse(vtt_file), max_gap=20.0, max_size=1024))
+            VTTDocument(title=title,
+                        audio_file=audio_file,
+                        full_text=full_text,
+                        collection=collection,
+                        ingested_by=request.user).save()
+            status_message = 'Success'
+        else:
+            status_message = 'Invalid Form Input'
+    else:
+        form = VTTDocumentForm(request.user)
+
+    context = {
+        'status_message' : status_message,
+        'form' : form
+    }
+    
+    return render(request, 'aquillm/ingest_vtt.html', context)
