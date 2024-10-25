@@ -1,6 +1,10 @@
 from django import forms
 from .models import Collection, CollectionPermission, PDFDocument
 from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 
 class UserCollectionMultipleChoiceField(forms.ModelMultipleChoiceField):
     def __init__(self, user, *args, **kwargs):
@@ -26,6 +30,46 @@ class UserCollectionSingleChoiceField(forms.ModelChoiceField):
         )
     
 
+class NewCollectionForm(forms.Form):
+    name = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    viewers = forms.ModelMultipleChoiceField(
+        queryset=User.objects.all(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-control'}),
+    )
+    
+    editors = forms.ModelMultipleChoiceField(
+        queryset=User.objects.all(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-control'}),
+    )
+    
+    admins = forms.ModelMultipleChoiceField(
+        queryset=User.objects.filter(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-control'}),
+    )
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            qs = User.objects.exclude(id=user.id)
+            self.fields['viewers'].queryset = qs
+            self.fields['editors'].queryset = qs
+            self.fields['admins'].queryset = qs
+
+    def clean(self):
+        cleaned_data = super().clean()
+        cleaned_data['editors'] = cleaned_data['editors'].exclude(pk__in=cleaned_data['admins'])
+        cleaned_data['viewers'] = cleaned_data['viewers'].exclude(pk__in=cleaned_data['editors'])
+        cleaned_data['viewers'] = cleaned_data['viewers'].exclude(pk__in=cleaned_data['admins'])
+
+        return cleaned_data
 
 class SearchForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
@@ -63,7 +107,7 @@ class ArXiVForm(forms.Form):
 class PDFDocumentForm(forms.Form):
     title = forms.CharField(label="Article Title")
     pdf_file = forms.FileField(label="PDF File")
-
+    # TODO: make function sig not weird
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         collections_attrs = {

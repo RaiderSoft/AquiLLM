@@ -8,15 +8,15 @@ import io
 import gzip
 import tarfile
 from xml.dom import minidom
-
+from django.db import transaction
 from django.http import HttpResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponseForbidden
 from pgvector.django import L2Distance
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 
-from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm
+from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
 from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, DESCENDED_FROM_DOCUMENT
 from . import vtt
 import requests
@@ -24,7 +24,6 @@ import requests
 from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
-
 
 
 @require_http_methods(['GET'])
@@ -256,11 +255,37 @@ def new_convo(request):
     convo.save()
     return redirect('convo', convo_id=convo.id)
 
-@require_http_methods(['GET'])
+
+#TODO: make this much nicer
+@require_http_methods(['GET', 'POST'])
 @login_required
 def user_collections(request):
-    colperms = CollectionPermission.objects.filter(user=request.user)
-    return render(request, "aquillm/user_collections.html", {'col_perms': colperms}) 
+    if request.method == 'POST':
+        form = NewCollectionForm(request.POST, user=request.user)
+        if form.is_valid():
+            data = form.cleaned_data
+            name = data['name']
+            viewers = data['viewers']
+            editors = data['editors']
+            admins = data['admins']
+            with transaction.atomic():
+                col = Collection.objects.create(name=name)
+                CollectionPermission.objects.create(user=request.user, collection=col, permission='MANAGE')
+                for user in admins:
+                    CollectionPermission.objects.create(user=user, collection=col, permission='MANAGE')
+                for user in editors:
+                    CollectionPermission.objects.create(user=user, collection=col, permission='EDIT')
+                for user in viewers:
+                    CollectionPermission.objects.create(user=user, collection=col, permission='VIEW')
+        else:
+            status_message = "Invalid Form Input"
+            return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form, 'status_message': status_message}) 
+
+        return redirect('collection', col_id=col.id)
+    else:
+        colperms = CollectionPermission.objects.filter(user=request.user)
+        form = NewCollectionForm(user=request.user)
+        return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form}) 
 
 
 @require_http_methods(['GET'])
@@ -269,7 +294,8 @@ def collection(request, col_id):
     col = get_object_or_404(Collection, pk=col_id)
     if not col.user_can_view(request.user):
         return HttpResponseForbidden("User does not have permission to view this collection.")
-    return render(request, 'aquillm/collection.html', {'collection': col})
+    can_delete = col.user_can_edit(request.user)
+    return render(request, 'aquillm/collection.html', {'collection': col, 'can_delete': can_delete})
 
 @require_http_methods(['GET', 'POST'])
 @login_required
@@ -324,3 +350,13 @@ def ingest_vtt(request):
     }
     
     return render(request, 'aquillm/ingest_vtt.html', context)
+
+
+@require_http_methods(['DELETE'])
+def delete_document(request, doc_id):
+    doc = get_doc(request, doc_id)
+    if not doc.collection.user_can_edit(request.user):
+        return HttpResponseForbidden("User does not have permission to delete this item.")
+    doc.delete()
+    return HttpResponse(status=200)
+

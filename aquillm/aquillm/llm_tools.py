@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from types import GenericAlias
 from typing import get_type_hints, List
 import inspect 
+from typeguard import typechecked
 # {name : (description, type)}
 parameters_type = dict[str, tuple[str, type]]
 
-@dataclass 
 
 class LLMTool:
     function: callable
@@ -32,17 +32,20 @@ class LLMTool:
         if not hasattr(tool, "required") or not isinstance(tool.required, list):
             raise TypeError(f"Tool {tool.name} must have list of required parameters")
         self.function = tool
-        self.param_types = get_type_hints(tool.__call__)
-        if set(self.param_types.keys()) != set(inspect.signature(tool.__call__).parameters.keys()):
+        param_types = get_type_hints(tool)
+        param_types.pop("return", None)
+
+        signature_names = set(inspect.signature(tool).parameters.keys())
+        if set(param_types.keys()) != signature_names:
             raise TypeError(f"Missing type annotations for tool {tool.name}")
-        if set(tool.param_descs.keys()) != set(inspect.signature(tool.__call__).parameters.keys()):
+        if set(tool.param_descs.keys()) != signature_names:
             raise TypeError(f"Missing parameter descriptions for tool {tool.name}")
         self.llm_definition = {"name" : tool.name,
                           "description": tool.description,
                           "input_schema": {
                               "type" : "object",
                               "properties": {
-                                  k: type(self).translate_type(v) | {"description": tool.param_descs[k]} for k, v in self.param_types.items()
+                                  k: type(self).translate_type(v) | {"description": tool.param_descs[k]} for k, v in param_types.items()
                               }
                           },
                           "required": tool.required} 
@@ -53,17 +56,27 @@ class LLMTool:
         except Exception as e:
             ret = {"exception": str(e)}
         return ret
-    
-class ExampleFunction:
-    name = "Example"
-    description = "Nonsense function that does nothing"
-    param_descs = {"a": "a string", "b": "a number"}
-    required = ['a', 'b']
-    
-    @staticmethod
-    def __call__(a: str, b: list[int]):
-        ret = ""
-        for i in range(b[0]):
-            ret += a
-        return {"result" : ret}
+
+
+
+# example of how to create a function compatible with LLMTool
+# @typechecked
+# def do_nothing(a: str, b: list[int]) -> dict:
+#         ret = ""
+#         for i in range(b[0]):
+#             ret += a
+#         return {"result" : ret}
+
+# do_nothing.name = "example"
+# do_nothing.description = "Nonsense function that does nothing"
+# do_nothing.param_descs = {"a": "a string", "b": "a number"}
+# do_nothing.required = ['a', 'b']
+
+
+# if __name__ == "__main__": 
+#     tool = LLMTool(do_nothing)
+#     ret = tool("Test", [4])
+
+#     print(ret)
+#     print(tool.llm_definition)
 
