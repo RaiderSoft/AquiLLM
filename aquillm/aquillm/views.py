@@ -134,7 +134,7 @@ def document(request, doc_id):
 
 
 # helper func, not a view
-def insert_one_from_arxiv(arxiv_id, collection):
+def insert_one_from_arxiv(arxiv_id, collection, user):
     status_message = ""
     tex_req = requests.get('https://arxiv.org/src/' + arxiv_id)
     pdf_req = requests.get('https://arxiv.org/pdf/' + arxiv_id)
@@ -163,7 +163,8 @@ def insert_one_from_arxiv(arxiv_id, collection):
             doc = TeXDocument(
                 collection = collection,
                 title = title,
-                full_text = tex_str
+                full_text = tex_str,
+                ingested_by=user
             )
             if pdf_req.status_code == 200:
                 status_message += f'Got PDF for {arxiv_id}\n'
@@ -173,7 +174,8 @@ def insert_one_from_arxiv(arxiv_id, collection):
             status_message += f'Got PDF for {arxiv_id}\n'
             doc = PDFDocument(
                 collection = collection,
-                title = title
+                title = title,
+                ingested_by=user
             )
             doc.pdf_file.save(f'arxiv:{arxiv_id}.pdf', ContentFile(pdf_req.content), save=False)
             doc.save()
@@ -190,7 +192,7 @@ def insert_arxiv(request):
         if form.is_valid():
             arxiv_id = re.sub(r'[^\d.]', '', form.cleaned_data['arxiv_id']).lstrip('.')
             collection = Collection.objects.get(id=form.cleaned_data['collection'])
-            status_message = insert_one_from_arxiv(arxiv_id, collection)
+            status_message = insert_one_from_arxiv(arxiv_id, collection, request.user)
     else:
         form = ArXiVForm(request.user)
 
