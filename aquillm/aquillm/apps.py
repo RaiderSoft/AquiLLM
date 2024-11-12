@@ -53,6 +53,7 @@ class AquillmConfig(AppConfig):
     anthropic_client = None
     get_embedding = None
     
+    default_llm = "CLAUDE"
     
     
     vector_top_k = 30
