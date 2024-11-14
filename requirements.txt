@@ -16,3 +16,4 @@ tenacity
 uvicorn
 whitenoise
 typeguard
+pydantic
