@@ -1,0 +1,18 @@
+services:
+  web:
+    build: .
+    working_dir: /app/aquillm
+    command: python -m uvicorn aquillm.asgi:application --host 0.0.0.0 --port 80
+    environment:
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-}
+      GOOGLE_OAUTH2_CLIENT_ID: ${GOOGLE_OAUTH2_CLIENT_ID:-}
+      GOOGLE_OAUTH2_CLIENT_SECRET: ${GOOGLE_OAUTH2_CLIENT_SECRET:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      COHERE_KEY: ${COHERE_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - .:/app
+    ports:
+      - "80:80"
+    
