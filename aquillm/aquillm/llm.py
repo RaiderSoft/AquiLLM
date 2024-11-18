@@ -1,14 +1,17 @@
-from typing import Callable, Any, get_type_hints, Protocol, Optional, Literal, Union
+from typing import Callable, Any, get_type_hints, Protocol, Optional, Literal, Union, override, Type
 from pydantic import BaseModel, model_validator, validate_call
 from types import NoneType, GenericAlias
 import inspect
-from functools import wraps
+from functools import wraps, partial
 from abc import ABC, abstractmethod
+from pprint import pformat
+from copy import copy
 
+from concurrent.futures import ThreadPoolExecutor
 
 class LLMTool(BaseModel):
     llm_definition: dict
-    for_whom = Literal['user', 'assistant']
+    for_whom: Literal['user', 'assistant']
     _function: Callable
     
     def __init__(self, **data):
@@ -17,10 +20,14 @@ class LLMTool(BaseModel):
 
     def __call__(self, *args, **kwargs):
         return self._function(*args, **kwargs)
+    
+    @property
+    def name(self) -> str:
+        return self.llm_definition['name']
 
 
 @validate_call
-def llm_tool(for_whom: Literal['user', 'assistant'], name: str | None = None, description: str | None = None, param_descs: dict[str, str] = {}, required: list[str] = []) -> Callable[..., LLMTool]:
+def llm_tool(for_whom: Literal['user', 'assistant'], description: str | None = None, param_descs: dict[str, str] = {}, required: list[str] = []) -> Callable[..., LLMTool]:
     """
     Decorator to convert a function into an LLM-compatible tool with runtime type checking.
     
@@ -30,12 +37,12 @@ def llm_tool(for_whom: Literal['user', 'assistant'], name: str | None = None, de
         param_descs: Dictionary of parameter descriptions
         required: List of required parameter names
     """
-    def decorator(func: Callable[..., Any]) -> LLMTool:
+    def decorator(func: Callable[..., str]) -> LLMTool:
         # First apply typechecking
         type_checked_func = validate_call(func)
         
         # Store original function metadata
-        func_name = name or func.__name__
+        func_name = func.__name__
         func_desc = description or func.__doc__
         if func_desc is None:
             raise ValueError(f"Must provide function description for tool {func_name}")
@@ -44,11 +51,11 @@ def llm_tool(for_whom: Literal['user', 'assistant'], name: str | None = None, de
         func_required = required or []
         
         @wraps(type_checked_func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> str:
             try:
                 return type_checked_func(*args, **kwargs)
             except Exception as e:
-                return {"exception": str(e)}
+                return str({"exception": str(e)})
         
         def translate_type(t: type | GenericAlias) -> dict:
             allowed_primitives = {
@@ -87,7 +94,7 @@ def llm_tool(for_whom: Literal['user', 'assistant'], name: str | None = None, de
             },
         }
         
-        return LLMTool(llm_definition=llm_definition, _function=wrapper)
+        return LLMTool(llm_definition=llm_definition, _function=wrapper, for_whom=for_whom)
     return decorator
 
 class ToolChoice(BaseModel):
@@ -104,79 +111,162 @@ class ToolChoice(BaseModel):
         return data
 
 class LLM_Message(BaseModel, ABC):
-
-    # for everything
-    role: Literal['user', 'assistant', 'tool']
+    role: Literal['user', 'tool', 'assistant']
     content: str
-
-    # for user messages
     tools: Optional[list[LLMTool]] = None
     tool_choice: Optional[ToolChoice] = None
+    
+    @classmethod
+    @model_validator(mode='after')
+    def validate_tools(cls, data: Any) -> Any:
+        if (data.tools and not data.tool_choice) or (data.tool_choice and not data.tools):
+            raise ValueError("Both tools and tool_choice must be populated if tools are used")
 
-    # for assistant messages
-    stop_reason: Optional[str] = None
+    #render for LLM 
+    def render(self, *args, **kwargs) -> dict:
+        return self.model_dump(*args, **kwargs)
+
+    
+
+
+
+class User_Message(LLM_Message):
+    role: Literal['user', 'tool'] = 'user'
+
+
+
+
+class Tool_Message(User_Message):
+    role: Literal['tool'] = 'tool'
+    tool_name: str
+    for_whom: Literal['assistant', 'user']
+
+    @override
+    def render(self, *args, **kwargs) -> dict:
+        ret = super().render(*args, **kwargs)
+        ret['role'] = 'user' # This is what LLMs expect.
+        ret['content'] = f'The following is the result of a call to tool {self.tool_name} in the prior step:\n\n{self.content}'
+        return ret
+    
+
+class Assistant_Message(LLM_Message):
+    role: Literal['assistant'] = 'assistant'
+    stop_reason: str
     tool_call_id: Optional[str] = None
     tool_call_name: Optional[str] = None
     tool_call_input: Optional[dict] = None
+    usage: int
 
-
-
-    @model_validator(mode='after')
     @classmethod
-    def check_roles(cls, data: Any) -> Any:
-        if data.role in ('user', 'tool') and any(map(lambda x: x is not None,
-                                           [data.stop_reason, data.tool_call_id, data.tool_call_name, data.tool_call_input],
-                                    )):
-            raise ValueError("User and tool messages should not have fields reserved for assistant messages.")
-        if data.role in ('assistant', 'tool') and any(map(lambda x: x is not None,
-                                            [data.tools, data.tool_choice])):
-            raise ValueError("Assistant and tool messages should not have fields reserved for user messages.")
-        if data.tools is not None and data.tool_choice is None:
-            raise ValueError("If tools are used, tool choice must be specified")
-        return data
+    @model_validator(mode='after')
+    def validate_tool_call(cls, data: Any) -> Any:
+        if (any([data.tool_call_id, data.tool_call_name]) and
+        not all([data.tool_call_id, data.tool_call_name])):
+            raise ValueError("If a tool call is made, both tool_call_id and tool_call_name must have values")
 
 
+    @override
+    def render(self, *args, **kwargs) -> dict:
+        ret = super().render(*args, **kwargs)
+        if self.tool_call_id:
+            ret['content'] = f'{self.content}\n\n ****Assistant made a call to {self.tool_call_name} with the following parameters:**** \n {pformat(self.tool_call_input, indent=4)}'
+        return ret
 
 class LLM_Interface(ABC):
+    tool_executor = ThreadPoolExecutor(max_workers=10)
+
     @abstractmethod
     def __init__(self, client: Any):
         pass
 
     @abstractmethod
-    def complete(self, messages: list[LLM_Message], system_prompt: str, max_tokens: int) -> LLM_Message:
+    def complete(self, messages: list[LLM_Message], system_prompt: str, max_tokens: int) -> list[LLM_Message]:
         pass
+
+
+    # This shouldn't raise exceptions. The results are going back to the LLM, so they need to just be strings. Functions themselves can raise, because the llm_tool wrapper
+    # converts exceptions to dicts and returns them. 
+    def call_tool(self, message: Assistant_Message) -> Tool_Message:
+        tools = message.tools
+        name = message.tool_call_name
+        input = message.tool_call_input
+        tools_dict = {tool.llm_definition['name'] : tool for tool in tools}
+        tool = tools_dict[name]
+        if not name or name not in tools_dict.keys():
+            result = str({'exception': ValueError("Function name is not valid")})
+        else:
+            if input:
+                future = self.tool_executor.submit(partial(tool, **input))
+            else:
+                future = self.tool_executor.submit(tool) # necessary because None can't be unpacked
+            try:
+                result = str(future.result(timeout=15))
+            except TimeoutError:
+                result = str({'exception': TimeoutError("Tool call timed out")})
+        return Tool_Message(tool_name = tool.name,
+                            content=result,
+                            for_whom=tool.for_whom,
+                            tools=message.tools,
+                            tool_choice=message.tool_choice)
+        
+        
 
 
 class Claude_Interface(LLM_Interface):
     
-    claude_args = {'model': 'claude-3-5-sonnet-20240620'}
+    base_claude_args = {'model': 'claude-3-5-sonnet-20240620'}
 
-
+    @override
     def __init__(self, cohere_client):
         self.client = cohere_client
 
+    @override
     @validate_call
-    def complete(self, messages: list[LLM_Message], system_prompt: str, max_tokens: int) -> LLM_Message:
-        message_dicts = [message.model_dump(include={'role', 'content'}, exclude_none=True) for message in messages]
-        if messages[-1].tools:
-            tools = {'tools': [tool.llm_definition for tool in messages[-1].tools]}
+    def complete(self, messages: list[LLM_Message], system_prompt: str, max_tokens: int) -> tuple[list[LLM_Message], Literal['changed', 'unchanged']]:
+        # if you show the bot the tool messages intended to be rendered for the user, the conversation won't be alternating
+        # user, assistant, user, assistant, etc, which is a requirement.
+        messages_for_bot = [message for message in messages if not(isinstance(message, Tool_Message) and message.for_whom == 'user')] 
+        last_message = messages[-1]
+        message_dicts = [message.render(include={'role', 'content'}, exclude_none=True) for message in messages_for_bot]
+        if isinstance(last_message, Tool_Message) and last_message.for_whom == 'user':
+            return messages, 'unchanged' # nothing to do
+        elif isinstance(last_message, Assistant_Message):
+            if last_message.tool_call_id:
+                new_msg = self.call_tool(last_message)
+                return messages + [new_msg], 'changed'
+            else:
+                return messages, 'unchanged'
         else:
-            tools = {}
-        tool_choice = messages[-1].tool_choice
-        response = self.client.messages.create(**(self.claude_args | tools |
-                                               {'system': system_prompt,
-                                                'messages': message_dicts,
-                                                'max_tokens': max_tokens,
-                                                'tool_choice': tool_choice}))
-        content = response.content
-        return LLM_Message(role='assistant',
-                           content=content[0].text,
-                           tool_call_id=content[1].id or None,
-                           tool_call_name=content[1].name or None,
-                           tool_call_input = content[1].input or None)
+            assert isinstance(last_message, (User_Message, Tool_Message)), "Type assertion failed" 
+            # message is User_Message or Tool_Message intended for the bot, assertion is necessary to prevent type checker flag
+            if last_message.tools:
+                tools = {'tools': [tool.llm_definition for tool in last_message.tools], 'tool_choice': last_message.tool_choice}
+            else:
+                tools = {}
+            response = self.client.messages.create(**(self.base_claude_args | tools |
+                                                    {'system': system_prompt,
+                                                    'messages': message_dicts,
+                                                    'max_tokens': max_tokens}))
+            content = response.content
+            tool_call = {
+                'tool_call_id' :content[1].id,
+                'tool_call_name' :content[1].name,
+                'tool_call_input' : content[1].input,
+            } if len(content) > 1 else {}
+            new_msg = Assistant_Message(
+                            content=content[0].text,
+                            stop_reason=response.stop_reason,
+                            tools = last_message.tools,
+                            tool_choice=last_message.tool_choice,
+                            usage = response.usage.input_tokens + response.usage.output_tokens,
+                            **tool_call)
+            
+
+            return messages + [new_msg], 'changed'
+
         
     
-        
+
 
 
 from django.apps import apps
@@ -186,22 +276,29 @@ from pprint import pp
         param_descs={'strings': 'A list of strings to print'},
         required=['strings']
 )
-def test_function(strings: list[str]):
+def test_function(strings: list[str]) -> str:
     """
     Test function that prints each string from the input. 
     """
+    ret = ""
     for s in strings:
-        print(s)
+        ret += s + " "
+    return ret
+
+
 
 def test():  
     client = apps.get_app_config('aquillm').anthropic_client
     cif = Claude_Interface(client)
-    response = cif.complete([{'role': 'user',
-                              'content': 'Hi Claude, please use this test tool',
-                              'tools': [test_function,],
-                              'tool_choice': {'type': 'auto'}}],
+    messages, _ = cif.complete([User_Message(role ='user', 
+                              content= 'Hi Claude, please use this test tool',
+                              tools= [test_function,],
+                              tool_choice = {'type': 'auto'})],
                               'do as the user says, this is just testing. Pick any string to provide.',
                               2048)
     print("woo")
-    pp(response)
+    messages, _ = cif.complete(messages, "Do as you're told", 2048)
+    pp(messages)
+    messages += [User_Message(content="Thanks, boss")]
+    messages,_ = cif.complete(messages, "keep up the good work", 2048)
     breakpoint()
