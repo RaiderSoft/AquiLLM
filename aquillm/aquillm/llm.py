@@ -1,4 +1,4 @@
-from typing import Callable, Any, get_type_hints, Protocol, Optional, Literal, Union, override, Type
+from typing import Callable, Any, get_type_hints, Protocol, Optional, Literal, Union, override, Type, Sequence
 from pydantic import BaseModel, model_validator, validate_call
 from types import NoneType, GenericAlias
 import inspect
@@ -99,7 +99,7 @@ def llm_tool(for_whom: Literal['user', 'assistant'], description: str | None = N
 
 class ToolChoice(BaseModel):
     type: Literal['auto', 'any', 'tool']
-    name: str | None = None
+    name: Optional[str] = None
 
     @model_validator(mode='after')
     @classmethod
@@ -110,7 +110,7 @@ class ToolChoice(BaseModel):
             raise ValueError("name should only be set when type is 'tool'")
         return data
 
-class LLM_Message(BaseModel, ABC):
+class __LLM_Message(BaseModel, ABC):
     role: Literal['user', 'tool', 'assistant']
     content: str
     tools: Optional[list[LLMTool]] = None
@@ -126,17 +126,15 @@ class LLM_Message(BaseModel, ABC):
     def render(self, *args, **kwargs) -> dict:
         return self.model_dump(*args, **kwargs)
 
-    
 
 
-
-class User_Message(LLM_Message):
-    role: Literal['user', 'tool'] = 'user'
+class User_Message(__LLM_Message):
+    role: Literal['user'] = 'user'
 
 
 
 
-class Tool_Message(User_Message):
+class Tool_Message(__LLM_Message):
     role: Literal['tool'] = 'tool'
     tool_name: str
     for_whom: Literal['assistant', 'user']
@@ -149,7 +147,7 @@ class Tool_Message(User_Message):
         return ret
     
 
-class Assistant_Message(LLM_Message):
+class Assistant_Message(__LLM_Message):
     role: Literal['assistant'] = 'assistant'
     stop_reason: str
     tool_call_id: Optional[str] = None
@@ -172,6 +170,57 @@ class Assistant_Message(LLM_Message):
             ret['content'] = f'{self.content}\n\n ****Assistant made a call to {self.tool_call_name} with the following parameters:**** \n {pformat(self.tool_call_input, indent=4)}'
         return ret
 
+
+# doing this with a union instead of only inheritance prevents anything at runtime from constructing LLM_Messages.
+LLM_Message = User_Message|Tool_Message|Assistant_Message 
+
+class Conversation(BaseModel):
+    system: str
+    messages: list[LLM_Message] = []
+
+    def __len__(self):
+        return len(self.messages)
+    
+    def __getitem__(self, index):
+        return self.messages[index]
+    
+    def __iter__(self):
+        return iter(self.messages)
+    
+    def __add__(self, other) -> 'Conversation':
+        if isinstance(other, (list, Conversation)):
+            return (Conversation(system=self.system, messages=self.messages + list(other)))
+        return NotImplemented
+
+
+    def rebind_tools(self, tools: list[LLMTool]) -> None:
+        def deprecated_func(*args, **kwargs):
+            return "This tool has been deprecated."
+        tool_dict = {tool.name: tool for tool in tools}
+        for message in self.messages:
+            if message.tools:
+                for tool in message.tools:
+                    if tool.name in tool_dict.keys():
+                        tool._function = tool_dict[tool.name]._function
+                    else:
+                        tool._function = deprecated_func
+
+
+    @classmethod
+    @model_validator(mode='after')
+    def validate_flip_flop(cls, data: Any) -> Any:
+        def isUser(m: LLM_Message):
+            return isinstance(m, User_Message) or (isinstance(m, Tool_Message) and m.for_whom == 'assistant')
+
+        for a, b in zip(data.messages, data.messages[1:]):
+            if isinstance(a, Assistant_Message) and isinstance(b, Assistant_Message):
+                raise ValueError("Conversation has adjacent assistant messages")
+            if isUser(a) and isUser(b):
+                raise ValueError("Conversation has adjacent user messages")
+        return data
+
+
+
 class LLM_Interface(ABC):
     tool_executor = ThreadPoolExecutor(max_workers=10)
 
@@ -180,34 +229,38 @@ class LLM_Interface(ABC):
         pass
 
     @abstractmethod
-    def complete(self, messages: list[LLM_Message], system_prompt: str, max_tokens: int) -> list[LLM_Message]:
+    def complete(self, messages: Conversation, system_prompt: str, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
         pass
 
 
-    # This shouldn't raise exceptions. The results are going back to the LLM, so they need to just be strings. Functions themselves can raise, because the llm_tool wrapper
+    # This shouldn't raise exceptions in cases where it was called correctly, ie the LLM really did attempt to call a tool. 
+    # The results are going back to the LLM, so they need to just be strings. Functions themselves can raise, because the llm_tool wrapper
     # converts exceptions to dicts and returns them. 
     def call_tool(self, message: Assistant_Message) -> Tool_Message:
         tools = message.tools
-        name = message.tool_call_name
-        input = message.tool_call_input
-        tools_dict = {tool.llm_definition['name'] : tool for tool in tools}
-        tool = tools_dict[name]
-        if not name or name not in tools_dict.keys():
-            result = str({'exception': ValueError("Function name is not valid")})
-        else:
-            if input:
-                future = self.tool_executor.submit(partial(tool, **input))
+        if tools:
+            name = message.tool_call_name
+            input = message.tool_call_input
+            tools_dict = {tool.llm_definition['name'] : tool for tool in tools}
+            tool = tools_dict[name]
+            if not name or name not in tools_dict.keys():
+                result = str({'exception': ValueError("Function name is not valid")})
             else:
-                future = self.tool_executor.submit(tool) # necessary because None can't be unpacked
-            try:
-                result = str(future.result(timeout=15))
-            except TimeoutError:
-                result = str({'exception': TimeoutError("Tool call timed out")})
-        return Tool_Message(tool_name = tool.name,
-                            content=result,
-                            for_whom=tool.for_whom,
-                            tools=message.tools,
-                            tool_choice=message.tool_choice)
+                if input:
+                    future = self.tool_executor.submit(partial(tool, **input))
+                else:
+                    future = self.tool_executor.submit(tool) # necessary because None can't be unpacked
+                try:
+                    result = str(future.result(timeout=15))
+                except TimeoutError:
+                    result = str({'exception': TimeoutError("Tool call timed out")})
+            return Tool_Message(tool_name = tool.name,
+                                content=result,
+                                for_whom=tool.for_whom,
+                                tools=message.tools,
+                                tool_choice=message.tool_choice)
+        else:
+            raise ValueError("call_tool called on a message with no tools!")
         
         
 
@@ -222,7 +275,7 @@ class Claude_Interface(LLM_Interface):
 
     @override
     @validate_call
-    def complete(self, messages: list[LLM_Message], system_prompt: str, max_tokens: int) -> tuple[list[LLM_Message], Literal['changed', 'unchanged']]:
+    def complete(self, messages: Conversation, system_prompt: str, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
         # if you show the bot the tool messages intended to be rendered for the user, the conversation won't be alternating
         # user, assistant, user, assistant, etc, which is a requirement.
         messages_for_bot = [message for message in messages if not(isinstance(message, Tool_Message) and message.for_whom == 'user')] 
@@ -231,9 +284,9 @@ class Claude_Interface(LLM_Interface):
         if isinstance(last_message, Tool_Message) and last_message.for_whom == 'user':
             return messages, 'unchanged' # nothing to do
         elif isinstance(last_message, Assistant_Message):
-            if last_message.tool_call_id:
-                new_msg = self.call_tool(last_message)
-                return messages + [new_msg], 'changed'
+            if last_message.tools and last_message.tool_call_id:
+                new_tool_msg = self.call_tool(last_message)
+                return messages + [new_tool_msg], 'changed'
             else:
                 return messages, 'unchanged'
         else:
@@ -290,15 +343,18 @@ def test_function(strings: list[str]) -> str:
 def test():  
     client = apps.get_app_config('aquillm').anthropic_client
     cif = Claude_Interface(client)
-    messages, _ = cif.complete([User_Message(role ='user', 
+    messages, _ = cif.complete({"system": 'do as the user says, this is just testing. Pick any string to provide.',
+                                "messages" : [User_Message(role ='user', 
                               content= 'Hi Claude, please use this test tool',
                               tools= [test_function,],
-                              tool_choice = {'type': 'auto'})],
+                              tool_choice = {'type': 'auto'})]},
                               'do as the user says, this is just testing. Pick any string to provide.',
                               2048)
     print("woo")
+
     messages, _ = cif.complete(messages, "Do as you're told", 2048)
     pp(messages)
-    messages += [User_Message(content="Thanks, boss")]
+    messages.messages += [User_Message(content="Thanks, boss")]
     messages,_ = cif.complete(messages, "keep up the good work", 2048)
+    pp(messages)
     breakpoint()
