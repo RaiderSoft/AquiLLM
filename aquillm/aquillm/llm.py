@@ -110,7 +110,7 @@ class ToolChoice(BaseModel):
             raise ValueError("name should only be set when type is 'tool'")
         return data
 
-class __LLM_Message(BaseModel, ABC):
+class __LLMMessage(BaseModel, ABC):
     role: Literal['user', 'tool', 'assistant']
     content: str
     tools: Optional[list[LLMTool]] = None
@@ -128,13 +128,13 @@ class __LLM_Message(BaseModel, ABC):
 
 
 
-class User_Message(__LLM_Message):
+class UserMessage(__LLMMessage):
     role: Literal['user'] = 'user'
 
 
 
 
-class Tool_Message(__LLM_Message):
+class ToolMessage(__LLMMessage):
     role: Literal['tool'] = 'tool'
     tool_name: str
     for_whom: Literal['assistant', 'user']
@@ -147,7 +147,7 @@ class Tool_Message(__LLM_Message):
         return ret
     
 
-class Assistant_Message(__LLM_Message):
+class AssistantMessage(__LLMMessage):
     role: Literal['assistant'] = 'assistant'
     stop_reason: str
     tool_call_id: Optional[str] = None
@@ -172,7 +172,7 @@ class Assistant_Message(__LLM_Message):
 
 
 # doing this with a union instead of only inheritance prevents anything at runtime from constructing LLM_Messages.
-LLM_Message = User_Message|Tool_Message|Assistant_Message 
+LLM_Message = UserMessage|ToolMessage|AssistantMessage 
 
 class Conversation(BaseModel):
     system: str
@@ -181,7 +181,7 @@ class Conversation(BaseModel):
     def __len__(self):
         return len(self.messages)
     
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         return self.messages[index]
     
     def __iter__(self):
@@ -190,6 +190,8 @@ class Conversation(BaseModel):
     def __add__(self, other) -> 'Conversation':
         if isinstance(other, (list, Conversation)):
             return (Conversation(system=self.system, messages=self.messages + list(other)))
+        if isinstance(other, (UserMessage, AssistantMessage, ToolMessage)):
+            return (Conversation(system=self.system, messages=self.messages + [other]))
         return NotImplemented
 
 
@@ -210,10 +212,10 @@ class Conversation(BaseModel):
     @model_validator(mode='after')
     def validate_flip_flop(cls, data: Any) -> Any:
         def isUser(m: LLM_Message):
-            return isinstance(m, User_Message) or (isinstance(m, Tool_Message) and m.for_whom == 'assistant')
+            return isinstance(m, UserMessage) or (isinstance(m, ToolMessage) and m.for_whom == 'assistant')
 
         for a, b in zip(data.messages, data.messages[1:]):
-            if isinstance(a, Assistant_Message) and isinstance(b, Assistant_Message):
+            if isinstance(a, AssistantMessage) and isinstance(b, AssistantMessage):
                 raise ValueError("Conversation has adjacent assistant messages")
             if isUser(a) and isUser(b):
                 raise ValueError("Conversation has adjacent user messages")
@@ -221,7 +223,7 @@ class Conversation(BaseModel):
 
 
 
-class LLM_Interface(ABC):
+class LLMInterface(ABC):
     tool_executor = ThreadPoolExecutor(max_workers=10)
 
     @abstractmethod
@@ -229,14 +231,14 @@ class LLM_Interface(ABC):
         pass
 
     @abstractmethod
-    def complete(self, messages: Conversation, system_prompt: str, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
+    def complete(self, messages: Conversation, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
         pass
 
 
     # This shouldn't raise exceptions in cases where it was called correctly, ie the LLM really did attempt to call a tool. 
-    # The results are going back to the LLM, so they need to just be strings. Functions themselves can raise, because the llm_tool wrapper
+    # The results are going back to the LLM, so they need to just be strings. Tools themselves can raise, because the llm_tool wrapper
     # converts exceptions to dicts and returns them. 
-    def call_tool(self, message: Assistant_Message) -> Tool_Message:
+    def call_tool(self, message: AssistantMessage) -> ToolMessage:
         tools = message.tools
         if tools:
             name = message.tool_call_name
@@ -254,7 +256,7 @@ class LLM_Interface(ABC):
                     result = str(future.result(timeout=15))
                 except TimeoutError:
                     result = str({'exception': TimeoutError("Tool call timed out")})
-            return Tool_Message(tool_name = tool.name,
+            return ToolMessage(tool_name = tool.name,
                                 content=result,
                                 for_whom=tool.for_whom,
                                 tools=message.tools,
@@ -265,7 +267,7 @@ class LLM_Interface(ABC):
         
 
 
-class Claude_Interface(LLM_Interface):
+class ClaudeInterface(LLMInterface):
     
     base_claude_args = {'model': 'claude-3-5-sonnet-20240620'}
 
@@ -275,22 +277,23 @@ class Claude_Interface(LLM_Interface):
 
     @override
     @validate_call
-    def complete(self, messages: Conversation, system_prompt: str, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
+    def complete(self, conversation: Conversation, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
+        system_prompt = conversation.system
         # if you show the bot the tool messages intended to be rendered for the user, the conversation won't be alternating
         # user, assistant, user, assistant, etc, which is a requirement.
-        messages_for_bot = [message for message in messages if not(isinstance(message, Tool_Message) and message.for_whom == 'user')] 
-        last_message = messages[-1]
+        messages_for_bot = [message for message in conversation if not(isinstance(message, ToolMessage) and message.for_whom == 'user')] 
+        last_message = conversation[-1]
         message_dicts = [message.render(include={'role', 'content'}, exclude_none=True) for message in messages_for_bot]
-        if isinstance(last_message, Tool_Message) and last_message.for_whom == 'user':
-            return messages, 'unchanged' # nothing to do
-        elif isinstance(last_message, Assistant_Message):
+        if isinstance(last_message, ToolMessage) and last_message.for_whom == 'user':
+            return conversation, 'unchanged' # nothing to do
+        elif isinstance(last_message, AssistantMessage):
             if last_message.tools and last_message.tool_call_id:
                 new_tool_msg = self.call_tool(last_message)
-                return messages + [new_tool_msg], 'changed'
+                return conversation + [new_tool_msg], 'changed'
             else:
-                return messages, 'unchanged'
+                return conversation, 'unchanged'
         else:
-            assert isinstance(last_message, (User_Message, Tool_Message)), "Type assertion failed" 
+            assert isinstance(last_message, (UserMessage, ToolMessage)), "Type assertion failed" 
             # message is User_Message or Tool_Message intended for the bot, assertion is necessary to prevent type checker flag
             if last_message.tools:
                 tools = {'tools': [tool.llm_definition for tool in last_message.tools], 'tool_choice': last_message.tool_choice}
@@ -306,7 +309,7 @@ class Claude_Interface(LLM_Interface):
                 'tool_call_name' :content[1].name,
                 'tool_call_input' : content[1].input,
             } if len(content) > 1 else {}
-            new_msg = Assistant_Message(
+            new_msg = AssistantMessage(
                             content=content[0].text,
                             stop_reason=response.stop_reason,
                             tools = last_message.tools,
@@ -315,7 +318,7 @@ class Claude_Interface(LLM_Interface):
                             **tool_call)
             
 
-            return messages + [new_msg], 'changed'
+            return conversation + [new_msg], 'changed'
 
         
     
@@ -342,9 +345,9 @@ def test_function(strings: list[str]) -> str:
 
 def test():  
     client = apps.get_app_config('aquillm').anthropic_client
-    cif = Claude_Interface(client)
+    cif = ClaudeInterface(client)
     messages, _ = cif.complete({"system": 'do as the user says, this is just testing. Pick any string to provide.',
-                                "messages" : [User_Message(role ='user', 
+                                "messages" : [UserMessage(role ='user', 
                               content= 'Hi Claude, please use this test tool',
                               tools= [test_function,],
                               tool_choice = {'type': 'auto'})]},
@@ -354,7 +357,7 @@ def test():
 
     messages, _ = cif.complete(messages, "Do as you're told", 2048)
     pp(messages)
-    messages.messages += [User_Message(content="Thanks, boss")]
+    messages.messages += [UserMessage(content="Thanks, boss")]
     messages,_ = cif.complete(messages, "keep up the good work", 2048)
     pp(messages)
     breakpoint()

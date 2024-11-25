@@ -35,6 +35,8 @@ if os.environ.get('DJANGO_DEBUG'):
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
+    "chat",
     "django.contrib.sites",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -187,3 +189,5 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 USE_TZ=True
 DATA_UPLOAD_MAX_MEMORY_SIZE=  268435456
 ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space', 'localhost']
+
+ASGI_APPLICATION = "aquillm.asgi.application"

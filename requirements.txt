@@ -17,3 +17,5 @@ uvicorn
 whitenoise
 typeguard
 pydantic
+channels
+daphne

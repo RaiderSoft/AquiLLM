@@ -10,7 +10,7 @@ from typing import TypedDict
 
 load_dotenv()
 
-
+from .llm import LLMInterface, ClaudeInterface
 
 RAG_PROMPT_STRING = """
 <context>
@@ -52,7 +52,7 @@ class AquillmConfig(AppConfig):
     openai_client = None
     anthropic_client = None
     get_embedding = None
-    
+    llm_interface: LLMInterface = None
     default_llm = "CLAUDE"
     
     
@@ -74,3 +74,4 @@ class AquillmConfig(AppConfig):
         self.openai_client = openai.OpenAI()
         self.anthropic_client = anthropic.Anthropic()
         self.get_embedding = get_embedding_func(self.cohere_client)
+        self.llm_interface = ClaudeInterface(self.anthropic_client)

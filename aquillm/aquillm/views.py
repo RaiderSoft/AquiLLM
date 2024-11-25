@@ -362,3 +362,7 @@ def delete_document(request, doc_id):
     doc.delete()
     return HttpResponse(status=200)
 
+@require_http_methods(['GET'])
+@login_required
+def ws_chat(request):
+    return render(request, 'aquillm/ws_chat.html', {})
