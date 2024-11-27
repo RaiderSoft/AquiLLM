@@ -22,8 +22,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "aquillm.settings")
 application = ProtocolTypeRouter(
     {
         "http": get_asgi_application(),
-        "websocket": URLRouter(websocket_urlpatterns)
-        
+        "websocket": AllowedHostsOriginValidator(
+            AuthMiddlewareStack(
+                URLRouter(websocket_urlpatterns)
+            )
+        )
 
     }
 )

@@ -1,0 +1,304 @@
+{% extends "aquillm/base.html" %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <div class="flex-1">
+        <div id="conversation-root"></div>
+    </div>
+    
+    <div class="border-t border-gray-200 p-4 bg-white mt-auto">
+        <div class="flex gap-2 max-w-4xl mx-auto">
+            <input 
+                type="text" 
+                id="message-input"
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                placeholder="Type your message here..."
+                autocomplete="off"
+            />
+            <button 
+                id="send-button"
+                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-400 disabled:cursor-not-allowed"
+            >
+                Send
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+    import { init, classModule, propsModule, styleModule, eventListenersModule, h } from 'https://cdn.jsdelivr.net/npm/snabbdom@3.6.2/+esm';
+    
+    const patch = init([
+        classModule,
+        propsModule,
+        styleModule,
+        eventListenersModule
+    ]);
+
+    // Helper function to create spinner
+    function createSpinner() {
+        return h('div', {
+            class: {
+                'flex': true,
+                'justify-center': true,
+                'my-4': true
+            }
+        }, [
+            h('div', {
+                class: {
+                    'animate-spin': true,
+                    'rounded-full': true,
+                    'h-8': true,
+                    'w-8': true,
+                    'border-4': true,
+                    'border-blue-500': true,
+                    'border-t-transparent': true
+                }
+            })
+        ]);
+    }
+    
+    function createCollapsible(summary, content, isOpen = false) {
+        return h('details', {
+            props: { open: isOpen },
+            class: { 'mt-1.5': true }
+        }, [
+            h('summary', {
+                class: {
+                    'cursor-pointer': true,
+                    'text-blue-600': true
+                }
+            }, summary),
+            h('div', {
+                class: {
+                    'mt-1.5': true,
+                    'pl-2.5': true,
+                    'border-l-2': true,
+                    'border-gray-300': true
+                }
+            }, content)
+        ]);
+    }
+
+    function shouldShowSpinner(messages) {
+        if (messages.length === 0) return false;
+        const lastMessage = messages[messages.length - 1];
+        return (
+            lastMessage.role === 'user' ||
+            (lastMessage.role === 'assistant' && lastMessage.tool_call_input) ||
+            (lastMessage.role === 'tool' && lastMessage.for_whom === 'assistant')
+        );
+    }
+    
+    function renderConversation(data) {
+        const content = [
+            ...data.messages.map(message => {
+                const messageClasses = {
+                    'w-4/5': true,
+                    'mb-5': true,
+                    'p-2.5': true,
+                    'rounded-lg': true,
+                    'shadow-md': true,
+                    'whitespace-pre-wrap': true,
+                    'break-words': true
+                };
+                
+                if (message.role === 'user') {
+                    Object.assign(messageClasses, {
+                        'user-message': true,
+                        'self-end': true,
+                        'bg-lighter-primary': true,
+                        'border': true,
+                        'border-dashed': true,
+                        'border-black': true,
+                        'border-2': true
+                    });
+                } else if (message.role === 'assistant') {
+                    Object.assign(messageClasses, {
+                        'assistant-message': true,
+                        'bg-deep-secondary': true,
+                        'text-white': true
+                    });
+                } else if (message.role === 'tool') {
+                    Object.assign(messageClasses, {
+                        'bg-orange-100': true,
+                        'border-l-4': true,
+                        'border-orange-500': true
+                    });
+                }
+                
+                const content = [];
+                
+                content.push(h('p', { 
+                    class: { 
+                        'whitespace-pre-wrap': true,
+                        'break-words': true
+                    }
+                }, message.content));
+                
+                if (message.role === 'assistant' && message.tool_call_input) {
+                    content.push(h('div', { 
+                        class: { 
+                            'mt-2.5': true,
+                            'text-sm': true
+                        }
+                    }, [
+                        h('strong', {}, `Called Tool: ${message.tool_call_name}`),
+                        createCollapsible(
+                            'View Tool Arguments',
+                            h('pre', {
+                                class: {
+                                    'whitespace-pre-wrap': true,
+                                    'break-words': true,
+                                    'bg-gray-100': true,
+                                    'p-2': true,
+                                    'rounded': true,
+                                    'text-gray-800': true
+                                }
+                            }, JSON.stringify(message.tool_call_input, null, 2))
+                        )
+                    ]));
+                }
+                
+                if (message.role === 'tool') {
+                    content.unshift(
+                        h('div', {
+                            class: {
+                                'mb-2': true,
+                                'font-bold': true,
+                                'text-orange-700': true
+                            }
+                        }, `Tool Output: ${message.tool_name}`),
+                        createCollapsible(
+                            'View Response',
+                            h('div', {
+                                class: {
+                                    'whitespace-pre-wrap': true,
+                                    'break-words': true,
+                                    'bg-white': true,
+                                    'p-2': true,
+                                    'rounded': true
+                                }
+                            }, message.content),
+                            message.for_whom == 'user'
+                        )
+                    );
+                }
+                
+                content.push(h('p', {
+                    class: {
+                        'text-xs': true,
+                        'mt-1.5': true,
+                        'text-right': message.role === 'user'
+                    }
+                }, new Date().toLocaleString()));
+                
+                return h('div', { class: messageClasses }, content);
+            })
+        ];
+
+        // Add spinner if needed
+        if (shouldShowSpinner(data.messages)) {
+            content.push(createSpinner());
+        }
+
+        return h('div', { 
+            class: { 
+                'flex': true,
+                'flex-col': true,
+                'max-w-full': true,
+                'h-full': true,
+                'mx-auto': true,
+                'overflow-y-auto': true
+            }
+        }, content);
+    }
+    
+    let vnode = document.getElementById('conversation-root');
+    let ws;
+    let conversation = { messages: [] };
+    
+    function setInputState(disabled) {
+        const input = document.getElementById('message-input');
+        const button = document.getElementById('send-button');
+        input.disabled = disabled;
+        button.disabled = disabled;
+    }
+
+    function initWebSocket() {
+        ws = new WebSocket('ws://' + window.location.host + '/ws/chat/test/');
+        
+        ws.onopen = () => {
+            console.log('Connected to chat server');
+            setInputState(false);
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.exception) {
+                console.error('Server error:', data.exception);
+                setInputState(false);
+                return;
+            }
+            
+            if (data.conversation) {
+                conversation = data.conversation;
+                updateConversation(conversation);
+                
+                // Enable input if the last message is from the assistant without a tool call
+                // or if it's a tool message for the user
+                const lastMessage = conversation.messages[conversation.messages.length - 1];
+                const shouldEnableInput = 
+                    (lastMessage.role === 'assistant' && !lastMessage.tool_call_input) ||
+                    (lastMessage.role === 'tool' && lastMessage.for_whom === 'user');
+                
+                setInputState(!shouldEnableInput);
+            }
+        };
+        
+        ws.onclose = () => {
+            console.log('Disconnected from chat server');
+            setInputState(true);
+            setTimeout(initWebSocket, 2000);
+        };
+    }
+    
+    function sendMessage() {
+        const input = document.getElementById('message-input');
+        const message = input.value.trim();
+        
+        if (!message || !ws || ws.readyState !== WebSocket.OPEN) return;
+        
+        setInputState(true);
+        conversation.messages.push({role: 'user', content: message});
+        updateConversation(conversation);
+        
+        const payload = {
+            action: 'replace',
+            messages: conversation.messages
+        };
+        
+        ws.send(JSON.stringify(payload));
+        input.value = '';
+    }
+
+    function updateConversation(newData) {
+        vnode = patch(vnode, renderConversation(newData));
+    }
+    
+    document.getElementById('send-button').addEventListener('click', sendMessage);
+    
+    document.getElementById('message-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+    
+    initWebSocket();
+    
+    window.updateConversation = updateConversation;
+</script>
+{% endblock %}

@@ -9,6 +9,11 @@ from copy import copy
 
 from concurrent.futures import ThreadPoolExecutor
 
+from aquillm.settings import DEBUG
+
+if DEBUG:
+    from pprint import pp
+
 class LLMTool(BaseModel):
     llm_definition: dict
     for_whom: Literal['user', 'assistant']
@@ -52,10 +57,15 @@ def llm_tool(for_whom: Literal['user', 'assistant'], description: str | None = N
         
         @wraps(type_checked_func)
         def wrapper(*args, **kwargs) -> str:
+            if DEBUG:
+                print(f"{func_name} called!")
             try:
                 return type_checked_func(*args, **kwargs)
             except Exception as e:
-                return str({"exception": str(e)})
+                if DEBUG:
+                    raise e
+                else:
+                    return str({"exception": str(e)})
         
         def translate_type(t: type | GenericAlias) -> dict:
             allowed_primitives = {
@@ -264,7 +274,19 @@ class LLMInterface(ABC):
         else:
             raise ValueError("call_tool called on a message with no tools!")
         
-        
+
+    def spin(self, convo: Conversation, max_func_calls: int, send_func: Callable[[Conversation], Any], max_tokens: int) -> None:
+        calls = 0
+        while calls < max_func_calls:
+            convo, changed = self.complete(convo, max_tokens)
+            send_func(convo)
+            if changed == 'unchanged':
+                return
+            last_message = convo[-1]    
+            if isinstance(last_message, AssistantMessage) and last_message.tool_call_id:
+                calls += 1
+                
+
 
 
 class ClaudeInterface(LLMInterface):
@@ -283,7 +305,7 @@ class ClaudeInterface(LLMInterface):
         # user, assistant, user, assistant, etc, which is a requirement.
         messages_for_bot = [message for message in conversation if not(isinstance(message, ToolMessage) and message.for_whom == 'user')] 
         last_message = conversation[-1]
-        message_dicts = [message.render(include={'role', 'content'}, exclude_none=True) for message in messages_for_bot]
+        message_dicts = [message.render(include={'role', 'content'}) for message in messages_for_bot]
         if isinstance(last_message, ToolMessage) and last_message.for_whom == 'user':
             return conversation, 'unchanged' # nothing to do
         elif isinstance(last_message, AssistantMessage):
@@ -299,24 +321,39 @@ class ClaudeInterface(LLMInterface):
                 tools = {'tools': [tool.llm_definition for tool in last_message.tools], 'tool_choice': last_message.tool_choice}
             else:
                 tools = {}
-            response = self.client.messages.create(**(self.base_claude_args | tools |
+            sdk_args = {**(self.base_claude_args | tools |
                                                     {'system': system_prompt,
                                                     'messages': message_dicts,
-                                                    'max_tokens': max_tokens}))
+                                                    'max_tokens': max_tokens})}
+            if DEBUG:
+                print("Claude called with folling args:")
+                pp(sdk_args)
+                
+            response = self.client.messages.create(**sdk_args)
+            text_block = None
+            tool_block = None
             content = response.content
+            for block in content:
+                if hasattr(block, 'input'):
+                    tool_block = block
+                if hasattr(block, "text"):
+                    text_block = block
+
             tool_call = {
-                'tool_call_id' :content[1].id,
-                'tool_call_name' :content[1].name,
-                'tool_call_input' : content[1].input,
-            } if len(content) > 1 else {}
+                'tool_call_id' :tool_block.id,
+                'tool_call_name' :tool_block.name,
+                'tool_call_input' : tool_block.input,
+            } if tool_block else {}
             new_msg = AssistantMessage(
-                            content=content[0].text,
+                            content=text_block.text if text_block else "** Empty Message, tool call **",
                             stop_reason=response.stop_reason,
                             tools = last_message.tools,
                             tool_choice=last_message.tool_choice,
                             usage = response.usage.input_tokens + response.usage.output_tokens,
                             **tool_call)
-            
+            if DEBUG:
+                print("Response from Claude:")
+                pp(new_msg.model_dump)
 
             return conversation + [new_msg], 'changed'
 
@@ -325,8 +362,7 @@ class ClaudeInterface(LLMInterface):
 
 
 
-from django.apps import apps
-from pprint import pp
+
 @llm_tool(
         for_whom='user',
         param_descs={'strings': 'A list of strings to print'},
@@ -343,21 +379,24 @@ def test_function(strings: list[str]) -> str:
 
 
 
-def test():  
-    client = apps.get_app_config('aquillm').anthropic_client
-    cif = ClaudeInterface(client)
-    messages, _ = cif.complete({"system": 'do as the user says, this is just testing. Pick any string to provide.',
-                                "messages" : [UserMessage(role ='user', 
-                              content= 'Hi Claude, please use this test tool',
-                              tools= [test_function,],
-                              tool_choice = {'type': 'auto'})]},
-                              'do as the user says, this is just testing. Pick any string to provide.',
-                              2048)
-    print("woo")
 
-    messages, _ = cif.complete(messages, "Do as you're told", 2048)
-    pp(messages)
-    messages.messages += [UserMessage(content="Thanks, boss")]
-    messages,_ = cif.complete(messages, "keep up the good work", 2048)
-    pp(messages)
-    breakpoint()
+# from django.apps import apps
+# from pprint import pp
+# def test():  
+#     client = apps.get_app_config('aquillm').anthropic_client
+#     cif = ClaudeInterface(client)
+#     messages, _ = cif.complete({"system": 'do as the user says, this is just testing. Pick any string to provide.',
+#                                 "messages" : [UserMessage(role ='user', 
+#                               content= 'Hi Claude, please use this test tool',
+#                               tools= [test_function,],
+#                               tool_choice = {'type': 'auto'})]},
+#                               'do as the user says, this is just testing. Pick any string to provide.',
+#                               2048)
+#     print("woo")
+
+#     messages, _ = cif.complete(messages, "Do as you're told", 2048)
+#     pp(messages)
+#     messages.messages += [UserMessage(content="Thanks, boss")]
+#     messages,_ = cif.complete(messages, "keep up the good work", 2048)
+#     pp(messages)
+#     breakpoint()

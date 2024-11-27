@@ -364,5 +364,5 @@ def delete_document(request, doc_id):
 
 @require_http_methods(['GET'])
 @login_required
-def ws_chat(request):
-    return render(request, 'aquillm/ws_chat.html', {})
+def ws_convo(request):
+    return render(request, 'aquillm/ws_convo.html', {})
