@@ -1,6 +1,6 @@
 from json import loads, dumps
 
-from channels.generic.websocket import WebsocketConsumer
+from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.auth import AuthMiddlewareStack
 
 from django.contrib.auth.models import User
@@ -12,12 +12,12 @@ from aquillm import llm
 from aquillm.llm import UserMessage, Conversation,LLMTool, test_function, ToolChoice, llm_tool
 from aquillm.settings import DEBUG
 
-from aquillm.models import User, TextChunk, Collection
+from aquillm.models import TextChunk, Collection
 
 
 from django.template import Engine, Context
 
-from asgiref.sync import syn
+
 
 RAG_PROMPT_STRING = """
 RAG Search Results:
@@ -44,32 +44,32 @@ def get_vector_search_func(user: User):
         """
         Uses a combination of vector search, trigram search and reranking to search the documents available to the user.
         """
-        breakpoint()
         docs = Collection.get_user_accessible_documents(user)
         _,_,results = TextChunk.text_chunk_search(search_string, top_k, docs)
 
-        return search_result_template.render({'chunks': results})
+        return search_result_template.render(Context({'chunks': results}))
     
     return vector_search
 
 
 
-class ChatConsumer(WebsocketConsumer):
+class ChatConsumer(AsyncWebsocketConsumer):
     llm_if: llm.LLMInterface = apps.get_app_config('aquillm').llm_interface
     convo: Conversation = Conversation(system="You are a helpful assistant.")
     tools: list[LLMTool] = [test_function]
 
-    def connect(self):
-        self.tools += [get_vector_search_func(self.scope["user"])]
-        self.accept()
+    async def connect(self):
+        await self.accept()
 
-    def disconnect(self, close_code):
+    async def disconnect(self, close_code):
         pass
 
-    def receive(self, text_data):
-        def send_func(convo: Conversation):
+    async def receive(self, text_data):
+        if DEBUG:
+            print(f"Recieved ws message:\n{text_data}")
+        async def send_func(convo: Conversation):
             self.convo = convo
-            self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
+            await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
 
 
         try:
@@ -77,19 +77,19 @@ class ChatConsumer(WebsocketConsumer):
             action = data.pop('action', None)
             if action == 'append':
                 self.convo += UserMessage.model_validate(data['message'])
-                self.convo[-1].tools = self.tools
+                self.convo[-1].tools = self.tools + [get_vector_search_func(self.scope["user"])]
                 self.convo[-1].tool_choice = ToolChoice(type="auto")
             elif action == 'replace':
                 system = self.convo.system
                 self.convo = Conversation.model_validate({'system': system, 'messages': data['messages']})
-                self.convo[-1].tools = self.tools
+                self.convo[-1].tools = self.tools + [get_vector_search_func(self.scope["user"])]
                 self.convo[-1].tool_choice = ToolChoice(type="auto")
             else:
-                self.send(text_data='{"exception": "Invalid action %s"}' % action)
-            self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
+                raise ValueError(f'Invalid action {action}')
+            await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
         except Exception as e:
             if DEBUG:
-                self.send(text_data='{"exception": "%s"}' % str(e))
+                raise e
             else:
-                self.send(text_data='{"exception": "A server error has occurred. Try reloading the page"}')
+                await self.send(text_data='{"exception": "A server error has occurred. Try reloading the page"}')
 

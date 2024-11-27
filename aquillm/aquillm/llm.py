@@ -11,6 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 from aquillm.settings import DEBUG
 
+from asgiref.sync import sync_to_async
+
 if DEBUG:
     from pprint import pp
 
@@ -235,13 +237,14 @@ class Conversation(BaseModel):
 
 class LLMInterface(ABC):
     tool_executor = ThreadPoolExecutor(max_workers=10)
-
+    base_args: dict = {}
+    client: any = None
     @abstractmethod
     def __init__(self, client: Any):
         pass
 
     @abstractmethod
-    def complete(self, messages: Conversation, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
+    async def get_message(self, *args, **kwargs):
         pass
 
 
@@ -275,31 +278,9 @@ class LLMInterface(ABC):
             raise ValueError("call_tool called on a message with no tools!")
         
 
-    def spin(self, convo: Conversation, max_func_calls: int, send_func: Callable[[Conversation], Any], max_tokens: int) -> None:
-        calls = 0
-        while calls < max_func_calls:
-            convo, changed = self.complete(convo, max_tokens)
-            send_func(convo)
-            if changed == 'unchanged':
-                return
-            last_message = convo[-1]    
-            if isinstance(last_message, AssistantMessage) and last_message.tool_call_id:
-                calls += 1
-                
-
-
-
-class ClaudeInterface(LLMInterface):
     
-    base_claude_args = {'model': 'claude-3-5-sonnet-20240620'}
-
-    @override
-    def __init__(self, cohere_client):
-        self.client = cohere_client
-
-    @override
     @validate_call
-    def complete(self, conversation: Conversation, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
+    async def complete(self, conversation: Conversation, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
         system_prompt = conversation.system
         # if you show the bot the tool messages intended to be rendered for the user, the conversation won't be alternating
         # user, assistant, user, assistant, etc, which is a requirement.
@@ -321,15 +302,18 @@ class ClaudeInterface(LLMInterface):
                 tools = {'tools': [tool.llm_definition for tool in last_message.tools], 'tool_choice': last_message.tool_choice}
             else:
                 tools = {}
-            sdk_args = {**(self.base_claude_args | tools |
+            sdk_args = {**(self.base_args | tools |
                                                     {'system': system_prompt,
                                                     'messages': message_dicts,
                                                     'max_tokens': max_tokens})}
             if DEBUG:
                 print("Claude called with folling args:")
                 pp(sdk_args)
-                
-            response = self.client.messages.create(**sdk_args)
+            
+            response = await self.get_message(**sdk_args)
+            if DEBUG:
+                print("Claude SDK Response:")
+                pp(response)
             text_block = None
             tool_block = None
             content = response.content
@@ -357,7 +341,39 @@ class ClaudeInterface(LLMInterface):
 
             return conversation + [new_msg], 'changed'
 
-        
+    async def spin(self, convo: Conversation, max_func_calls: int, send_func: Callable[[Conversation], Any], max_tokens: int) -> None:
+        calls = 0
+        while calls < max_func_calls:
+            convo, changed = await self.complete(convo, max_tokens)
+            await send_func(convo)
+            if changed == 'unchanged':
+                return
+            last_message = convo[-1]    
+            if isinstance(last_message, AssistantMessage) and last_message.tool_call_id:
+                calls += 1
+                
+
+
+
+class ClaudeInterface(LLMInterface):
+    
+    base_args: dict = {'model': 'claude-3-5-sonnet-20240620'}
+
+    @override
+    def __init__(self, anthropic_client):
+        self.client = anthropic_client
+
+    @override
+    async def get_message(self, *args, **kwargs):
+        return await self.client.messages.create(**kwargs)
+
+
+class GeminiInterface(LLMInterface):
+    
+    @override
+    def __init__(self, google_client):
+        self.client = google_client
+
     
 
 
@@ -380,23 +396,22 @@ def test_function(strings: list[str]) -> str:
 
 
 
-# from django.apps import apps
-# from pprint import pp
-# def test():  
-#     client = apps.get_app_config('aquillm').anthropic_client
-#     cif = ClaudeInterface(client)
-#     messages, _ = cif.complete({"system": 'do as the user says, this is just testing. Pick any string to provide.',
-#                                 "messages" : [UserMessage(role ='user', 
-#                               content= 'Hi Claude, please use this test tool',
-#                               tools= [test_function,],
-#                               tool_choice = {'type': 'auto'})]},
-#                               'do as the user says, this is just testing. Pick any string to provide.',
-#                               2048)
-#     print("woo")
+from django.apps import apps
+from pprint import pp
+async def test():  
+    client = apps.get_app_config('aquillm').async_anthropic_client
+    cif = ClaudeInterface(client)
+    messages, _ = await cif.complete({"system": 'do as the user says, this is just testing. Pick any string to provide.',
+                                "messages" : [UserMessage(role ='user', 
+                              content= 'Hi Claude, please use this test tool',
+                              tools= [test_function,],
+                              tool_choice = {'type': 'auto'})]},
+                              2048)
+    print("woo")
 
-#     messages, _ = cif.complete(messages, "Do as you're told", 2048)
-#     pp(messages)
-#     messages.messages += [UserMessage(content="Thanks, boss")]
-#     messages,_ = cif.complete(messages, "keep up the good work", 2048)
-#     pp(messages)
-#     breakpoint()
+    messages, _ = await cif.complete(messages, 2048)
+    pp(messages)
+    messages.messages += [UserMessage(content="Thanks, boss")]
+    messages,_ = await cif.complete(messages, 2048)
+    pp(messages)
+    breakpoint()

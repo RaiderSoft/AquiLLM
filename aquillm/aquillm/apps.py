@@ -4,6 +4,7 @@ from django.template import Engine, Context
 import cohere
 import openai
 import anthropic
+import google.generativeai as genai
 from dotenv import load_dotenv
 from os import getenv
 from typing import TypedDict
@@ -51,8 +52,12 @@ class AquillmConfig(AppConfig):
     cohere_client = None
     openai_client = None
     anthropic_client = None
+    async_anthropic_client = None
     get_embedding = None
     llm_interface: LLMInterface = None
+    
+
+    google_genai_client = None
     default_llm = "CLAUDE"
     
     
@@ -73,5 +78,8 @@ class AquillmConfig(AppConfig):
         self.cohere_client = cohere.Client(getenv('COHERE_KEY'))
         self.openai_client = openai.OpenAI()
         self.anthropic_client = anthropic.Anthropic()
+        self.async_anthropic_client = anthropic.AsyncAnthropic()
         self.get_embedding = get_embedding_func(self.cohere_client)
-        self.llm_interface = ClaudeInterface(self.anthropic_client)
+        self.llm_interface = ClaudeInterface(self.async_anthropic_client)
+        
+        

@@ -19,3 +19,4 @@ typeguard
 pydantic
 channels
 daphne
+google-generativeai

@@ -130,14 +130,14 @@
                 }
                 
                 const content = [];
-                
+                if (message.role !== 'tool') {
                 content.push(h('p', { 
                     class: { 
                         'whitespace-pre-wrap': true,
                         'break-words': true
                     }
                 }, message.content));
-                
+            }                
                 if (message.role === 'assistant' && message.tool_call_input) {
                     content.push(h('div', { 
                         class: { 
