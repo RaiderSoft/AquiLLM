@@ -9,28 +9,13 @@ from django.apps import apps
 from pydantic import ValidationError
 
 from aquillm import llm
-from aquillm.llm import UserMessage, Conversation,LLMTool, test_function, ToolChoice, llm_tool
+from aquillm.llm import UserMessage, Conversation,LLMTool, test_function, ToolChoice, llm_tool, ToolResultDict
 from aquillm.settings import DEBUG
 
 from aquillm.models import TextChunk, Collection
 
 
 from django.template import Engine, Context
-
-
-
-RAG_PROMPT_STRING = """
-RAG Search Results:
-
-{% for chunk in chunks %}
-    [{{ forloop.counter }}] {{ chunk.document.title }} chunk #{{chunk.chunk_number}}
-
-    {{ chunk.content }}
-
-{% endfor %}
-"""
-
-search_result_template = Engine().from_string(RAG_PROMPT_STRING)
 
 def get_vector_search_func(user: User):
     @llm_tool(
@@ -40,14 +25,14 @@ def get_vector_search_func(user: User):
         for_whom='assistant'
 
     )
-    def vector_search(search_string: str, top_k: int) -> str:
+    def vector_search(search_string: str, top_k: int) -> ToolResultDict:
         """
         Uses a combination of vector search, trigram search and reranking to search the documents available to the user.
         """
         docs = Collection.get_user_accessible_documents(user)
         _,_,results = TextChunk.text_chunk_search(search_string, top_k, docs)
-
-        return search_result_template.render(Context({'chunks': results}))
+        ret = {"result": {f"[Result {i+1}] -- {chunk.document.title} chunk #{chunk.chunk_number}": chunk.content for i, chunk in enumerate(results)}}
+        return ret
     
     return vector_search
 

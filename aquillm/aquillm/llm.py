@@ -1,4 +1,4 @@
-from typing import Callable, Any, get_type_hints, Protocol, Optional, Literal, Union, override, Type, Sequence
+from typing import Callable, Any, get_type_hints, Protocol, Optional, Literal, override, List, Dict, TypeAliasType
 from pydantic import BaseModel, model_validator, validate_call
 from types import NoneType, GenericAlias
 import inspect
@@ -16,10 +16,14 @@ from asgiref.sync import sync_to_async
 if DEBUG:
     from pprint import pp
 
+# TypeAliasType necessary for Pydantic to not shit its pants
+__ToolResultDictInner = TypeAliasType('__ToolResultDictInner', str | int | bool | float | Dict[str, '__ToolResultDictInner' | List['__ToolResultDictInner']] )
+type ToolResultDict = Dict[Literal['exception', 'result'], __ToolResultDictInner]
+
 class LLMTool(BaseModel):
     llm_definition: dict
     for_whom: Literal['user', 'assistant']
-    _function: Callable
+    _function: Callable[..., ToolResultDict]
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -34,7 +38,7 @@ class LLMTool(BaseModel):
 
 
 @validate_call
-def llm_tool(for_whom: Literal['user', 'assistant'], description: str | None = None, param_descs: dict[str, str] = {}, required: list[str] = []) -> Callable[..., LLMTool]:
+def llm_tool(for_whom: Literal['user', 'assistant'], description: Optional[str] = None, param_descs: dict[str, str] = {}, required: list[str] = []) -> Callable[..., LLMTool]:
     """
     Decorator to convert a function into an LLM-compatible tool with runtime type checking.
     
@@ -44,7 +48,8 @@ def llm_tool(for_whom: Literal['user', 'assistant'], description: str | None = N
         param_descs: Dictionary of parameter descriptions
         required: List of required parameter names
     """
-    def decorator(func: Callable[..., str]) -> LLMTool:
+    @validate_call
+    def decorator(func: Callable[..., ToolResultDict]) -> LLMTool:
         # First apply typechecking
         type_checked_func = validate_call(func)
         
@@ -58,7 +63,7 @@ def llm_tool(for_whom: Literal['user', 'assistant'], description: str | None = N
         func_required = required or []
         
         @wraps(type_checked_func)
-        def wrapper(*args, **kwargs) -> str:
+        def wrapper(*args, **kwargs) -> ToolResultDict:
             if DEBUG:
                 print(f"{func_name} called!")
             try:
@@ -67,7 +72,7 @@ def llm_tool(for_whom: Literal['user', 'assistant'], description: str | None = N
                 if DEBUG:
                     raise e
                 else:
-                    return str({"exception": str(e)})
+                    return {"exception": str(e)}
         
         def translate_type(t: type | GenericAlias) -> dict:
             allowed_primitives = {
@@ -146,17 +151,21 @@ class UserMessage(__LLMMessage):
 
 
 
+
 class ToolMessage(__LLMMessage):
     role: Literal['tool'] = 'tool'
     tool_name: str
     for_whom: Literal['assistant', 'user']
-
+    result_dict: ToolResultDict = {}
     @override
     def render(self, *args, **kwargs) -> dict:
         ret = super().render(*args, **kwargs)
         ret['role'] = 'user' # This is what LLMs expect.
         ret['content'] = f'The following is the result of a call to tool {self.tool_name} in the prior step:\n\n{self.content}'
         return ret
+    
+    class Config:
+        exclude = {'result_dict'}
     
 
 class AssistantMessage(__LLMMessage):
@@ -238,7 +247,7 @@ class Conversation(BaseModel):
 class LLMInterface(ABC):
     tool_executor = ThreadPoolExecutor(max_workers=10)
     base_args: dict = {}
-    client: any = None
+    client: Any = None
     @abstractmethod
     def __init__(self, client: Any):
         pass
@@ -266,11 +275,13 @@ class LLMInterface(ABC):
                 else:
                     future = self.tool_executor.submit(tool) # necessary because None can't be unpacked
                 try:
-                    result = str(future.result(timeout=15))
+                    result_dict = future.result(timeout=15)
+                    result = str(result_dict)
                 except TimeoutError:
                     result = str({'exception': TimeoutError("Tool call timed out")})
             return ToolMessage(tool_name = tool.name,
                                 content=result,
+                                result_dict=result_dict,
                                 for_whom=tool.for_whom,
                                 tools=message.tools,
                                 tool_choice=message.tool_choice)
@@ -384,34 +395,34 @@ class GeminiInterface(LLMInterface):
         param_descs={'strings': 'A list of strings to print'},
         required=['strings']
 )
-def test_function(strings: list[str]) -> str:
+def test_function(strings: list[str]) -> ToolResultDict:
     """
     Test function that prints each string from the input. 
     """
     ret = ""
     for s in strings:
         ret += s + " "
-    return ret
+    return {"result": ret}
 
 
 
 
-from django.apps import apps
-from pprint import pp
-async def test():  
-    client = apps.get_app_config('aquillm').async_anthropic_client
-    cif = ClaudeInterface(client)
-    messages, _ = await cif.complete({"system": 'do as the user says, this is just testing. Pick any string to provide.',
-                                "messages" : [UserMessage(role ='user', 
-                              content= 'Hi Claude, please use this test tool',
-                              tools= [test_function,],
-                              tool_choice = {'type': 'auto'})]},
-                              2048)
-    print("woo")
+# from django.apps import apps
+# from pprint import pp
+# async def test():  
+#     client = apps.get_app_config('aquillm').async_anthropic_client
+#     cif = ClaudeInterface(client)
+#     messages, _ = await cif.complete({"system": 'do as the user says, this is just testing. Pick any string to provide.',
+#                                 "messages" : [UserMessage(role ='user', 
+#                               content= 'Hi Claude, please use this test tool',
+#                               tools= [test_function,],
+#                               tool_choice = {'type': 'auto'})]},
+#                               2048)
+#     print("woo")
 
-    messages, _ = await cif.complete(messages, 2048)
-    pp(messages)
-    messages.messages += [UserMessage(content="Thanks, boss")]
-    messages,_ = await cif.complete(messages, 2048)
-    pp(messages)
-    breakpoint()
+#     messages, _ = await cif.complete(messages, 2048)
+#     pp(messages)
+#     messages.messages += [UserMessage(content="Thanks, boss")]
+#     messages,_ = await cif.complete(messages, 2048)
+#     pp(messages)
+#     breakpoint()
