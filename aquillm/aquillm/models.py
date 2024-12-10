@@ -298,7 +298,7 @@ class RawTextDocument(Document):
     pass
 
 DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, VTTDocument]
-
+type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument
 
 class TextChunkQuerySet(models.QuerySet):
     def filter_by_documents(self, docs):
@@ -328,7 +328,7 @@ class TextChunk(models.Model):
     
 
     @property
-    def document(self):
+    def document(self) -> DocumentChild:
         ret = None
         for t in DESCENDED_FROM_DOCUMENT:
             doc = t.objects.filter(id=self.doc_id).first()
@@ -422,9 +422,13 @@ class TextChunk(models.Model):
             raise e
 
 
+class WSConversation(models.Model):
+    owner = models.ForeignKey(User, related_name='ws_conversations', on_delete=models.CASCADE)
+    convo = models.JSONField(blank=True, null=True)
+
 class LLMConversation(models.Model):
     DEFAULT_SYSTEM_PROMPT = """
-    You are an assistant, answering questions related to astronomy for UCLA astronomy PhD students.
+    You are an assistant, answering questions related to astronomy for PhD students.
     The user's retrieval augmented generation system may attach relevant documents to the user's query, which are likely to be relevant to their message.
     Base your answer on the information in these segments. 
     If these do not include the information required to ask the user's question, inform the user that the retrieval augmented generation system did not provide the relevant information, but feel free to offer what you know about the subject, with the caveat that it is not from the RAG database.

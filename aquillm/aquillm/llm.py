@@ -43,7 +43,6 @@ def llm_tool(for_whom: Literal['user', 'assistant'], description: Optional[str] 
     Decorator to convert a function into an LLM-compatible tool with runtime type checking.
     
     Args:
-        name: The name of the tool (defaults to function name if not provided)
         description: Description of what the tool does
         param_descs: Dictionary of parameter descriptions
         required: List of required parameter names
