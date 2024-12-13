@@ -36,6 +36,8 @@ from django.db.models import Case, When
 from .utils import get_embedding
 from .settings import BASE_DIR
 
+from .llm import Conversation as convo_model
+
 logger = logging.getLogger(__name__)
 
 class CollectionQuerySet(models.QuerySet):
@@ -424,7 +426,7 @@ class TextChunk(models.Model):
 
 class WSConversation(models.Model):
     owner = models.ForeignKey(User, related_name='ws_conversations', on_delete=models.CASCADE)
-    convo = models.JSONField(blank=True, null=True)
+    convo = models.JSONField(blank=True, null=True, default=convo_model.get_empty_conversation)
 
 class LLMConversation(models.Model):
     DEFAULT_SYSTEM_PROMPT = """

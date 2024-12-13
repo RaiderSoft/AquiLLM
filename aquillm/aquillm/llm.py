@@ -10,6 +10,7 @@ from copy import copy
 from concurrent.futures import ThreadPoolExecutor
 
 from aquillm.settings import DEBUG
+from django.apps import apps
 
 from asgiref.sync import sync_to_async
 
@@ -226,7 +227,12 @@ class Conversation(BaseModel):
                         tool._function = tool_dict[tool.name]._function
                     else:
                         tool._function = deprecated_func
+    
 
+    # needed for default value in database
+    @classmethod
+    def get_empty_conversation(cls):
+        return cls(system=apps.get_app_config('aquillm').system_prompt).model_dump()
 
     @classmethod
     @model_validator(mode='after')
@@ -291,6 +297,8 @@ class LLMInterface(ABC):
     
     @validate_call
     async def complete(self, conversation: Conversation, max_tokens: int) -> tuple[Conversation, Literal['changed', 'unchanged']]:
+        if len(conversation) < 1:
+            return conversation, 'unchanged'
         system_prompt = conversation.system
         # if you show the bot the tool messages intended to be rendered for the user, the conversation won't be alternating
         # user, assistant, user, assistant, etc, which is a requirement.

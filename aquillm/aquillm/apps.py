@@ -55,7 +55,7 @@ class AquillmConfig(AppConfig):
     async_anthropic_client = None
     get_embedding = None
     llm_interface: LLMInterface = None
-    
+    system_prompt = "You are a helpful assistant embedded in a retrieval augmented generation system."
 
     google_genai_client = None
     default_llm = "CLAUDE"

@@ -2,6 +2,7 @@ from json import loads, dumps
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.auth import AuthMiddlewareStack
+from channels.db import database_sync_to_async, aclose_old_connections
 
 from django.contrib.auth.models import User
 from django.apps import apps
@@ -68,29 +69,47 @@ def get_more_context_func(user: User) -> LLMTool:
 class ChatConsumer(AsyncWebsocketConsumer):
     llm_if: llm.LLMInterface = apps.get_app_config('aquillm').llm_interface
     db_convo: WSConversation = None
-    convo: Conversation = Conversation(system="You are a helpful assistant.")
+    convo: Conversation = None
     tools: list[LLMTool] = []
+    
+    # used for if the chat is in a state where nothing further should happen.
+    # disables the receive handler
+    dead: bool = False 
+    
+    
+    @database_sync_to_async
+    def __save(self):
+        self.db_convo.convo = self.convo.model_dump()
+        self.db_convo.save()
 
+    @database_sync_to_async
+    def __get_convo(self, convo_id: int, user: User):
+        convo = WSConversation.objects.filter(id=convo_id).first()
+        if convo: 
+            if convo.owner == user:
+                return convo
+            else:
+                return None
+        return convo
+        
     async def connect(self):
 
         async def send_func(convo: Conversation):
             self.convo = convo
             await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
-            self.db_convo=self.convo.model_dump()
-            self.db_convo.save()
+            await self.__save()
 
         await self.accept()
         user = self.scope['user']
         self.tools = [test_function,
                       get_vector_search_func(user),
                       get_more_context_func(user)]
-        chat_id = self.scope['url_route']['kwargs']['chat_id']
-        self.db_convo = WSConversation.objects.filter(
-            id=chat_id,
-            owner=user).first()
-        if self.convo is None:
+        convo_id = self.scope['url_route']['kwargs']['convo_id']
+        self.db_convo = await self.__get_convo(convo_id, user)
+        if self.db_convo is None:
+            self.dead = True
             await self.send('{"exception": "Invalid chat_id"}')
-            await self.close()
+            
             return
         try:
             self.convo = Conversation.model_validate(self.db_convo.convo)
@@ -105,35 +124,39 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 return
 
 
-
-
-
     async def disconnect(self, close_code):
         pass
 
     async def receive(self, text_data):
         if DEBUG:
             print(f"Recieved ws message:\n{text_data}")
-        async def send_func(convo: Conversation):
-            self.convo = convo
-            await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
-            self.db_convo.convo=self.convo.model_dump()
-            self.db_convo.save()
-        try:
-            data = loads(text_data)
-            action = data.pop('action', None)
-            if action == 'append':
-                self.convo += UserMessage.model_validate(data['message'])
-                self.db_convo = self.convo.model_dump()
-            elif action == 'replace':
-                system = self.convo.system
-                self.convo = Conversation.model_validate({'system': system, 'messages': data['messages']})
-            else:
-                raise ValueError(f'Invalid action {action}')
-            await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
-        except Exception as e:
-            if DEBUG:
-                raise e
-            else:
-                await self.send(text_data='{"exception": "A server error has occurred. Try reloading the page"}')
+        if not self.dead:
+            async def send_func(convo: Conversation):
+                await aclose_old_connections()
+                self.convo = convo
+                await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
+                await self.__save()
+            try:
+                data = loads(text_data)
+                action = data.pop('action', None)
+                if action == 'append':
+                    self.convo += UserMessage.model_validate(data['message'])
+                    self.convo[-1].tools = self.tools
+                    self.convo[-1].tool_choice = ToolChoice(type='auto')
+                    self.__save()
+                elif action == 'replace':
+                    system = self.convo.system
+                    self.convo = Conversation.model_validate({'system': system, 'messages': data['messages']})
+                    if len(self.convo):
+                        self.convo[-1].tools = self.tools
+                        self.convo[-1].tool_choice = ToolChoice(type='auto')
+                    self.__save()
+                else:
+                    raise ValueError(f'Invalid action {action}')
+                await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
+            except Exception as e:
+                if DEBUG:
+                    raise e
+                else:
+                    await self.send(text_data='{"exception": "A server error has occurred. Try reloading the page"}')
 
