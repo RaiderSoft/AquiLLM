@@ -2,6 +2,7 @@ from json import loads, dumps
 
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.auth import AuthMiddlewareStack
+from channels.db import database_sync_to_async, aclose_old_connections
 
 from django.contrib.auth.models import User
 from django.apps import apps
@@ -12,7 +13,7 @@ from aquillm import llm
 from aquillm.llm import UserMessage, Conversation,LLMTool, test_function, ToolChoice, llm_tool, ToolResultDict
 from aquillm.settings import DEBUG
 
-from aquillm.models import TextChunk, Collection
+from aquillm.models import TextChunk, Collection, WSConversation
 
 
 from django.template import Engine, Context
@@ -31,20 +32,97 @@ def get_vector_search_func(user: User):
         """
         docs = Collection.get_user_accessible_documents(user)
         _,_,results = TextChunk.text_chunk_search(search_string, top_k, docs)
-        ret = {"result": {f"[Result {i+1}] -- {chunk.document.title} chunk #{chunk.chunk_number}": chunk.content for i, chunk in enumerate(results)}}
+        ret = {"result": {f"[Result {i+1}] -- {chunk.document.title} chunk #: {chunk.chunk_number} chunk_id:{chunk.id}": chunk.content for i, chunk in enumerate(results)}}
         return ret
     
     return vector_search
 
 
+def get_more_context_func(user: User) -> LLMTool:
+
+    @llm_tool(
+            for_whom='assistant',
+            param_descs={'chunk_id': 'ID number of the chunk for which more context is desired',
+                         'adjacent_chunks': 'How many chunks on either side to return. Start small and work up, if you think expanding the context will provide more useful info. Go no higher than 10.'}
+    )
+    def more_context(chunk_id: int, adjacent_chunks: int) -> ToolResultDict:
+        """
+        Get adjacent text chunks on either side of a given chunk.
+        Use this when a search returned something relevant, but it seemed like the information was cut off.
+        """
+        if adjacent_chunks < 1 or adjacent_chunks > 10:
+            return {"exception": f"Invalid value for adjacent_chunks!"}
+        central_chunk = TextChunk.objects.filter(id=chunk_id).first()
+        if central_chunk is None:
+            return {"exception": f"Text chunk {chunk_id} does not exist!"}
+        if not central_chunk.document.collection.user_can_view(user):
+            return {"exception": f"User cannot access document containing {chunk_id}!"}
+        central_chunk_number = central_chunk.chunk_number
+        bottom = central_chunk_number - adjacent_chunks
+        top = central_chunk_number + adjacent_chunks
+        window = TextChunk.objects.filter(doc_id=central_chunk.doc_id, chunk_number__in=range(bottom, top+1)).order_by('chunk_number')
+        text_blob = "".join([chunk.content for chunk in window])
+        return {"result": f"chunk_numbers:{window.first().chunk_number} -> {window.last().chunk_number} \n\n {text_blob}"}
+    return more_context
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     llm_if: llm.LLMInterface = apps.get_app_config('aquillm').llm_interface
-    convo: Conversation = Conversation(system="You are a helpful assistant.")
-    tools: list[LLMTool] = [test_function]
+    db_convo: WSConversation = None
+    convo: Conversation = None
+    tools: list[LLMTool] = []
+    
+    # used for if the chat is in a state where nothing further should happen.
+    # disables the receive handler
+    dead: bool = False 
+    
+    
+    @database_sync_to_async
+    def __save(self):
+        self.db_convo.convo = self.convo.model_dump()
+        self.db_convo.save()
 
+    @database_sync_to_async
+    def __get_convo(self, convo_id: int, user: User):
+        convo = WSConversation.objects.filter(id=convo_id).first()
+        if convo: 
+            if convo.owner == user:
+                return convo
+            else:
+                return None
+        return convo
+        
     async def connect(self):
+
+        async def send_func(convo: Conversation):
+            self.convo = convo
+            await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
+            await self.__save()
+
         await self.accept()
+        user = self.scope['user']
+        self.tools = [test_function,
+                      get_vector_search_func(user),
+                      get_more_context_func(user)]
+        convo_id = self.scope['url_route']['kwargs']['convo_id']
+        self.db_convo = await self.__get_convo(convo_id, user)
+        if self.db_convo is None:
+            self.dead = True
+            await self.send('{"exception": "Invalid chat_id"}')
+            
+            return
+        try:
+            self.convo = Conversation.model_validate(self.db_convo.convo)
+            self.convo.rebind_tools(self.tools)
+            await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
+            return 
+        except Exception as e:
+            if DEBUG:
+                raise e
+            else:
+                await self.send(text_data='{"exception": "A server error has occurred. Try reloading the page"}')
+                return
+
 
     async def disconnect(self, close_code):
         pass
@@ -52,29 +130,33 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         if DEBUG:
             print(f"Recieved ws message:\n{text_data}")
-        async def send_func(convo: Conversation):
-            self.convo = convo
-            await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
-
-
-        try:
-            data = loads(text_data)
-            action = data.pop('action', None)
-            if action == 'append':
-                self.convo += UserMessage.model_validate(data['message'])
-                self.convo[-1].tools = self.tools + [get_vector_search_func(self.scope["user"])]
-                self.convo[-1].tool_choice = ToolChoice(type="auto")
-            elif action == 'replace':
-                system = self.convo.system
-                self.convo = Conversation.model_validate({'system': system, 'messages': data['messages']})
-                self.convo[-1].tools = self.tools + [get_vector_search_func(self.scope["user"])]
-                self.convo[-1].tool_choice = ToolChoice(type="auto")
-            else:
-                raise ValueError(f'Invalid action {action}')
-            await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
-        except Exception as e:
-            if DEBUG:
-                raise e
-            else:
-                await self.send(text_data='{"exception": "A server error has occurred. Try reloading the page"}')
+        if not self.dead:
+            async def send_func(convo: Conversation):
+                await aclose_old_connections()
+                self.convo = convo
+                await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
+                await self.__save()
+            try:
+                data = loads(text_data)
+                action = data.pop('action', None)
+                if action == 'append':
+                    self.convo += UserMessage.model_validate(data['message'])
+                    self.convo[-1].tools = self.tools
+                    self.convo[-1].tool_choice = ToolChoice(type='auto')
+                    self.__save()
+                elif action == 'replace':
+                    system = self.convo.system
+                    self.convo = Conversation.model_validate({'system': system, 'messages': data['messages']})
+                    if len(self.convo):
+                        self.convo[-1].tools = self.tools
+                        self.convo[-1].tool_choice = ToolChoice(type='auto')
+                    self.__save()
+                else:
+                    raise ValueError(f'Invalid action {action}')
+                await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
+            except Exception as e:
+                if DEBUG:
+                    raise e
+                else:
+                    await self.send(text_data='{"exception": "A server error has occurred. Try reloading the page"}')
 

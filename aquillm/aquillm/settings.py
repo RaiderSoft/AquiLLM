@@ -188,6 +188,20 @@ INTERNAL_IPS = [
 X_FRAME_OPTIONS = "SAMEORIGIN"
 USE_TZ=True
 DATA_UPLOAD_MAX_MEMORY_SIZE=  268435456
-ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space', 'localhost']
+ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space', 'localhost', 'alpha.aquillm.space']
 
 ASGI_APPLICATION = "aquillm.asgi.application"
+from google.oauth2 import service_account
+
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+        "OPTIONS": {
+            "bucket_name": "aquillm",
+        }
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    }
+}

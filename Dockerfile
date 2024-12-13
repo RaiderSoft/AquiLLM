@@ -9,7 +9,7 @@ ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
 ENV COHERE_KEY=${COHERE_KEY:-}
 ENV OPENAI_API_KEY=${OPENAI_API_KEY:-}
 ENV ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-
+ENV PORT=${PORT}
 # Set working directory
 WORKDIR /app
 
@@ -27,5 +27,4 @@ WORKDIR /app/aquillm
 RUN yes yes | ./manage.py collectstatic
 
 # Command to run the application
-CMD ["python", "-m", "uvicorn", "aquillm.asgi:application", "--host", "0.0.0.0", "--port", "8080"]
-
+CMD ["sh", "-c", "python -m uvicorn aquillm.asgi:application --host 0.0.0.0 --port ${PORT:-8080}"]
