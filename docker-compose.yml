@@ -1,18 +1,40 @@
+
 services:
   web:
     build: .
-    working_dir: /app/aquillm
-    command: python -m uvicorn aquillm.asgi:application --host 0.0.0.0 --port 80
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    env_file:
+      - aquillm/.env
     environment:
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-}
-      GOOGLE_OAUTH2_CLIENT_ID: ${GOOGLE_OAUTH2_CLIENT_ID:-}
-      GOOGLE_OAUTH2_CLIENT_SECRET: ${GOOGLE_OAUTH2_CLIENT_SECRET:-}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
-      COHERE_KEY: ${COHERE_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      - PORT=${PORT:-8080}
+      - POSTGRES_HOST=db
+      - DJANGO_DEBUG=1
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - .:/app
-    ports:
-      - "80:80"
-    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8080}/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+
+    image: pgvector/pgvector:0.8.0-pg17
+    env_file:
+      - aquillm/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:

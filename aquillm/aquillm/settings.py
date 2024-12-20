@@ -93,13 +93,18 @@ WSGI_APPLICATION = "aquillm.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+POSTGRES_USER = os.environ.get("POSTGRES_USER")
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
+POSTGRES_NAME = os.environ.get("POSTGRES_NAME")
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "postgres",
-        "USER": "postgres",
-        "PASSWORD": "jacksonmadden",
-        "HOST": '34.127.10.209',
+        "NAME": POSTGRES_NAME,
+        "USER": POSTGRES_USER,
+        "PASSWORD": POSTGRES_PASSWORD,
+        "HOST": POSTGRES_HOST,
         "PORT": "5432"
     }
 }

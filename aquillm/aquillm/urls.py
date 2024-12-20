@@ -41,5 +41,6 @@ urlpatterns = [
     path("ingest_vtt/", views.ingest_vtt, name="ingest_vtt"),
     path("delete_document/<uuid:doc_id>", views.delete_document, name="delete_document"),
     path("ws_convo/<int:convo_id>/", views.ws_convo, name="ws_convo"),
-    path("new_ws_convo/", chat_views.new_ws_convo, name="new_ws_convo")
+    path("new_ws_convo/", chat_views.new_ws_convo, name="new_ws_convo"),
+    path("health/", views.health_check, name="health")
 ] + debug_toolbar_urls()

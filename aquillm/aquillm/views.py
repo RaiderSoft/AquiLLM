@@ -366,3 +366,7 @@ def delete_document(request, doc_id):
 @login_required
 def ws_convo(request, convo_id):
     return render(request, 'aquillm/ws_convo.html', {'convo_id': convo_id})
+
+@require_http_methods(['GET'])
+def health_check(request):
+    return HttpResponse(status=200)
