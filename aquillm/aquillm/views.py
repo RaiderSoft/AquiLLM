@@ -22,7 +22,7 @@ from . import vtt
 import requests
 
 from django.http import JsonResponse
-
+from django.forms.models import model_to_dict
 logger = logging.getLogger(__name__)
 
 
@@ -289,6 +289,14 @@ def user_collections(request):
         form = NewCollectionForm(user=request.user)
         return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form}) 
 
+
+@require_http_methods(['GET'])
+@login_required
+def get_collections_json(request):
+    colperms = CollectionPermission.objects.filter(user=request.user)
+    collections = [colperm.collection for colperm in colperms]
+    coll_dicts = [{'id': col.id, 'name': col.name} for col in collections]
+    return JsonResponse({'collections': coll_dicts})
 
 @require_http_methods(['GET'])
 @login_required

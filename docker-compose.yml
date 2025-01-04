@@ -1,7 +1,9 @@
 
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
     env_file:
@@ -13,6 +15,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      web_test:
+        condition: service_completed_successfully
     volumes:
       - .:/app
     healthcheck:
@@ -22,8 +26,23 @@ services:
       retries: 3
       start_period: 20s
 
-  db:
+  web_test:
+    build: 
+      context: .
+      dockerfile: Dockerfile.test
+    env_file:
+      - aquillm/.env
+    environment:
+      - POSTGRES_HOST=db
+      - DJANGO_DEBUG=1
+    depends_on:
+      db_test:
+        condition: service_healthy
+    volumes:
+      - .:/app
 
+
+  db:
     image: pgvector/pgvector:0.8.0-pg17
     env_file:
       - aquillm/.env
@@ -36,5 +55,19 @@ services:
       retries: 5
       start_period: 20s
 
+  db_test:
+    image: pgvector/pgvector:0.8.0-pg17
+    env_file:
+      - aquillm/.env
+    volumes:
+      - test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
 volumes:
   postgres_data:
+  test_data:

@@ -271,10 +271,10 @@ class LLMInterface(ABC):
             name = message.tool_call_name
             input = message.tool_call_input
             tools_dict = {tool.llm_definition['name'] : tool for tool in tools}
-            tool = tools_dict[name]
             if not name or name not in tools_dict.keys():
                 result = str({'exception': ValueError("Function name is not valid")})
             else:
+                tool = tools_dict[name]
                 if input:
                     future = self.tool_executor.submit(partial(tool, **input))
                 else:
@@ -317,7 +317,7 @@ class LLMInterface(ABC):
             assert isinstance(last_message, (UserMessage, ToolMessage)), "Type assertion failed" 
             # message is User_Message or Tool_Message intended for the bot, assertion is necessary to prevent type checker flag
             if last_message.tools:
-                tools = {'tools': [tool.llm_definition for tool in last_message.tools], 'tool_choice': last_message.tool_choice}
+                tools = {'tools': [tool.llm_definition for tool in last_message.tools], 'tool_choice': last_message.tool_choice.dict(exclude_none=True)}
             else:
                 tools = {}
             sdk_args = {**(self.base_args | tools |

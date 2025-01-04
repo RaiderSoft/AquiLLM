@@ -13,12 +13,18 @@ from aquillm import llm
 from aquillm.llm import UserMessage, Conversation,LLMTool, test_function, ToolChoice, llm_tool, ToolResultDict
 from aquillm.settings import DEBUG
 
-from aquillm.models import TextChunk, Collection, WSConversation
+from aquillm.models import TextChunk, Collection, CollectionPermission, WSConversation
 
 
 from django.template import Engine, Context
 
-def get_vector_search_func(user: User):
+
+# necessary so that when collections are set inside the consumer, it changes inside the vector_search closure as well. 
+class CollectionsRef:
+    def __init__(self, collections: list[int]):
+        self.collections = collections
+
+def get_vector_search_func(user: User, col_ref: CollectionsRef): 
     @llm_tool(
         param_descs={"search_string": "The string to search by. Often it helps to phrase it as a question. ",
                      "top_k": "The number of results to return. Start low and increase if the desired information is not found. Go no higher than about 15."},
@@ -30,7 +36,9 @@ def get_vector_search_func(user: User):
         """
         Uses a combination of vector search, trigram search and reranking to search the documents available to the user.
         """
-        docs = Collection.get_user_accessible_documents(user)
+        docs = Collection.get_user_accessible_documents(user, Collection.objects.filter(id__in=col_ref.collections))
+        if not docs:
+            return {"exception": "No documents to search! Either no collections were selected, or the selected collections are empty."}
         _,_,results = TextChunk.text_chunk_search(search_string, top_k, docs)
         ret = {"result": {f"[Result {i+1}] -- {chunk.document.title} chunk #: {chunk.chunk_number} chunk_id:{chunk.id}": chunk.content for i, chunk in enumerate(results)}}
         return ret
@@ -39,7 +47,6 @@ def get_vector_search_func(user: User):
 
 
 def get_more_context_func(user: User) -> LLMTool:
-
     @llm_tool(
             for_whom='assistant',
             param_descs={'chunk_id': 'ID number of the chunk for which more context is desired',
@@ -71,11 +78,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
     db_convo: WSConversation = None
     convo: Conversation = None
     tools: list[LLMTool] = []
-    
+    user: User = None
+
+
     # used for if the chat is in a state where nothing further should happen.
     # disables the receive handler
     dead: bool = False 
     
+    
+    col_ref = CollectionsRef([])
     
     @database_sync_to_async
     def __save(self):
@@ -92,6 +103,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 return None
         return convo
         
+    @database_sync_to_async
+    def __get_all_user_collections(self):
+        self.col_ref.collections = [col_perm.collection.id for col_perm in CollectionPermission.objects.filter(user=self.user)]
+    
     async def connect(self):
 
         async def send_func(convo: Conversation):
@@ -100,12 +115,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.__save()
 
         await self.accept()
-        user = self.scope['user']
+        self.user = self.scope['user']
+        await self.__get_all_user_collections()
         self.tools = [test_function,
-                      get_vector_search_func(user),
-                      get_more_context_func(user)]
+                      get_vector_search_func(self.user, self.col_ref),
+                      get_more_context_func(self.user)]
         convo_id = self.scope['url_route']['kwargs']['convo_id']
-        self.db_convo = await self.__get_convo(convo_id, user)
+        self.db_convo = await self.__get_convo(convo_id, self.user)
         if self.db_convo is None:
             self.dead = True
             await self.send('{"exception": "Invalid chat_id"}')
@@ -139,6 +155,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             try:
                 data = loads(text_data)
                 action = data.pop('action', None)
+                self.col_ref.collections = data['collections']
+
                 if action == 'append':
                     self.convo += UserMessage.model_validate(data['message'])
                     self.convo[-1].tools = self.tools
@@ -152,7 +170,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         self.convo[-1].tool_choice = ToolChoice(type='auto')
                     self.__save()
                 else:
-                    raise ValueError(f'Invalid action {action}')
+                    raise ValueError(f'Invalid action "{action}"')
                 await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
             except Exception as e:
                 if DEBUG:

@@ -21,3 +21,6 @@ channels
 daphne
 google-generativeai
 django-storages[google]
+pytest
+pytest-cov
+pytest-django
