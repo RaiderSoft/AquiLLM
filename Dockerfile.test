@@ -20,6 +20,4 @@ WORKDIR /app/aquillm
 CMD pytest -s -v \
     --ds=aquillm.settings \
     --reuse-db \
-    --cov=. \
-    --cov-report=term-missing \
     | tee ../test-results.txt

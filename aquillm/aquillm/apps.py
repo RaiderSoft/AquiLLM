@@ -5,11 +5,9 @@ import cohere
 import openai
 import anthropic
 import google.generativeai as genai
-from dotenv import load_dotenv
 from os import getenv
 from typing import TypedDict
 
-load_dotenv()
 
 from .llm import LLMInterface, ClaudeInterface
 

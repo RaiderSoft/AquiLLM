@@ -162,11 +162,10 @@ class ToolMessage(__LLMMessage):
         ret = super().render(*args, **kwargs)
         ret['role'] = 'user' # This is what LLMs expect.
         ret['content'] = f'The following is the result of a call to tool {self.tool_name} in the prior step:\n\n{self.content}'
+        ret.pop('result_dict', None)
         return ret
     
-    class Config:
-        exclude = {'result_dict'}
-    
+
 
 class AssistantMessage(__LLMMessage):
     role: Literal['assistant'] = 'assistant'

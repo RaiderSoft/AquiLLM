@@ -11,9 +11,12 @@ services:
     environment:
       - PORT=${PORT:-8080}
       - POSTGRES_HOST=db
+      - STORAGE_HOST=storage:4566
       - DJANGO_DEBUG=1
     depends_on:
       db:
+        condition: service_healthy
+      storage:
         condition: service_healthy
       web_test:
         condition: service_completed_successfully
@@ -33,10 +36,13 @@ services:
     env_file:
       - aquillm/.env
     environment:
-      - POSTGRES_HOST=db
+      - POSTGRES_HOST=db_test
+      - STORAGE_HOST=storage_test:4566
       - DJANGO_DEBUG=1
     depends_on:
       db_test:
+        condition: service_healthy
+      storage_test:
         condition: service_healthy
     volumes:
       - .:/app
@@ -60,7 +66,7 @@ services:
     env_file:
       - aquillm/.env
     volumes:
-      - test_data:/var/lib/postgresql/data
+      - postgres_data_test:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -68,6 +74,49 @@ services:
       retries: 5
       start_period: 20s
 
+  storage:
+    image: localstack/localstack:4.0.3
+    env_file:
+      - aquillm/.env
+    volumes:
+      - ./aws:/etc/localstack/init/ready.d
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - awslocal dynamodb list-tables
+          && awslocal es list-domain-names
+          && awslocal s3 ls
+          && awslocal sqs list-queues
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+
+    
+  storage_test:
+    image: localstack/localstack:4.0.3
+    env_file:
+      - aquillm/.env
+    volumes:
+      - ./aws:/etc/localstack/init/ready.d
+      - localstack_data_test:/var/lib/localstack
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - awslocal dynamodb list-tables
+          && awslocal es list-domain-names
+          && awslocal s3 ls
+          && awslocal sqs list-queues
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+
 volumes:
   postgres_data:
-  test_data:
+  postgres_data_test:
+  localstack_data:
+  localstack_data_test:

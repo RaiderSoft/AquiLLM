@@ -11,10 +11,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
-from dotenv import load_dotenv
 import os
 
-load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -204,9 +202,14 @@ from google.oauth2 import service_account
 
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+        "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
+            "endpoint_url": "http://" + os.getenv("STORAGE_HOST"),
+            "access_key": os.getenv("STORAGE_ACCESS_KEY"),
+            "secret_key": os.getenv("STORAGE_SECRET_KEY"),
+
             "bucket_name": "aquillm",
+            "file_overwrite": False,
         }
     },
     "staticfiles": {
