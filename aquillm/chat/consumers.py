@@ -91,6 +91,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def __save(self):
         self.db_convo.convo = self.convo.model_dump()
+        if len(self.db_convo.convo['messages']) >= 2 and not self.db_convo.name:
+            self.db_convo.set_name()
         self.db_convo.save()
 
     @database_sync_to_async

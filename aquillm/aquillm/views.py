@@ -17,7 +17,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 
 from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
-from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, DESCENDED_FROM_DOCUMENT
+from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, DESCENDED_FROM_DOCUMENT
 from . import vtt
 import requests
 
@@ -375,6 +375,21 @@ def delete_document(request, doc_id):
 def ws_convo(request, convo_id):
     return render(request, 'aquillm/ws_convo.html', {'convo_id': convo_id})
 
+@require_http_methods(['DELETE'])
+@login_required
+def delete_ws_convo(request, convo_id):
+    convo = get_object_or_404(WSConversation, pk=convo_id)
+    if convo.owner != request.user:
+        return HttpResponseForbidden("User does not have permission to delete this conversation.")
+    convo.delete()
+    return HttpResponse(status=200)    
+
 @require_http_methods(['GET'])
 def health_check(request):
     return HttpResponse(status=200)
+
+@require_http_methods(['GET'])
+@login_required
+def user_ws_convos(request):
+    convos = WSConversation.objects.filter(owner=request.user).order_by('-updated_at')
+    return render(request, 'aquillm/user_ws_convos.html', {'conversations': convos})
