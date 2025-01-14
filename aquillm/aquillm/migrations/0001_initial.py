@@ -5,6 +5,7 @@ import django.contrib.postgres.fields
 import django.db.models.deletion
 import pgvector.django.vector
 from pgvector.django import VectorExtension
+from django.contrib.postgres.operations import TrigramExtension
 import uuid
 from django.conf import settings
 from django.db import migrations, models
@@ -20,6 +21,7 @@ class Migration(migrations.Migration):
 
     operations = [
         VectorExtension(),
+        TrigramExtension(),
         migrations.CreateModel(
             name='Collection',
             fields=[

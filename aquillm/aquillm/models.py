@@ -32,7 +32,7 @@ import concurrent.futures
 
 from django.db import DatabaseError
 from django.db.models import Case, When
-
+from django.utils import timezone
 from .utils import get_embedding
 from .settings import BASE_DIR
 
@@ -427,6 +427,35 @@ class TextChunk(models.Model):
 class WSConversation(models.Model):
     owner = models.ForeignKey(User, related_name='ws_conversations', on_delete=models.CASCADE)
     convo = models.JSONField(blank=True, null=True, default=convo_model.get_empty_conversation)
+    name = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(editable=False)
+    updated_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.created_at = timezone.now()
+        self.updated_at = timezone.now()
+        return super().save(*args, **kwargs)
+    
+        
+    def set_name(self):
+        system_prompt="""
+        This is a conversation between a large langauge model and a user.
+        Come up with a brief, roughly 3 to 10 word title for the conversation capturing what the user asked.
+        Respond only with the title. 
+        As an example, if the conversation begins 'What is apple pie made of?', your response should be 'Apple Pie Ingredients'.
+        The title should capture what is being asked, not what the assistant responded with.
+        If there is not enough information to name the conversation, simply return 'Conversation'.
+        """
+        anthropic_client = apps.get_app_config('aquillm').anthropic_client
+        first_two_messages = str(self.convo['messages'][:2])
+        claude_args = {'model': 'claude-3-5-sonnet-20240620',
+            'max_tokens': 30,
+            'system': system_prompt,
+            'messages': [{'role': 'user', 'content': first_two_messages}]}
+        message = anthropic_client.messages.create(**claude_args)
+        self.name = message.content[0].text
+        self.save()
 
 class LLMConversation(models.Model):
     DEFAULT_SYSTEM_PROMPT = """
