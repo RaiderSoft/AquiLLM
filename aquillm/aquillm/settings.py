@@ -195,6 +195,7 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 USE_TZ=True
 DATA_UPLOAD_MAX_MEMORY_SIZE=  268435456
 ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space', 'localhost', 'alpha.aquillm.space', 'beta.aquillm.space']
+ALLOWED_HOSTS += [os.getenv("HOST_NAME")]
 
 ASGI_APPLICATION = "aquillm.asgi.application"
 from google.oauth2 import service_account
