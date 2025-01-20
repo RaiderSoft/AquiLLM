@@ -365,7 +365,9 @@
         updateExceptionBox('Attempting to connect... (Attempt ' + connectionAttempts + ' of ' + MAX_RECONNECTION_ATTEMPTS + ')');
         
         try {
-            ws = new WebSocket('wss://' + window.location.host + '/ws/convo/' + convo_id + '/');
+            const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+
+            ws = new WebSocket(protocol + window.location.host + '/ws/convo/' + convo_id + '/');
             
             // Set connection timeout
             const timeoutId = setTimeout(() => {
