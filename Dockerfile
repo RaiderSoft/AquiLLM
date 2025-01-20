@@ -17,4 +17,4 @@ COPY . .
 WORKDIR /app/aquillm
 
 # Command to run the application
-CMD ["sh", "-c", "/app/run.sh"]
+CMD ["sh", "-c", "/app/deployment/run.sh"]

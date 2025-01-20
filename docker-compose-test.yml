@@ -1,50 +1,39 @@
 
 services:
-  web:
-    build:
+
+
+  web_test:
+    build: 
       context: .
-      dockerfile: Dockerfile
-    ports:
-      - "${PORT:-8080}:${PORT:-8080}"
+      dockerfile: Dockerfile.test
     env_file:
       - .env
     environment:
-      - PORT=${PORT:-8080}
-      - POSTGRES_HOST=db
-      - STORAGE_HOST=storage:4566
+      - POSTGRES_HOST=db_test
+      - STORAGE_HOST=storage_test:4566
       - DJANGO_DEBUG=1
     depends_on:
-      db:
+      db_test:
         condition: service_healthy
-      storage:
+      storage_test:
         condition: service_healthy
-      web_test:
-        condition: service_completed_successfully
     volumes:
       - .:/app
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8080}/health/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
 
 
 
-  db:
+  db_test:
     image: pgvector/pgvector:0.8.0-pg17
     env_file:
       - .env
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_test:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
-
-
 
   storage:
     image: localstack/localstack:4.0.3
@@ -69,5 +58,5 @@ services:
 
 
 volumes:
-  postgres_data:
-  localstack_data:
+  postgres_data_test:
+  localstack_data_test:

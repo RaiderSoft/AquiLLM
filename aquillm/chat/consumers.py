@@ -163,14 +163,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     self.convo += UserMessage.model_validate(data['message'])
                     self.convo[-1].tools = self.tools
                     self.convo[-1].tool_choice = ToolChoice(type='auto')
-                    self.__save()
+                    await self.__save()
                 elif action == 'replace':
                     system = self.convo.system
                     self.convo = Conversation.model_validate({'system': system, 'messages': data['messages']})
                     if len(self.convo):
                         self.convo[-1].tools = self.tools
                         self.convo[-1].tool_choice = ToolChoice(type='auto')
-                    self.__save()
+                    await self.__save()
                 else:
                     raise ValueError(f'Invalid action "{action}"')
                 await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
