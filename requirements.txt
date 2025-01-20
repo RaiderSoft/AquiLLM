@@ -26,3 +26,4 @@ pytest
 pytest-cov
 pytest-django
 boto3
+websockets

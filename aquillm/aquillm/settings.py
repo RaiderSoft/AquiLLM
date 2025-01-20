@@ -217,3 +217,5 @@ STORAGES = {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     }
 }
+
+CSRF_TRUSTED_ORIGINS =['https://' + os.getenv("HOST_NAME")]

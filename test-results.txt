@@ -5,7 +5,7 @@ cachedir: .pytest_cache
 django: version: 5.1.5, settings: aquillm.settings (from option)
 rootdir: /app
 configfile: pytest.ini
-plugins: django-4.9.0, cov-6.0.0, typeguard-4.4.1, anyio-4.8.0
+plugins: typeguard-4.4.1, cov-6.0.0, anyio-4.8.0, django-4.9.0
 collecting ... collected 0 items
 
-============================ no tests ran in 0.03s =============================
+============================ no tests ran in 0.04s =============================
