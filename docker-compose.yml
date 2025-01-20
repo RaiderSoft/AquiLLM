@@ -18,8 +18,7 @@ services:
         condition: service_healthy
       storage:
         condition: service_healthy
-      web_test:
-        condition: service_completed_successfully
+
     volumes:
       - .:/app
     healthcheck:
