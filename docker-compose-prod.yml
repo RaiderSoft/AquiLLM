@@ -16,8 +16,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      nginx:
-        condition: service_healthy
       createbuckets:
         condition: service_completed_successfully
 
@@ -41,7 +39,6 @@ services:
       volumes:
         - ./deployment/nginx.conf:/etc/nginx/nginx.conf
         - ./deployment/aquillm.conf.template:/etc/nginx/templates/aquillm.conf.template
-        - ./deployment/nginx_start.sh:/nginx_start.sh
         - certs:/etc/letsencrypt
       healthcheck:
         test: ["CMD", "service", "nginx", "status"]
@@ -50,6 +47,8 @@ services:
         retries: 3
         start_period: 6s
       depends_on:
+        web:
+          condition: service_healthy
         get_certs:
           condition: service_completed_successfully
 

@@ -169,7 +169,9 @@ AUTHENTICATION_BACKENDS = [
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
-
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+ACCOUNT_ADAPTER = 'aquillm.adapters.NoDefaultAccounts'
+SOCIALACCOUNT_ADAPTER = 'aquillm.adapters.RestrictDomains'
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
@@ -182,7 +184,7 @@ SOCIALACCOUNT_PROVIDERS = {
             'email',
         ],
         'AUTH_PARAMS': {
-            'access_type': 'online',
+            'access_type': 'offline',
         },
         'OAUTH_PKCE_ENABLED': True,
         'FETCH_USERINFO' : True
@@ -202,7 +204,6 @@ ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space', 'localhost', 'alpha.aquill
 ALLOWED_HOSTS += [os.getenv("HOST_NAME")]
 
 ASGI_APPLICATION = "aquillm.asgi.application"
-from google.oauth2 import service_account
 
 
 STORAGES = {
