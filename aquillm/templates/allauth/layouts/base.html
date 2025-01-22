@@ -1,0 +1,47 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="icon" type="image/png" href="{% static 'images/aquila-small-light.ico' %}" media="(prefers-color-scheme: dark)"/>
+        <link rel="icon" type="image/png" href="{% static 'images/aquila-small-dark.ico' %}" media="(prefers-color-scheme: light)"/>
+    
+        <link rel="stylesheet" href="https://lalten.github.io/lmweb/style/latinmodern-mono.css" type="text/css" charset="utf-8" />
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            serif: ['Latin Modern Roman']
+                        },
+                        colors: {
+                            'deep-primary': '#2f6e55',
+                            'lighter-primary': '#acc5bb',
+                            'lightest-primary': '#d5e2dd',
+                            'deep-secondary': '#533a44',
+                            'lighter-secondary': '#644e57'
+                        },
+                    },
+                },
+            }
+        </script>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="">
+        <title>
+            {% block head_title %}{% endblock %}
+        </title>
+    </head>
+    <body class="min-h-screen flex flex-col bg-lightest-primary font-serif">
+        <header class="bg-gray-800 text-white">
+        </header>
+        {% block body %}
+            {% block content %}
+            {% endblock content %}
+        {% endblock body %}
+        {% block extra_body %}
+        {% endblock extra_body %}
+        <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
+    </body>
+</html>

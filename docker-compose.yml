@@ -13,6 +13,7 @@ services:
       - POSTGRES_HOST=db
       - STORAGE_HOST=storage:4566
       - DJANGO_DEBUG=1
+    restart: on-failure
     depends_on:
       db:
         condition: service_healthy
