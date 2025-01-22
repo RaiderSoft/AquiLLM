@@ -42,6 +42,7 @@ urlpatterns = [
     path("user_collections/", views.user_collections, name="user_collections"),
     path("get_collections_json/", views.get_collections_json, name="get_collections_json"),
     path("collection/<int:col_id>/", views.collection, name="collection"),
+    path("collection/<int:col_id>/permissions/", views.update_collection_permissions, name="update_collection_permissions"),
     path("ingest_pdf/", views.ingest_pdf, name="ingest_pdf"),
     path("ingest_vtt/", views.ingest_vtt, name="ingest_vtt"),
     path("delete_document/<uuid:doc_id>", views.delete_document, name="delete_document"),

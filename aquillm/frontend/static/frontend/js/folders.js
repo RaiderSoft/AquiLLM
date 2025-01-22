@@ -1,5 +1,5 @@
 // Folder component
-function Folder({ folder }) {
+function Folder({ folder, onManagePermissions }) {
     console.log('Rendering folder:', folder);
     const handleClick = () => {
         window.location.href = `/collection/${folder.id}/`;
@@ -17,10 +17,96 @@ function Folder({ folder }) {
                     </svg>
                     <h2 className="text-xl font-bold text-deep-primary">{folder.name}</h2>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center space-x-4">
                     <span className="text-deep-primary">{folder.document_count} document{folder.document_count !== 1 ? 's' : ''}</span>
-                    <span className="ml-4 text-sm text-deep-secondary">Your role: {folder.permission}</span>
+                    <span className="text-sm text-deep-secondary">Your role: {folder.permission}</span>
+                    {folder.permission === 'MANAGE' && (
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onManagePermissions();
+                            }}
+                            className="text-deep-primary hover:text-deep-secondary"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// Permission Management Modal
+function PermissionModal({ isOpen, onClose, folder, onUpdate }) {
+    const [viewers, setViewers] = React.useState([]);
+    const [editors, setEditors] = React.useState([]);
+    const [admins, setAdmins] = React.useState([]);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [error, setError] = React.useState(null);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        setError(null);
+
+        try {
+            const response = await fetch(`/collection/${folder.id}/permissions/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    viewers,
+                    editors,
+                    admins
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update permissions');
+            }
+
+            onUpdate();
+            onClose();
+        } catch (err) {
+            setError('Failed to update permissions. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 max-w-lg w-full">
+                <h2 className="text-2xl font-bold mb-4 text-deep-primary">Manage Permissions</h2>
+                <form onSubmit={handleSubmit}>
+                    {/* TODO: Add user search/select components for each role */}
+                    {error && (
+                        <div className="text-red-600 mb-4">{error}</div>
+                    )}
+                    <div className="flex justify-end space-x-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-deep-secondary"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="px-4 py-2 bg-deep-primary text-white rounded hover:bg-deep-secondary disabled:bg-gray-400"
+                        >
+                            {isSubmitting ? 'Saving...' : 'Save'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );
@@ -31,6 +117,10 @@ function NewFolderForm({ onFolderCreated }) {
     const [name, setName] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
+    const [showPermissions, setShowPermissions] = React.useState(false);
+    const [viewers, setViewers] = React.useState([]);
+    const [editors, setEditors] = React.useState([]);
+    const [admins, setAdmins] = React.useState([]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -46,21 +136,25 @@ function NewFolderForm({ onFolderCreated }) {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
-                body: JSON.stringify({ name: name.trim() })
+                body: JSON.stringify({
+                    name: name.trim(),
+                    viewers,
+                    editors,
+                    admins
+                })
             });
 
-            const contentType = response.headers.get('content-type');
             if (!response.ok) {
-                if (contentType && contentType.includes('application/json')) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to create folder');
-                } else {
-                    throw new Error('Failed to create folder');
-                }
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to create folder');
             }
 
             const newFolder = await response.json();
             setName('');
+            setViewers([]);
+            setEditors([]);
+            setAdmins([]);
+            setShowPermissions(false);
             if (onFolderCreated) {
                 onFolderCreated(newFolder);
             }
@@ -86,9 +180,30 @@ function NewFolderForm({ onFolderCreated }) {
                         disabled={isSubmitting}
                     />
                 </div>
+                
+                <div className="mb-4">
+                    <button
+                        type="button"
+                        onClick={() => setShowPermissions(!showPermissions)}
+                        className="text-deep-primary hover:text-deep-secondary flex items-center"
+                    >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Manage Permissions
+                    </button>
+                </div>
+
+                {showPermissions && (
+                    <div className="mb-4 space-y-4">
+                        {/* TODO: Add user search/select components for each role */}
+                    </div>
+                )}
+
                 {error && (
                     <div className="mb-4 text-red-600 text-sm">{error}</div>
                 )}
+
                 <button 
                     type="submit"
                     disabled={isSubmitting || !name.trim()}
@@ -111,6 +226,8 @@ function FolderList() {
     const [folders, setFolders] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
+    const [selectedFolder, setSelectedFolder] = React.useState(null);
+    const [isPermissionModalOpen, setIsPermissionModalOpen] = React.useState(false);
 
     const fetchFolders = async () => {
         console.log('Fetching folders...');
@@ -190,11 +307,29 @@ function FolderList() {
             ) : (
                 <div className="space-y-4">
                     {folders.map(folder => (
-                        <Folder key={folder.id} folder={folder} />
+                        <Folder 
+                            key={folder.id} 
+                            folder={folder}
+                            onManagePermissions={() => {
+                                setSelectedFolder(folder);
+                                setIsPermissionModalOpen(true);
+                            }}
+                        />
                     ))}
                 </div>
             )}
             <NewFolderForm onFolderCreated={handleFolderCreated} />
+            {selectedFolder && (
+                <PermissionModal
+                    isOpen={isPermissionModalOpen}
+                    onClose={() => {
+                        setIsPermissionModalOpen(false);
+                        setSelectedFolder(null);
+                    }}
+                    folder={selectedFolder}
+                    onUpdate={fetchFolders}
+                />
+            )}
         </div>
     );
 }

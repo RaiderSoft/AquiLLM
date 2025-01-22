@@ -297,20 +297,43 @@ def get_collections_json(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         name = data.get('name')
-        if name:
+        if not name:
+            return JsonResponse({'error': 'Name is required'}, status=400)
+
+        with transaction.atomic():
             collection = Collection.objects.create(name=name)
             CollectionPermission.objects.create(
                 collection=collection,
                 user=request.user,
                 permission='MANAGE'
             )
+
+            # Handle additional permissions
+            for viewer in data.get('viewers', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=viewer),
+                    permission='VIEW'
+                )
+            for editor in data.get('editors', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=editor),
+                    permission='EDIT'
+                )
+            for admin in data.get('admins', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=admin),
+                    permission='MANAGE'
+                )
+
             return JsonResponse({
                 'id': collection.id,
                 'name': collection.name,
                 'document_count': len(collection.documents),
                 'permission': 'MANAGE'
             })
-        return JsonResponse({'error': 'Name is required'}, status=400)
 
     colperms = CollectionPermission.objects.filter(user=request.user)
     collections = []
@@ -322,6 +345,43 @@ def get_collections_json(request):
             'permission': colperm.permission
         })
     return JsonResponse(collections, safe=False)
+
+@require_http_methods(['POST'])
+@login_required
+def update_collection_permissions(request, col_id):
+    collection = get_object_or_404(Collection, pk=col_id)
+    if not collection.user_can_manage(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        with transaction.atomic():
+            # Remove all existing permissions except the owner's
+            CollectionPermission.objects.filter(collection=collection).exclude(user=request.user).delete()
+
+            # Add new permissions
+            for viewer in data.get('viewers', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=viewer),
+                    permission='VIEW'
+                )
+            for editor in data.get('editors', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=editor),
+                    permission='EDIT'
+                )
+            for admin in data.get('admins', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=admin),
+                    permission='MANAGE'
+                )
+
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 @require_http_methods(['GET'])
 @login_required
