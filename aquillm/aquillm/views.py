@@ -23,6 +23,7 @@ import requests
 
 from django.http import JsonResponse
 from django.forms.models import model_to_dict
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -290,13 +291,37 @@ def user_collections(request):
         return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form}) 
 
 
-@require_http_methods(['GET'])
+@require_http_methods(['GET', 'POST'])
 @login_required
 def get_collections_json(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        name = data.get('name')
+        if name:
+            collection = Collection.objects.create(name=name)
+            CollectionPermission.objects.create(
+                collection=collection,
+                user=request.user,
+                permission='MANAGE'
+            )
+            return JsonResponse({
+                'id': collection.id,
+                'name': collection.name,
+                'document_count': len(collection.documents),
+                'permission': 'MANAGE'
+            })
+        return JsonResponse({'error': 'Name is required'}, status=400)
+
     colperms = CollectionPermission.objects.filter(user=request.user)
-    collections = [colperm.collection for colperm in colperms]
-    coll_dicts = [{'id': col.id, 'name': col.name} for col in collections]
-    return JsonResponse({'collections': coll_dicts})
+    collections = []
+    for colperm in colperms:
+        collections.append({
+            'id': colperm.collection.id,
+            'name': colperm.collection.name,
+            'document_count': len(colperm.collection.documents),
+            'permission': colperm.permission
+        })
+    return JsonResponse(collections, safe=False)
 
 @require_http_methods(['GET'])
 @login_required
