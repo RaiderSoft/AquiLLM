@@ -19,7 +19,6 @@ services:
         condition: service_healthy
       storage:
         condition: service_healthy
-
     volumes:
       - .:/app
     healthcheck:
