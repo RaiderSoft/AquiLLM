@@ -39,6 +39,7 @@ else:
 INSTALLED_APPS = [
     "daphne",
     "chat",
+    "folders",
     "django.contrib.sites",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -55,6 +56,7 @@ INSTALLED_APPS = [
     "django_extensions",
     'django.contrib.postgres',
     'debug_toolbar',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [

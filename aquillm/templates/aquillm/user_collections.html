@@ -1,10 +1,10 @@
 {% extends "aquillm/base.html" %}
 
-{% block title %}Document Collections{% endblock %}
+{% block title %}Document Folders{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-6">Collections</h1>
+    <h1 class="text-3xl font-bold mb-6">Folders</h1>
     
     {% if col_perms %}
         <ul class="space-y-4">
@@ -17,7 +17,7 @@
                             {{ col_perm.collection.documents|length }} document{{ col_perm.collection.documents|length|pluralize }}
                         </span>
                     </div>
-                    <p class=" mt-2">
+                    <p class="mt-2">
                         Your role: {{ col_perm.permission }}
                     </p>
                     </a>
@@ -25,10 +25,10 @@
             {% endfor %}
         </ul>
     {% else %}
-        <p class="text-gray-600">No collections found. Were you given access to the collections you expected to find?</p>
+        <p class="text-gray-600">No folders found. Were you given access to the folders you expected to find?</p>
     {% endif %}
 
-    <h1 class="text-2xl font-bold pt-12">New Collection</h1>
+    <h1 class="text-2xl font-bold pt-12">New Folder</h1>
     <h1 class="text-xl font-bold text-red-700">{{ status_message }}</h1>
     <form action="" method="post">
         {% csrf_token %}
@@ -38,4 +38,5 @@
             </tr>
         </table>
     </form>
+</div>
 {% endblock %}

@@ -1,4 +1,3 @@
-
 services:
   web:
     build:
@@ -50,17 +49,13 @@ services:
     env_file:
       - .env
     volumes:
-      - ./aws:/etc/localstack/init/ready.d
       - localstack_data:/var/lib/localstack
     healthcheck:
-      test:
-        - CMD
-        - bash
-        - -c
-        - awslocal dynamodb list-tables
-          && awslocal es list-domain-names
-          && awslocal s3 ls
-          && awslocal sqs list-queues
+      test: |
+        CMD-SHELL
+        awslocal s3api head-bucket --bucket aquillm 2>/dev/null || 
+        (awslocal s3 mb s3://aquillm && 
+         awslocal s3api put-bucket-acl --bucket aquillm --acl public-read-write)
       interval: 5s
       timeout: 10s
       start_period: 20s
