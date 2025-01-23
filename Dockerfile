@@ -9,12 +9,13 @@ WORKDIR /app
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-RUN apt update && apt install -y curl
+RUN apt update && apt install -y curl nodejs npm inotify-tools
 # Copy the rest of the application
 COPY . .
+
 
 # Set working directory for Django app
 WORKDIR /app/aquillm
 
 # Command to run the application
-CMD ["sh", "-c", "/app/deployment/run.sh"]
+CMD ["sh", "-c", "/app/dev/run.sh"]

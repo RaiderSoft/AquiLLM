@@ -10,7 +10,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+*/js/dist/
 downloads/
 eggs/
 .eggs/
@@ -166,3 +166,5 @@ aquillm/pdfs/
 pdfs/
 
 aquillm/prod_static
+aquillm/aquillm/static/js/dist
+aquillm/aquillm/static/index.css 

@@ -30,10 +30,10 @@ logger = logging.getLogger(__name__)
 def index(request):
     return render(request, 'aquillm/index.html')
 
-
-
-
-
+@login_required
+@require_http_methods(['GET'])
+def react_test(request):
+    return render(request, 'aquillm/react_test.html')
 
 
 @require_http_methods(['GET', 'POST'])

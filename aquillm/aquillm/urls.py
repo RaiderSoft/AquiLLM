@@ -48,5 +48,6 @@ urlpatterns = [
     path("health/", views.health_check, name="health"),
     path("ready/", views.health_check, name="ready"),
     path("health", views.health_check),
-    path("ready", views.health_check)
+    path("ready", views.health_check),
+    path("react_test", views.react_test, name="react_test"),
 ] + debug_toolbar_urls()
