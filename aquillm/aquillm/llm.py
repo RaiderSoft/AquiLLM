@@ -1,5 +1,5 @@
 from typing import Callable, Any, get_type_hints, Protocol, Optional, Literal, override, List, Dict, TypeAliasType
-from pydantic import BaseModel, model_validator, validate_call
+from pydantic import BaseModel, model_validator, validate_call, Field
 from types import NoneType, GenericAlias
 import inspect
 from functools import wraps, partial
@@ -14,6 +14,10 @@ from django.apps import apps
 
 from asgiref.sync import sync_to_async
 
+from django.core import signing
+from json import loads
+
+import uuid
 if DEBUG:
     from pprint import pp
 
@@ -132,6 +136,8 @@ class __LLMMessage(BaseModel, ABC):
     content: str
     tools: Optional[list[LLMTool]] = None
     tool_choice: Optional[ToolChoice] = None
+    rating: Literal[None, 1,2,3,4,5] = None
+    message_uuid: uuid.UUID = Field(default_factory=uuid.uuid4)
     
     @classmethod
     @model_validator(mode='after')
@@ -246,7 +252,12 @@ class Conversation(BaseModel):
                 raise ValueError("Conversation has adjacent user messages")
         return data
 
-
+class LLMResponse(BaseModel):
+    text: Optional[str]
+    tool_call: Optional[dict]
+    stop_reason: str
+    input_usage: int
+    output_usage: int
 
 class LLMInterface(ABC):
     tool_executor = ThreadPoolExecutor(max_workers=10)
@@ -324,36 +335,19 @@ class LLMInterface(ABC):
                                                     'messages': message_dicts,
                                                     'max_tokens': max_tokens})}
             if DEBUG:
-                print("Claude called with folling args:")
+                print("LLM called with the following args:")
                 pp(sdk_args)
             
             response = await self.get_message(**sdk_args)
-            if DEBUG:
-                print("Claude SDK Response:")
-                pp(response)
-            text_block = None
-            tool_block = None
-            content = response.content
-            for block in content:
-                if hasattr(block, 'input'):
-                    tool_block = block
-                if hasattr(block, "text"):
-                    text_block = block
-
-            tool_call = {
-                'tool_call_id' :tool_block.id,
-                'tool_call_name' :tool_block.name,
-                'tool_call_input' : tool_block.input,
-            } if tool_block else {}
             new_msg = AssistantMessage(
-                            content=text_block.text if text_block else "** Empty Message, tool call **",
+                            content=response.text if response.text else "** Empty Message, tool call **",
                             stop_reason=response.stop_reason,
                             tools = last_message.tools,
                             tool_choice=last_message.tool_choice,
-                            usage = response.usage.input_tokens + response.usage.output_tokens,
-                            **tool_call)
+                            usage = response.input_usage + response.output_usage,
+                            **response.tool_call)
             if DEBUG:
-                print("Response from Claude:")
+                print("Response from LLM:")
                 pp(new_msg.model_dump)
 
             return conversation + [new_msg], 'changed'
@@ -381,9 +375,78 @@ class ClaudeInterface(LLMInterface):
         self.client = anthropic_client
 
     @override
-    async def get_message(self, *args, **kwargs):
-        return await self.client.messages.create(**kwargs)
+    async def get_message(self, *args, **kwargs) -> LLMResponse:
+        response = await self.client.messages.create(**kwargs)
+        if DEBUG:
+            print("Claude SDK Response:")
+            pp(response)
+        text_block = None
+        tool_block = None
+        content = response.content
+        for block in content:
+            if hasattr(block, 'input'):
+                tool_block = block
+            if hasattr(block, "text"):
+                text_block = block
 
+        tool_call = {
+            'tool_call_id' :tool_block.id,
+            'tool_call_name' :tool_block.name,
+            'tool_call_input' : tool_block.input,
+        } if tool_block else {}
+        
+        return LLMResponse(text=text_block.text,
+                           tool_call=tool_call, 
+                           stop_reason=response.stop_reason, 
+                           input_usage=response.usage.input_tokens, 
+                           output_usage=response.usage.output_tokens)
+
+class OpenAIInterface(LLMInterface):
+
+
+    @override
+    def __init__(self, openai_client, model: str):
+        self.client = openai_client
+        self.base_args = {'model': model}
+
+    async def _transform_tools(self, tools: list[dict]) -> list[dict]:
+        return list([{
+                "type": "function",
+                "function": {
+                    "name": tool['name'],
+                    "description": tool['description'],
+                    "parameters": {
+                        "type": "object",
+                        "properties": tool['input_schema']['properties'],
+                        "required": list(tool['input_schema']['properties'].keys()),
+                        "additionalProperties": False
+                    },
+                    "strict": True
+                },
+            } for tool in tools])
+
+    @override
+    async def get_message(self, *args, **kwargs) -> LLMResponse:
+
+        arguments = {"model": self.base_args['model'],
+                    "messages": [{"role": "developer", "content": kwargs.pop('system')}] + kwargs.pop('messages'),
+                     "tools": await self._transform_tools(kwargs.pop('tools')),}
+        
+        response = await self.client.chat.completions.create(**arguments)
+        if DEBUG:
+            print("OpenAI SDK Response:")
+            pp(response)
+        tool_call = response.choices[0].message.tool_calls[0] if response.choices[0].message.tool_calls else None
+        return LLMResponse(text=response.choices[0].message.content,
+                           tool_call={"tool_call_id": tool_call.id,
+                                        "tool_call_name": tool_call.function.name,
+                                        "tool_call_input": loads(tool_call.function.arguments)} 
+                                        if tool_call else {},
+                           stop_reason=response.choices[0].finish_reason,
+                           input_usage=response.usage.prompt_tokens,
+                           output_usage=response.usage.completion_tokens
+                           )
+                        
 
 class GeminiInterface(LLMInterface):
     

@@ -75,7 +75,6 @@
 
     
     
-    // Helper function to create spinner
     function createSpinner() {
         return h('div', {
             class: {
@@ -209,10 +208,43 @@
         (lastMessage.role === 'tool' && lastMessage.for_whom === 'assistant')
         );
     }
-    
+    function createRatingButtons(message, index) {
+        const emojis = ['😞', '😕', '😐', '🙂', '😊'];
+        const rating = message.rating || 0;
+        
+        return h('div', { 
+            class: {
+                'flex': true,
+                'items-center': true,
+                'gap-1': true,
+                'mt-2': true
+            }
+        }, [
+            h('span', { class: { 'text-sm': true, 'mr-2': true } }, 'Rate:'),
+            ...emojis.map((emoji, i) => 
+                h('button', {
+                    class: {
+                        'p-1': true,
+                        'rounded': true,
+                        'hover:bg-gray-200': true,
+                        'bg-gray-200': rating === i + 1,
+                        'transition-colors': true
+                    },
+                    on: {
+                        click: () => {
+                            conversation.messages[index].rating = i + 1;
+                            rateMessage(message.message_uuid, i + 1);
+                            updateConversation(conversation);
+                        }
+                    }
+                }, emoji)
+            )
+        ]);
+    }
+
     function renderConversation(data) {
         const content = [
-        ...data.messages.map(message => {
+        ...data.messages.map((message, index) => {
             const messageClasses = {
                 'w-4/5': true,
                 'mb-5': true,
@@ -305,6 +337,9 @@
                 message.for_whom === 'user'
                 )
                 );
+            }
+             if (message.role === 'assistant' || message.role === 'tool') {
+                content.push(createRatingButtons(message, index));
             }
             
             content.push(h('p', {
@@ -445,6 +480,16 @@
         }
     }
     
+    function rateMessage(uuid, rating) {
+        const payload = {
+            action: 'rate',
+            uuid: uuid,
+            rating: rating,
+        };
+        
+        ws.send(JSON.stringify(payload));
+    }
+
     function sendMessage() {
         const input = document.getElementById('message-input');
         const message = input.value.trim();
@@ -456,8 +501,8 @@
         updateConversation(conversation);
         
         const payload = {
-            action: 'replace',
-            messages: conversation.messages,
+            action: 'append',
+            message: conversation.messages.at(-1),
             collections: Array.from(selectedCollections)
         };
         

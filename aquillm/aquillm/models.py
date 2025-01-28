@@ -59,7 +59,6 @@ class Collection(models.Model):
     name = models.CharField(max_length=100)
     users = models.ManyToManyField(User, through='CollectionPermission')
     objects = CollectionQuerySet.as_manager()
-
     # returns a list of documents, not a queryset.
     @property
     def documents(self):
@@ -156,24 +155,12 @@ class Document(models.Model):
         if len(self.full_text) < 100:
             raise ValidationError("The full text of a document must be at least 100 characters long.")
         self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
-        # existing_document = None
-        # for model in [STTDocument, PDFDocument, TeXDocument, RawTextDocument]:
-        #     existing = model.objects.filter(full_text_hash=self.full_text_hash).exclude(pk=self.pk).first()
-        #     if existing:
-        #         existing_document = existing
-        #         break        
+      
         with transaction.atomic():
-        #     if existing_document:
-        #         existing_document.full_text_hash = "IF THIS IS IN THE DATABASE SOMETHING IS FUCKED"
-        #         existing_document.save()
             is_new = self.pk is None
 
             super().save(*args, **kwargs)
 
-            #     if existing_document:
-            #             for collection in existing_document.collections.all():
-            #                 self.collections.add(collection)
-            #             existing_document.delete()
             self.create_chunks()
 
 

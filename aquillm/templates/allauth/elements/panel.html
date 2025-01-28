@@ -1,7 +1,7 @@
 {% load allauth %}
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">
+<div class="bg-white shadow-md rounded-lg mb-4">
+    <div class="p-4">
+        <h5 class="text-lg font-semibold">
             {% slot title %}
             {% endslot %}
         </h5>
@@ -9,7 +9,7 @@
         {% endslot %}
     </div>
     {% if slots.actions %}
-        <div class="card-footer">
+        <div class="bg-gray-100 p-4">
             {% slot actions %}
             {% endslot %}
         </div>

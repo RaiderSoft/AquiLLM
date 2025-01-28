@@ -2,6 +2,8 @@
 
 set -e
 
+
+
 cd /app/react
 npm ci
 npm run watch &
@@ -15,4 +17,4 @@ cd /app/aquillm
 ./manage.py migrate --noinput
 ./manage.py collectstatic --noinput
 
-./manage.py runserver 0.0.0.0:${PORT:-8080}
+python -Xfrozen_modules=off manage.py runserver 0.0.0.0:${PORT:-8080}
