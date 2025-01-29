@@ -28,3 +28,4 @@ pytest-django
 boto3
 websockets
 debugpy
+djangorestframework
