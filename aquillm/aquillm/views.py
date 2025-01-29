@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404
 from pgvector.django import L2Distance
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
 from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, DESCENDED_FROM_DOCUMENT
@@ -23,6 +23,7 @@ import requests
 
 from django.http import JsonResponse
 from django.forms.models import model_to_dict
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -290,22 +291,114 @@ def user_collections(request):
         return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form}) 
 
 
-@require_http_methods(['GET'])
+@require_http_methods(['GET', 'POST'])
 @login_required
 def get_collections_json(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        name = data.get('name')
+        if not name:
+            return JsonResponse({'error': 'Name is required'}, status=400)
+
+        with transaction.atomic():
+            collection = Collection.objects.create(name=name)
+            CollectionPermission.objects.create(
+                collection=collection,
+                user=request.user,
+                permission='MANAGE'
+            )
+
+            # Handle additional permissions
+            for viewer in data.get('viewers', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=viewer),
+                    permission='VIEW'
+                )
+            for editor in data.get('editors', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=editor),
+                    permission='EDIT'
+                )
+            for admin in data.get('admins', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=admin),
+                    permission='MANAGE'
+                )
+
+            return JsonResponse({
+                'id': collection.id,
+                'name': collection.name,
+                'document_count': len(collection.documents),
+                'permission': 'MANAGE'
+            })
+
     colperms = CollectionPermission.objects.filter(user=request.user)
-    collections = [colperm.collection for colperm in colperms]
-    coll_dicts = [{'id': col.id, 'name': col.name} for col in collections]
-    return JsonResponse({'collections': coll_dicts})
+    collections = []
+    for colperm in colperms:
+        collections.append({
+            'id': colperm.collection.id,
+            'name': colperm.collection.name,
+            'document_count': len(colperm.collection.documents),
+            'permission': colperm.permission
+        })
+    return JsonResponse(collections, safe=False)
+
+@require_http_methods(['POST'])
+@login_required
+def update_collection_permissions(request, col_id):
+    collection = get_object_or_404(Collection, pk=col_id)
+    if not collection.user_can_manage(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        with transaction.atomic():
+            # Remove all existing permissions except the owner's
+            CollectionPermission.objects.filter(collection=collection).exclude(user=request.user).delete()
+
+            # Add new permissions
+            for viewer in data.get('viewers', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=viewer),
+                    permission='VIEW'
+                )
+            for editor in data.get('editors', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=editor),
+                    permission='EDIT'
+                )
+            for admin in data.get('admins', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=admin),
+                    permission='MANAGE'
+                )
+
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 @require_http_methods(['GET'])
 @login_required
 def collection(request, col_id):
-    col = get_object_or_404(Collection, pk=col_id)
-    if not col.user_can_view(request.user):
-        return HttpResponseForbidden("User does not have permission to view this collection.")
-    can_delete = col.user_can_edit(request.user)
-    return render(request, 'aquillm/collection.html', {'collection': col, 'can_delete': can_delete})
+    collection = get_object_or_404(Collection, pk=col_id)
+    if not collection.user_can_view(request.user):
+        raise PermissionDenied()
+    
+    # Get all collections the user can edit for move functionality
+    available_collections = Collection.objects.filter_by_user_perm(request.user, 'EDIT')
+    
+    return render(request, 'aquillm/collection.html', {
+        'collection': collection,
+        'can_edit': collection.user_can_edit(request.user),
+        'can_delete': collection.user_can_manage(request.user),
+        'available_collections': available_collections,
+    })
 
 @require_http_methods(['GET', 'POST'])
 @login_required
@@ -393,3 +486,34 @@ def health_check(request):
 def user_ws_convos(request):
     convos = WSConversation.objects.filter(owner=request.user).order_by('-updated_at')
     return render(request, 'aquillm/user_ws_convos.html', {'conversations': convos})
+
+@login_required
+@require_POST
+def move_document(request, doc_id):
+    document = None
+    for model in DESCENDED_FROM_DOCUMENT:
+        try:
+            document = model.objects.get(id=doc_id)
+            break
+        except model.DoesNotExist:
+            continue
+    
+    if not document:
+        return JsonResponse({'error': 'Document not found'}, status=404)
+    
+    target_collection_id = request.POST.get('target_collection')
+    try:
+        target_collection = Collection.objects.get(id=target_collection_id)
+    except Collection.DoesNotExist:
+        return JsonResponse({'error': 'Target folder not found'}, status=404)
+    
+    # Check permissions
+    if not (document.collection.user_can_edit(request.user) and target_collection.user_can_edit(request.user)):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    # Move document
+    document.collection = target_collection
+    document.folder = None  # Reset folder when moving to new collection
+    document.save()
+    
+    return JsonResponse({'success': True})
