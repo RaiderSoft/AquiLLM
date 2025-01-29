@@ -22,6 +22,7 @@ from debug_toolbar.toolbar import debug_toolbar_urls
 
 from chat import views as chat_views
 from . import views
+from .settings import DEBUG
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -56,3 +57,6 @@ urlpatterns = [
     path("ready", views.health_check),
     path("react_test", views.react_test, name="react_test"),
 ] + debug_toolbar_urls()
+
+if DEBUG:
+   urlpatterns += [path("debug_models/", views.debug_models, name="debug_models")] 

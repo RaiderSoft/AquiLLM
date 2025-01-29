@@ -9,8 +9,8 @@ from os import getenv
 from typing import TypedDict
 
 
-from .llm import LLMInterface, ClaudeInterface
-
+from .llm import LLMInterface, ClaudeInterface, OpenAIInterface
+from .settings import DEBUG
 RAG_PROMPT_STRING = """
 <context>
 RAG Search Results:
@@ -74,10 +74,15 @@ class AquillmConfig(AppConfig):
     def ready(self):
 
         self.cohere_client = cohere.Client(getenv('COHERE_KEY'))
-        self.openai_client = openai.OpenAI()
+        self.openai_client = openai.AsyncOpenAI()
         self.anthropic_client = anthropic.Anthropic()
         self.async_anthropic_client = anthropic.AsyncAnthropic()
         self.get_embedding = get_embedding_func(self.cohere_client)
-        self.llm_interface = ClaudeInterface(self.async_anthropic_client)
-        
-        
+        llm_choice = getenv('LLM_CHOICE', self.default_llm)
+        if llm_choice == 'CLAUDE':
+            self.llm_interface = ClaudeInterface(self.async_anthropic_client)
+        elif llm_choice == 'OPENAI':
+            self.llm_interface = OpenAIInterface(self.openai_client, "gpt-4o")
+        else:
+            raise ValueError(f"Invalid LLM choice: {llm_choice}")
+

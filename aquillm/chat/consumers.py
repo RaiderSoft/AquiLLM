@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.apps import apps
 
 from pydantic import ValidationError
-
+from pydantic_core import to_jsonable_python
 from aquillm import llm
 from aquillm.llm import UserMessage, Conversation,LLMTool, test_function, ToolChoice, llm_tool, ToolResultDict
 from aquillm.settings import DEBUG
@@ -49,8 +49,10 @@ def get_vector_search_func(user: User, col_ref: CollectionsRef):
 def get_more_context_func(user: User) -> LLMTool:
     @llm_tool(
             for_whom='assistant',
+            required=['adjacent_chunks', 'chunk_id'],
+
             param_descs={'chunk_id': 'ID number of the chunk for which more context is desired',
-                         'adjacent_chunks': 'How many chunks on either side to return. Start small and work up, if you think expanding the context will provide more useful info. Go no higher than 10.'}
+                         'adjacent_chunks': 'How many chunks on either side to return. Start small and work up, if you think expanding the context will provide more useful info. Go no higher than 10.'},
     )
     def more_context(chunk_id: int, adjacent_chunks: int) -> ToolResultDict:
         """
@@ -90,7 +92,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     
     @database_sync_to_async
     def __save(self):
-        self.db_convo.convo = self.convo.model_dump()
+        self.db_convo.convo = to_jsonable_python(self.convo)
         if len(self.db_convo.convo['messages']) >= 2 and not self.db_convo.name:
             self.db_convo.set_name()
         self.db_convo.save()
@@ -113,7 +115,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         async def send_func(convo: Conversation):
             self.convo = convo
-            await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
+            await self.send(text_data=dumps({"conversation": to_jsonable_python(self.convo) }))
             await self.__save()
 
         await self.accept()
@@ -146,31 +148,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
         pass
 
     async def receive(self, text_data):
+
+        async def send_func(convo: Conversation):
+            await aclose_old_connections()
+            self.convo = convo
+            await self.send(text_data=dumps({"conversation": to_jsonable_python(self.convo)}))
+            await self.__save()
+
+        async def append(data: dict):
+            self.col_ref.collections = data['collections']
+            self.convo += UserMessage.model_validate(data['message'])
+            self.convo[-1].tools = self.tools
+            self.convo[-1].tool_choice = ToolChoice(type='auto')
+            await self.__save()
+
+        async def rate(data: dict):
+            message = [message for message in self.convo if str(message.message_uuid) == data['uuid']][0]
+            message.rating = data['rating']
+            await self.__save()
+
         if DEBUG:
             print(f"Recieved ws message:\n{text_data}")
         if not self.dead:
-            async def send_func(convo: Conversation):
-                await aclose_old_connections()
-                self.convo = convo
-                await self.send(text_data=dumps({"conversation": self.convo.model_dump()}))
-                await self.__save()
             try:
                 data = loads(text_data)
                 action = data.pop('action', None)
-                self.col_ref.collections = data['collections']
-
                 if action == 'append':
-                    self.convo += UserMessage.model_validate(data['message'])
-                    self.convo[-1].tools = self.tools
-                    self.convo[-1].tool_choice = ToolChoice(type='auto')
-                    await self.__save()
-                elif action == 'replace':
-                    system = self.convo.system
-                    self.convo = Conversation.model_validate({'system': system, 'messages': data['messages']})
-                    if len(self.convo):
-                        self.convo[-1].tools = self.tools
-                        self.convo[-1].tool_choice = ToolChoice(type='auto')
-                    await self.__save()
+                    await append(data)
+                elif action == 'rate':
+                    await rate(data)
                 else:
                     raise ValueError(f'Invalid action "{action}"')
                 await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)

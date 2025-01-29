@@ -19,8 +19,9 @@ from django.views.decorators.http import require_http_methods, require_POST
 from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
 from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, DESCENDED_FROM_DOCUMENT
 from . import vtt
-import requests
+from .settings import DEBUG
 
+import requests
 from django.http import JsonResponse
 from django.forms.models import model_to_dict
 import json
@@ -486,6 +487,18 @@ def health_check(request):
 def user_ws_convos(request):
     convos = WSConversation.objects.filter(owner=request.user).order_by('-updated_at')
     return render(request, 'aquillm/user_ws_convos.html', {'conversations': convos})
+
+
+# breaks for local debugging with all model objects in scope. 
+# also good to have a hardcoded breakpoint, because the debugger won't attach if no breakpoints are set.
+if DEBUG:
+    @require_http_methods(['GET'])
+    @login_required
+    def debug_models(request):
+        models = apps.get_models()
+        model_instances = {model.__name__ : list(model.objects.all()) for model in models}
+        breakpoint()
+        return HttpResponse(status=200)
 
 @login_required
 @require_POST
