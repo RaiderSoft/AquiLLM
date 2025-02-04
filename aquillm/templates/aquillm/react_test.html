@@ -10,7 +10,7 @@
 {% block scripts %}
 <script>
     mountReactComponent('react-test', 'TestComponent', {
-      message: 'Hello from Django!'
+      message: "{{ hello_string }}"
     });
 </script>
 {% endblock %}
