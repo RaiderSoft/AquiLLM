@@ -39,7 +39,6 @@ else:
 INSTALLED_APPS = [
     "daphne",
     "chat",
-    "folders",
     "frontend",
     "django.contrib.sites",
     "django.contrib.admin",

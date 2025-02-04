@@ -1,0 +1,58 @@
+{% extends 'aquillm/base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Collections</h1>
+        <a href="{% url 'create_collection' %}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Create Collection
+        </a>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-6">
+        {% if collections %}
+            {% for collection in collections %}
+                {% include 'aquillm/collection_node.html' with collection=collection %}
+            {% endfor %}
+        {% else %}
+            <p class="text-gray-600">No collections found. Create one to get started!</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Move Collection Modal -->
+<div id="moveModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Move Collection</h3>
+            <form id="moveForm" method="POST">
+                {% csrf_token %}
+                <select name="new_parent_id" class="w-full p-2 border rounded mb-4">
+                    <option value="">Move to root</option>
+                    {% for collection in collections %}
+                        {% include 'aquillm/collection_option.html' with collection=collection prefix='' %}
+                    {% endfor %}
+                </select>
+                <div class="flex justify-end">
+                    <button type="button" onclick="closeModal()" class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Move</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openMoveModal(collectionId) {
+    const modal = document.getElementById('moveModal');
+    const form = document.getElementById('moveForm');
+    form.action = `/collections/${collectionId}/move/`;
+    modal.classList.remove('hidden');
+}
+
+function closeModal() {
+    const modal = document.getElementById('moveModal');
+    modal.classList.add('hidden');
+}
+</script>
+{% endblock %} 

@@ -530,3 +530,103 @@ def move_document(request, doc_id):
     document.save()
     
     return JsonResponse({'success': True})
+
+@login_required
+@require_http_methods(['GET'])
+def collection_tree(request):
+    """View to display the collection hierarchy as a tree"""
+    # Get root collections (those without parents) that user can access
+    root_collections = Collection.objects.filter(parent=None).filter_by_user_perm(request.user)
+    context = {
+        'collections': root_collections
+    }
+    return render(request, 'aquillm/collection_tree.html', context)
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def create_collection(request, parent_id=None):
+    """View to create a new collection, optionally under a parent"""
+    parent = None
+    if parent_id:
+        parent = get_object_or_404(Collection, id=parent_id)
+        if not parent.user_can_edit(request.user):
+            return HttpResponseForbidden("You don't have permission to create collections here")
+
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        if name:
+            collection = Collection.objects.create(
+                name=name,
+                parent=parent
+            )
+            # Give the creator MANAGE permission
+            CollectionPermission.objects.create(
+                user=request.user,
+                collection=collection,
+                permission='MANAGE'
+            )
+            return redirect('collection_tree')
+    
+    context = {
+        'parent': parent
+    }
+    return render(request, 'aquillm/create_collection.html', context)
+
+@login_required
+@require_http_methods(['POST'])
+def move_collection(request, collection_id):
+    """View to move a collection to a new parent"""
+    collection = get_object_or_404(Collection, id=collection_id)
+    if not collection.user_can_edit(request.user):
+        return HttpResponseForbidden("You don't have permission to move this collection")
+
+    new_parent_id = request.POST.get('new_parent_id')
+    new_parent = None
+    if new_parent_id:
+        new_parent = get_object_or_404(Collection, id=new_parent_id)
+        if not new_parent.user_can_edit(request.user):
+            return HttpResponseForbidden("You don't have permission to move to this location")
+
+    try:
+        collection.move_to(new_parent)
+        return JsonResponse({'success': True})
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_http_methods(['GET'])
+def collection_detail(request, collection_id):
+    """View to show collection details and its contents"""
+    collection = get_object_or_404(Collection, id=collection_id)
+    if not collection.user_can_view(request.user):
+        return HttpResponseForbidden("You don't have permission to view this collection")
+
+    context = {
+        'collection': collection,
+        'documents': collection.documents,
+        'children': collection.children.all(),
+        'can_edit': collection.user_can_edit(request.user),
+        'can_manage': collection.user_can_manage(request.user)
+    }
+    return render(request, 'aquillm/collection_detail.html', context)
+
+@login_required
+@require_http_methods(['POST'])
+def move_document(request, doc_id):
+    """View to move a document to a different collection"""
+    doc = get_doc(request, doc_id)
+    if not doc.collection.user_can_edit(request.user):
+        return HttpResponseForbidden("You don't have permission to move this document")
+
+    new_collection_id = request.POST.get('new_collection_id')
+    if new_collection_id:
+        new_collection = get_object_or_404(Collection, id=new_collection_id)
+        if not new_collection.user_can_edit(request.user):
+            return HttpResponseForbidden("You don't have permission to move to this collection")
+
+        try:
+            doc.move_to(new_collection)
+            return JsonResponse({'success': True})
+        except ValidationError as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'No target collection specified'})

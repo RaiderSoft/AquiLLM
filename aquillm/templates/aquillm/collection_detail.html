@@ -1,0 +1,104 @@
+{% extends 'aquillm/base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <nav class="text-gray-500 mb-4">
+        <a href="{% url 'collection_tree' %}" class="hover:text-gray-700">Collections</a>
+        <span class="mx-2">/</span>
+        {{ collection.get_path }}
+    </nav>
+
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">{{ collection.name }}</h1>
+            {% if can_edit %}
+            <div class="flex space-x-2">
+                <a href="{% url 'create_collection_under_parent' collection.id %}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    New Subcollection
+                </a>
+                <button onclick="openMoveModal('{{ collection.id }}')" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                    Move Collection
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if children %}
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">Subcollections</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for child in children %}
+                <div class="border rounded-lg p-4 hover:bg-gray-50">
+                    <a href="{% url 'collection_detail' child.id %}" class="text-blue-600 hover:text-blue-800 font-medium">
+                        {{ child.name }}
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div>
+            <h2 class="text-xl font-semibold mb-4">Documents</h2>
+            {% if documents %}
+            <div class="space-y-4">
+                {% for document in documents %}
+                <div class="border rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <a href="{% url 'document' document.id %}" class="text-blue-600 hover:text-blue-800 font-medium">
+                            {{ document.title }}
+                        </a>
+                        <p class="text-sm text-gray-500">Added {{ document.ingestion_date|date:"M d, Y" }}</p>
+                    </div>
+                    {% if can_edit %}
+                    <button onclick="openMoveDocumentModal('{{ document.id }}')" class="text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-arrows-alt"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-600">No documents in this collection.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Move Document Modal -->
+<div id="moveDocumentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Move Document</h3>
+            <form id="moveDocumentForm" method="POST">
+                {% csrf_token %}
+                <select name="new_collection_id" class="w-full p-2 border rounded mb-4">
+                    {% for collection in user.collections.all %}
+                        <option value="{{ collection.id }}" {% if collection.id == collection.id %}selected{% endif %}>
+                            {{ collection.get_path }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <div class="flex justify-end">
+                    <button type="button" onclick="closeMoveDocumentModal()" class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Move</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openMoveDocumentModal(documentId) {
+    const modal = document.getElementById('moveDocumentModal');
+    const form = document.getElementById('moveDocumentForm');
+    form.action = `/documents/${documentId}/move/`;
+    modal.classList.remove('hidden');
+}
+
+function closeMoveDocumentModal() {
+    const modal = document.getElementById('moveDocumentModal');
+    modal.classList.add('hidden');
+}
+</script>
+{% endblock %} 
