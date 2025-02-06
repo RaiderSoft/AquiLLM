@@ -82,7 +82,11 @@ class AquillmConfig(AppConfig):
         if llm_choice == 'CLAUDE':
             self.llm_interface = ClaudeInterface(self.async_anthropic_client)
         elif llm_choice == 'OPENAI':
-            self.llm_interface = OpenAIInterface(self.openai_client, "gpt-4o")
+            self.llm_interface = OpenAIInterface(openai.AsyncOpenAI(), "gpt-4o")
+        elif llm_choice == 'COMMAND-R':
+            self.llm_interface = OpenAIInterface(openai.AsyncOpenAI(base_url='http://ollama:11434/v1/'), "command-r")
+        elif llm_choice == 'LLAMA3.2':
+            self.llm_interface = OpenAIInterface(openai.AsyncOpenAI(base_url='http://ollama:11434/v1/'), "llama3.2")
         else:
             raise ValueError(f"Invalid LLM choice: {llm_choice}")
 
