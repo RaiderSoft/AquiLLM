@@ -1,0 +1,51 @@
+{% load static %}
+
+<div class="collection-node mb-2 ml-4">
+    <div class="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100">
+        <div class="flex items-center">
+            <span class="text-gray-600 mr-2">
+                {% if collection.children.exists %}
+                    <button onclick="toggleChildren('{{ collection.id }}')" class="focus:outline-none">
+                        <i class="fas fa-chevron-right transform transition-transform duration-200" id="chevron-{{ collection.id }}"></i>
+                    </button>
+                {% endif %}
+            </span>
+            <a href="{% url 'collection_detail' collection.id %}" class="text-blue-600 hover:text-blue-800">
+                {{ collection.name }}
+            </a>
+        </div>
+        <div class="flex items-center">
+            {% if collection.user_can_edit %}
+                <button onclick="openMoveModal('{{ collection.id }}')" class="text-gray-600 hover:text-gray-800 mr-2">
+                    <i class="fas fa-arrows-alt"></i>
+                </button>
+            {% endif %}
+            {% if collection.user_can_edit %}
+                <a href="{% url 'create_collection_under_parent' collection.id %}" class="text-gray-600 hover:text-gray-800">
+                    <i class="fas fa-plus"></i>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div id="children-{{ collection.id }}" class="hidden ml-4">
+        {% for child in collection.children.all %}
+            {% include 'aquillm/collection_node.html' with collection=child %}
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function toggleChildren(collectionId) {
+    const childrenDiv = document.getElementById(`children-${collectionId}`);
+    const chevron = document.getElementById(`chevron-${collectionId}`);
+    
+    if (childrenDiv.classList.contains('hidden')) {
+        childrenDiv.classList.remove('hidden');
+        chevron.classList.add('rotate-90');
+    } else {
+        childrenDiv.classList.add('hidden');
+        chevron.classList.remove('rotate-90');
+    }
+}
+</script> 

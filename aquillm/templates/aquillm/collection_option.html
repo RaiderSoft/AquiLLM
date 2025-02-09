@@ -1,0 +1,8 @@
+{% if collection.id != current_collection.id %}
+<option value="{{ collection.id }}">{{ prefix }}{{ collection.name }}</option>
+{% for child in collection.children.all %}
+    {% with prefix|add:"-- " as new_prefix %}
+        {% include 'aquillm/collection_option.html' with collection=child prefix=new_prefix %}
+    {% endwith %}
+{% endfor %}
+{% endif %} 

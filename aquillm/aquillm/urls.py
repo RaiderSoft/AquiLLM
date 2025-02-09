@@ -28,7 +28,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('', views.index, name='index'),
     path('accounts/', include('allauth.urls')),
-    path('api/', include('folders.urls')),  # New folder management API endpoints
     path('app/', include('frontend.urls')),  # New React frontend
     path("search/", views.search, name='search'),
     path("insert_arxiv/", views.insert_arxiv, name='insert_arxiv'),
@@ -56,6 +55,12 @@ urlpatterns = [
     path("health", views.health_check),
     path("ready", views.health_check),
     path("react_test", views.react_test, name="react_test"),
+    path('collections/', views.collection_tree, name='collection_tree'),
+    path('collections/create/', views.create_collection, name='create_collection'),
+    path('collections/create/<int:parent_id>/', views.create_collection, name='create_collection_under_parent'),
+    path('collections/<int:collection_id>/', views.collection_detail, name='collection_detail'),
+    path('collections/<int:collection_id>/move/', views.move_collection, name='move_collection'),
+    path('documents/<uuid:doc_id>/move/', views.move_document, name='move_document'),
 ] + debug_toolbar_urls()
 
 if DEBUG:
