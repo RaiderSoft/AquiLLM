@@ -16,9 +16,13 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.contrib.auth import views as auth_views
 from debug_toolbar.toolbar import debug_toolbar_urls
+from django.views.generic import TemplateView
+from django.conf import settings
+from django.conf.urls.static import static
+from django.shortcuts import redirect
 
 from chat import views as chat_views
 from . import views
@@ -28,7 +32,19 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('', views.index, name='index'),
     path('accounts/', include('allauth.urls')),
-    path('app/', include('frontend.urls')),  # New React frontend
+    
+    # API endpoints
+    path("api/collections/", views.get_collections_json, name="api_collections"),
+    
+    # React app specific routes - redirect old URLs to React app versions
+    path('collections/', lambda request: redirect('/app/collections/')),
+    path('collections/<path:path>', lambda request, path: redirect(f'/app/collections/{path}')),
+    path('chat/', lambda request: redirect('/app/chat/')),
+    
+    # React app route handler - only for specific paths
+    re_path(r'^app/(collections|chat)/.*$', TemplateView.as_view(template_name='index.html')),
+    
+    # Original Django routes
     path("search/", views.search, name='search'),
     path("insert_arxiv/", views.insert_arxiv, name='insert_arxiv'),
     path('user_conversations/', views.user_conversations, name="user_conversations"),
@@ -40,7 +56,6 @@ urlpatterns = [
     path("document/<uuid:doc_id>/", views.document, name="document"),
     path("move_document/<uuid:doc_id>/", views.move_document, name="move_document"),
     path("user_collections/", views.user_collections, name="user_collections"),
-    path("get_collections_json/", views.get_collections_json, name="get_collections_json"),
     path("collection/<int:col_id>/", views.collection, name="collection"),
     path("collection/<int:col_id>/permissions/", views.update_collection_permissions, name="update_collection_permissions"),
     path("ingest_pdf/", views.ingest_pdf, name="ingest_pdf"),
@@ -64,4 +79,12 @@ urlpatterns = [
 ] + debug_toolbar_urls()
 
 if DEBUG:
-   urlpatterns += [path("debug_models/", views.debug_models, name="debug_models")] 
+   urlpatterns += [path("debug_models/", views.debug_models, name="debug_models")]
+
+# Catch-all route to serve the React app's index.html for all non-API URLs.
+# This allows React Router to handle client-side routing.
+urlpatterns += [
+    re_path(r'^(?!api/).*$', TemplateView.as_view(template_name='index.html'))
+]
+
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 

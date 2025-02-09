@@ -6,8 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aquillm', '0014_folder_pdfdocument_folder_rawtextdocument_folder_and_more'),
-        ('aquillm', '0015_add_uuid_to_llm_message'),
+        ('aquillm', '0014_alter_pdfdocument_pdf_file'),
+        ('aquillm', '0015_add_rating_to_llm_message'),
     ]
 
     operations = [

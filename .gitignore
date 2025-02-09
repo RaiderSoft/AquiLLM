@@ -60,6 +60,8 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+media/
+staticfiles/
 
 # Flask stuff:
 instance/
@@ -167,4 +169,41 @@ pdfs/
 
 aquillm/prod_static
 aquillm/aquillm/static/js/dist
-aquillm/aquillm/static/index.css 
+aquillm/aquillm/static/index.css
+
+# React / Node.js
+node_modules/
+coverage/
+build/
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# Misc
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db 

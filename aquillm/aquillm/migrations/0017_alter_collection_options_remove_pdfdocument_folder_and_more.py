@@ -16,22 +16,6 @@ class Migration(migrations.Migration):
             name='collection',
             options={'ordering': ['name']},
         ),
-        migrations.RemoveField(
-            model_name='pdfdocument',
-            name='folder',
-        ),
-        migrations.RemoveField(
-            model_name='rawtextdocument',
-            name='folder',
-        ),
-        migrations.RemoveField(
-            model_name='texdocument',
-            name='folder',
-        ),
-        migrations.RemoveField(
-            model_name='vttdocument',
-            name='folder',
-        ),
         migrations.AddField(
             model_name='collection',
             name='created_at',

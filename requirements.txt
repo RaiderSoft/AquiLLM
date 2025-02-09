@@ -29,3 +29,4 @@ boto3
 websockets
 debugpy
 djangorestframework
+django-cors-headers

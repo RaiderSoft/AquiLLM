@@ -9,7 +9,8 @@
     "build:watch": "tsc && vite build --watch",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "watch": "vite --port 5173 --host"
   },
   "keywords": [],
   "author": "",
