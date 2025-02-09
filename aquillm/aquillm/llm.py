@@ -161,13 +161,14 @@ class UserMessage(__LLMMessage):
 class ToolMessage(__LLMMessage):
     role: Literal['tool'] = 'tool'
     tool_name: str
+    arguments: Optional[dict] = None
     for_whom: Literal['assistant', 'user']
     result_dict: ToolResultDict = {}
     @override
     def render(self, *args, **kwargs) -> dict:
         ret = super().render(*args, **kwargs)
         ret['role'] = 'user' # This is what LLMs expect.
-        ret['content'] = f'The following is the result of a call to tool {self.tool_name} in the prior step:\n\n{self.content}'
+        ret['content'] = f'The following is the result of a call to tool {self.tool_name}.\nArguments:\n{self.arguments}\n\nResults:\n{self.content}'
         ret.pop('result_dict', None)
         return ret
     
@@ -179,7 +180,7 @@ class AssistantMessage(__LLMMessage):
     tool_call_id: Optional[str] = None
     tool_call_name: Optional[str] = None
     tool_call_input: Optional[dict] = None
-    usage: int
+    usage: int = 0
 
     @classmethod
     @model_validator(mode='after')
@@ -189,12 +190,12 @@ class AssistantMessage(__LLMMessage):
             raise ValueError("If a tool call is made, both tool_call_id and tool_call_name must have values")
 
 
-    @override
-    def render(self, *args, **kwargs) -> dict:
-        ret = super().render(*args, **kwargs)
-        if self.tool_call_id:
-            ret['content'] = f'{self.content}\n\n ****Assistant made a call to {self.tool_call_name} with the following parameters:**** \n {pformat(self.tool_call_input, indent=4)}'
-        return ret
+    # @override
+    # def render(self, *args, **kwargs) -> dict:
+    #     ret = super().render(*args, **kwargs)
+    #     if self.tool_call_id:
+    #         ret['content'] = f'{self.content}\n\n ****Assistant made a call to {self.tool_call_name} with the following parameters:**** \n {pformat(self.tool_call_input, indent=4)}'
+    #     return ret
 
 
 # doing this with a union instead of only inheritance prevents anything at runtime from constructing LLM_Messages.
@@ -294,8 +295,9 @@ class LLMInterface(ABC):
                     result = str(result_dict)
                 except TimeoutError:
                     result = str({'exception': TimeoutError("Tool call timed out")})
-            return ToolMessage(tool_name = tool.name,
+            return ToolMessage(tool_name=tool.name,
                                 content=result,
+                                arguments=input,
                                 result_dict=result_dict,
                                 for_whom=tool.for_whom,
                                 tools=message.tools,
@@ -342,7 +344,7 @@ class LLMInterface(ABC):
             new_msg = AssistantMessage(
                             content=response.text if response.text else "** Empty Message, tool call **",
                             stop_reason=response.stop_reason,
-                            tools = last_message.tools,
+                            tools=last_message.tools,
                             tool_choice=last_message.tool_choice,
                             usage = response.input_usage + response.output_usage,
                             **response.tool_call)

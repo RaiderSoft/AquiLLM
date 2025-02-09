@@ -41,6 +41,8 @@ from .llm import Conversation as convo_model
 
 logger = logging.getLogger(__name__)
 
+from pydantic_core import to_jsonable_python
+
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW'):
         perm_options = []
@@ -341,7 +343,7 @@ def validate_pdf_extension(value):
     
 
 class PDFDocument(Document):
-    pdf_file = models.FileField(upload_to= 'pdfs/',validators=[FileExtensionValidator(['pdf'])])
+    pdf_file = models.FileField(upload_to= 'pdfs/', max_length=500, validators=[FileExtensionValidator(['pdf'])])
 
     def save(self, *args, **kwargs):
         self.extract_text()
@@ -353,7 +355,7 @@ class PDFDocument(Document):
         reader = PdfReader(self.pdf_file)
         for page in reader.pages:
             text += page.extract_text() + '\n'
-        self.full_text = text
+        self.full_text = text.replace('\0', '')
 
 
 class TeXDocument(Document):
@@ -495,6 +497,18 @@ class WSConversation(models.Model):
     name = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(editable=False)
     updated_at = models.DateTimeField()
+
+    @property
+    def convo_object(self) -> convo_model:
+        t = type(self.convo)
+        if t == dict:
+            return convo_model.model_validate(self.convo)
+        elif t == str:
+            return convo_model.model_validate_json(self.convo)
+
+    @convo_object.setter
+    def convo_object(self, convo: convo_model):
+        self.convo = to_jsonable_python(convo)
 
     def save(self, *args, **kwargs):
         if not self.id:

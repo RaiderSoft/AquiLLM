@@ -14,7 +14,9 @@ from django.shortcuts import get_object_or_404
 from pgvector.django import L2Distance
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods, require_POST
+
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import requires_csrf_token
 
 from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
 from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, DESCENDED_FROM_DOCUMENT
@@ -35,7 +37,7 @@ def index(request):
 @login_required
 @require_http_methods(['GET'])
 def react_test(request):
-    return render(request, 'aquillm/react_test.html')
+    return render(request, 'aquillm/react_test.html', {"hello_string": "Hello, world!"})
 
 
 @require_http_methods(['GET', 'POST'])
@@ -291,8 +293,8 @@ def user_collections(request):
         form = NewCollectionForm(user=request.user)
         return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form}) 
 
-
-@require_http_methods(['GET', 'POST'])
+@requires_csrf_token
+@require_http_methods(['GET'])
 @login_required
 def get_collections_json(request):
     if request.method == 'POST':
@@ -500,8 +502,9 @@ if DEBUG:
         breakpoint()
         return HttpResponse(status=200)
 
+
 @login_required
-@require_POST
+@require_http_methods(['POST'])
 def move_document(request, doc_id):
     document = None
     for model in DESCENDED_FROM_DOCUMENT:
