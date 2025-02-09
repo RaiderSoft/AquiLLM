@@ -5,7 +5,7 @@ import Home from './pages/Home';
 import NewConversation from './pages/NewConversation';
 import Conversations from './pages/Conversations';
 import Search from './pages/Search';
-import Collections from './pages/Collections';
+import CollectionsPage from './pages/CollectionsPage';
 import IngestArxiv from './pages/IngestArxiv';
 import IngestPDF from './pages/IngestPDF';
 import IngestTranscript from './pages/IngestTranscript';
@@ -16,7 +16,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path="collections" element={<Collections />} />
+          <Route path="collections" element={<CollectionsPage />} />
           <Route path="new-conversation" element={<NewConversation />} />
           <Route path="conversations" element={<Conversations />} />
           <Route path="search" element={<Search />} />

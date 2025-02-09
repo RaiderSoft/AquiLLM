@@ -294,7 +294,7 @@ def user_collections(request):
         return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form}) 
 
 @requires_csrf_token
-@require_http_methods(['GET'])
+@require_http_methods(['GET', 'POST'])
 @login_required
 def get_collections_json(request):
     if request.method == 'POST':
@@ -338,6 +338,7 @@ def get_collections_json(request):
                 'permission': 'MANAGE'
             })
 
+    # For GET requests, get all collections where the user has any permission
     colperms = CollectionPermission.objects.filter(user=request.user)
     collections = []
     for colperm in colperms:

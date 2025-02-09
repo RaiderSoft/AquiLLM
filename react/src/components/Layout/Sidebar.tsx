@@ -8,10 +8,10 @@ interface NavLink {
 }
 
 const mainNavLinks: NavLink[] = [
-  { text: 'New Conversation', url: '/new_convo', isReactRoute: false },
-  { text: 'Old Conversations', url: '/user_conversations', isReactRoute: false },
-  { text: 'Search', url: '/search', isReactRoute: false },
-  { text: 'Collections', url: '/collections', isReactRoute: true },
+  { text: 'New Conversation', url: '/new_convo/', isReactRoute: false },
+  { text: 'Old Conversations', url: '/user_conversations/', isReactRoute: false },
+  { text: 'Search', url: '/search/', isReactRoute: false },
+  { text: 'Collections', url: '/collections/', isReactRoute: true },
 ];
 
 const utilityNavLinks: NavLink[] = [
