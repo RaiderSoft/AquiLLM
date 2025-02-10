@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import CollectionsTree, { Folder } from '../components/Collections/CollectionsTree';
+import { Folder } from '../components/Collections/CollectionsTree';
 import MoveCollectionModal from '../components/Collections/MoveCollectionModal';
 import CreateCollectionModal from '../components/Collections/CreateCollectionModal';
+import CollectionSettingsMenu from '../components/Collections/CollectionSettingsMenu';
 import { getCookie } from '../utils/csrf';
 
 const CollectionsPage: React.FC = () => {
@@ -22,7 +23,6 @@ const CollectionsPage: React.FC = () => {
         return res.json();
       })
       .then((data) => {
-        // Transform the API response to match our Folder interface
         const collections = data.map((col: any) => ({
           id: col.id,
           name: col.name,
@@ -31,8 +31,8 @@ const CollectionsPage: React.FC = () => {
           path: col.name,
           children: [],
           document_count: col.document_count,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: new Date(col.created_at || new Date()).toLocaleString(),
+          updated_at: new Date(col.updated_at || new Date()).toISOString(),
         }));
         setCollections(collections);
         setLoading(false);
@@ -45,7 +45,6 @@ const CollectionsPage: React.FC = () => {
   }, []);
 
   const handleMoveClick = (folder: Folder) => {
-    // Open modal with the folder to move
     setFolderToMove(folder);
     setIsModalOpen(true);
   };
@@ -53,28 +52,6 @@ const CollectionsPage: React.FC = () => {
   const handleCloseModal = () => {
     setFolderToMove(null);
     setIsModalOpen(false);
-  };
-
-  const handleSubmitMove = (folderId: number, newParentId: number | null) => {
-    // Here you would call an API endpoint to update the folder's parent
-    console.log(`Move folder ${folderId} to new parent ${newParentId}`);
-
-    // For now, simulate update by updating local state
-    const updateFolderParent = (folders: Folder[]): Folder[] => {
-      return folders.map((folder) => {
-        if (folder.id === folderId) {
-          return { ...folder, parent: newParentId };
-        }
-        if (folder.children && folder.children.length > 0) {
-          return { ...folder, children: updateFolderParent(folder.children) };
-        }
-        return folder;
-      });
-    };
-
-    const updatedCollections = updateFolderParent(collections);
-    setCollections(updatedCollections);
-    handleCloseModal();
   };
 
   const handleOpenCreateModal = () => {
@@ -100,12 +77,10 @@ const CollectionsPage: React.FC = () => {
         if (!res.ok) {
           throw new Error('Failed to create collection');
         }
-        // After successful creation, fetch the updated collections list
         return fetch('/api/collections/');
       })
       .then(res => res.json())
       .then((data) => {
-        // Transform and update the collections list
         const collections = data.map((col: any) => ({
           id: col.id,
           name: col.name,
@@ -114,8 +89,8 @@ const CollectionsPage: React.FC = () => {
           path: col.name,
           children: [],
           document_count: col.document_count,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: new Date(col.created_at || new Date()).toLocaleString(),
+          updated_at: new Date(col.updated_at || new Date()).toISOString(),
         }));
         setCollections(collections);
         setIsCreateModalOpen(false);
@@ -126,27 +101,142 @@ const CollectionsPage: React.FC = () => {
       });
   };
 
+  const handleDeleteCollection = (collection: Folder) => {
+    if (window.confirm(`Are you sure you want to delete "${collection.name}"?`)) {
+      fetch(`/api/collections/${collection.id}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        }
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to delete collection');
+          setCollections(collections.filter(c => c.id !== collection.id));
+        })
+        .catch((err) => {
+          console.error('Error:', err);
+          alert('Failed to delete collection. Please try again.');
+        });
+    }
+  };
+
+  const handleManageCollaborators = (collection: Folder) => {
+    // TODO: Implement collaborator management
+    console.log('Manage collaborators for:', collection);
+  };
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+    <div style={{ padding: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Collections</h1>
         <button
-          style={{ padding: '0.5rem 1rem', backgroundColor: 'blue', color: 'white', borderRadius: '4px' }}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: '#2563eb',
+            color: 'white',
+            borderRadius: '0.375rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            border: 'none',
+            cursor: 'pointer'
+          }}
           onClick={handleOpenCreateModal}
         >
-          Create Collection
+          <span>+</span>
+          <span>New Collection</span>
         </button>
       </div>
-      <CollectionsTree folders={collections} onMoveCollection={handleMoveClick} />
+
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+        gap: '1.5rem'
+      }}>
+        {collections.map((collection) => (
+          <div
+            key={collection.id}
+            style={{
+              backgroundColor: '#2d2d2d',
+              borderRadius: '0.5rem',
+              padding: '1.5rem',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{collection.name}</h2>
+              <CollectionSettingsMenu
+                collection={collection}
+                onMove={handleMoveClick}
+                onDelete={handleDeleteCollection}
+                onManageCollaborators={handleManageCollaborators}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#9ca3af' }}>
+              <div>Documents: {collection.document_count}</div>
+              <div>Sub collections: {collection.children.length}</div>
+              <div>Created: {collection.created_at}</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <button style={{
+                padding: '0.5rem',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                borderRadius: '0.375rem',
+                border: 'none',
+                cursor: 'pointer'
+              }}>
+                Ingest PDF
+              </button>
+              <button style={{
+                padding: '0.5rem',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                borderRadius: '0.375rem',
+                border: 'none',
+                cursor: 'pointer'
+              }}>
+                Ingest from arXiv
+              </button>
+              <button style={{
+                padding: '0.5rem',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                borderRadius: '0.375rem',
+                border: 'none',
+                cursor: 'pointer'
+              }}>
+                Ingest Transcript
+              </button>
+            </div>
+
+            <div style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              border: '2px dashed #4b5563',
+              borderRadius: '0.375rem',
+              textAlign: 'center'
+            }}>
+              <div>Drag Files Here</div>
+              <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                <span>browse files</span> or <span>browse folders</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <MoveCollectionModal
         folder={folderToMove}
         collections={collections}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        onSubmit={handleSubmitMove}
+        onSubmit={() => {}}
       />
       <CreateCollectionModal
         isOpen={isCreateModalOpen}

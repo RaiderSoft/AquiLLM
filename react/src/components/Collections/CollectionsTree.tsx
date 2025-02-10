@@ -8,14 +8,17 @@
 
 import React, { useState } from 'react';
 
-// Export the Folder interface for use in other components
+/**
+ * Represents a collection/folder in the system
+ * @interface Folder
+ */
 export interface Folder {
   id: number;
   name: string;
-  parent: number | null;  // null for root-level folders
-  collection: number;     // ID of the collection this folder belongs to
-  path: string;          // full path of the folder (e.g., "root/subfolder/current")
-  children: Folder[];    // nested folders
+  parent: number | null;  // Parent collection ID, null if root-level
+  collection: number;     // Reference to the collection this folder belongs to
+  path: string;          // Full path in format: "parent/child/grandchild"
+  children: Folder[];    // Nested collections
   document_count: number;
   created_at: string;
   updated_at: string;
@@ -28,8 +31,10 @@ interface CollectionsTreeProps {
 }
 
 /**
- * CollectionsTree component renders a list of folders recursively
- * @param folders - Array of folder objects to display
+ * Renders a hierarchical tree view of collections
+ * @param props - Component properties
+ * @param props.folders - Array of folders to display
+ * @param props.onMoveCollection - Callback when a collection is moved
  */
 const CollectionsTree: React.FC<CollectionsTreeProps> = ({ folders, onMoveCollection }) => {
   if (!folders || folders.length === 0) return <div>No folders found.</div>;
@@ -50,8 +55,10 @@ interface FolderItemProps {
 }
 
 /**
- * FolderItem component renders an individual folder with expand/collapse functionality
- * @param folder - The folder object to display
+ * Individual folder item component with expand/collapse functionality
+ * @param props - Component properties
+ * @param props.folder - Folder data to display
+ * @param props.onMoveCollection - Callback when move action is triggered
  */
 const FolderItem: React.FC<FolderItemProps> = ({ folder, onMoveCollection }) => {
   // State to track whether this folder's children are currently visible
@@ -77,7 +84,13 @@ const FolderItem: React.FC<FolderItemProps> = ({ folder, onMoveCollection }) => 
           </span>
         </div>
         {/* Move button added next to folder name. Stopping propagation so click does not toggle expand/collapse. */}
-        <button onClick={(e) => { e.stopPropagation(); onMoveCollection(folder); }} style={{ marginLeft: 'auto' }}>
+        <button 
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            onMoveCollection(folder); 
+          }} 
+          style={{ marginLeft: 'auto' }}
+        >
           Move
         </button>
       </div>

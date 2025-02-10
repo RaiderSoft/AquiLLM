@@ -1,12 +1,24 @@
+/**
+ * Modal component for creating new collections
+ * @module CreateCollectionModal
+ */
+
 import React, { useState } from 'react';
 import { Folder } from './CollectionsTree';
 
 interface CreateCollectionModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (newCollection: Folder) => void;
+  isOpen: boolean;                          // Controls modal visibility
+  onClose: () => void;                      // Callback when modal is closed
+  onSubmit: (newCollection: Folder) => void; // Callback when new collection is created
 }
 
+/**
+ * Modal dialog for creating a new collection
+ * @param props - Component properties
+ * @param props.isOpen - Whether the modal is visible
+ * @param props.onClose - Function to call when modal should close
+ * @param props.onSubmit - Function to call with new collection data
+ */
 const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [name, setName] = useState('');
 
@@ -16,8 +28,9 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
     e.preventDefault();
     if (!name.trim()) return;
     
+    // Create temporary collection object
     const newCollection: Folder = {
-      id: Date.now(), // temporary ID, will be replaced by server
+      id: Date.now(), // Temporary ID, will be replaced by server
       name: name.trim(),
       parent: null,
       collection: 0,
@@ -77,7 +90,7 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
       border: '1px solid #e2e8f0',
       borderRadius: '0.375rem',
       fontSize: '1rem',
-      color: '#1a1a1a',
+      color: '#FFFFFF',
     },
     buttonContainer: {
       display: 'flex',
