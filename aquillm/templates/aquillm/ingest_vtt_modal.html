@@ -1,0 +1,13 @@
+<!-- aquillm/ingest_pdf_modal.html -->
+<h1>Ingest vtt</h1>
+{% if status_message %}
+    <div class="status_message">
+        {{ status_message }}
+    </div>
+{% endif %}
+
+<form action="{% url 'ingest_vtt' %}" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form }}
+    <input class="w-full bg-deep-secondary hover:bg-lighter-secondary text-white font-bold p-2 rounded" type="submit" value="Submit">
+</form>

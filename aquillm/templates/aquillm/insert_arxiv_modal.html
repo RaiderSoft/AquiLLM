@@ -1,0 +1,13 @@
+
+<h1>Insert arXiv</h1>
+{% if status_message %}
+    <div class="status_message">
+        {{ status_message }}
+    </div>
+{% endif %}
+
+<form action="{% url 'insert_arxiv' %}" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form }}
+    <input class="w-full bg-deep-secondary hover:bg-lighter-secondary text-white font-bold p-2 rounded" type="submit" value="Submit">
+</form>

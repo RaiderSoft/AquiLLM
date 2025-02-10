@@ -205,6 +205,10 @@ def insert_arxiv(request):
         'form' : form
     }
 
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        # Return only the partial template for the modal (without the full page chrome)
+        return render(request, 'aquillm/insert_arxiv_modal.html', context)
+
     return render(request, 'aquillm/insert_arxiv.html', context)
 
 
@@ -425,6 +429,10 @@ def ingest_pdf(request):
         'form' : form
     }
 
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        # Return only the partial template for the modal
+        return render(request, 'aquillm/ingest_pdf_modal.html', context)
+
     return render(request, 'aquillm/ingest_pdf.html', context)
 
 @require_http_methods(['GET', 'POST'])
@@ -454,6 +462,10 @@ def ingest_vtt(request):
         'status_message' : status_message,
         'form' : form
     }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        # Return only the partial template for the modal (without the full page chrome)
+        return render(request, 'aquillm/ingest_vtt_modal.html', context)
     
     return render(request, 'aquillm/ingest_vtt.html', context)
 

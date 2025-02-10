@@ -13,9 +13,22 @@
 
     <link rel="stylesheet" href="https://lalten.github.io/lmweb/style/latinmodern-mono.css" type="text/css" charset="utf-8" />
     <link rel="stylesheet" href="{% static 'index.css' %}" type="text/css" charset="utf-8" />
+    <link rel="stylesheet" href="{% static 'scrollbar.css' %}" type="text/css" charset="utf-8" />
 </head>
-<body class="max-h-screen h-screen overflow-auto font-serif">
-    <div class="flex flex-col flex-grow-0 h-full overflow-auto" id="wrapper">
+<body class="max-h-screen h-screen font-serif">
+    <!-- Ingest modal container (hidden by default) -->
+    <div id="modal-overlay" class="z-50 opacity-0 pointer-events-none fixed inset-0 bg-black bg-opacity-50 backdrop-blur flex items-center justify-center transition-all">
+        <div id="modal-content" class="bg-gray-shade_3 border border-gray-shade_6 rounded-[32px] shadow-lg relative overflow-hidden h-[700px] w-[500px]">
+            
+            <!-- Close button -->
+            <button id="modal-close" class="absolute top-[20px] right-[20px] h-[40px] w-[40px] rounded-[20px] text-xl text-gray-shade_e bg-gray-shade_5 hover:bg-gray-shade_3 transition-colors">&times;</button>
+            <!-- This is where the form (or other content) will be loaded -->
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+
+    <div class="flex flex-shrink-1 flex-col max-h-full h-full" id="wrapper">
         <!-- Nav bar -->
         <nav class="bg-gray-shade_4 h-[80px] text-gray-shade_e flex-shrink-0">
             <div class="mx-auto flex justify-between items-center max-w-full h-full">
@@ -88,9 +101,9 @@
         </nav>
 
         <!-- Primary content -->
-        <div class="flex flex-grow h-full" id="primary-content">
+        <div class="flex h-full max-h-full" id="primary-content">
             <!-- Sidebar -->
-            <div id= "aq-sidebar" style="overflow-x: show;" class="transition-all px-[8px] max-w-[260px] flex-grow bg-gray-shade_3 text-gray-shade_e h-full">
+            <div id= "aq-sidebar" style="overflow-x: show;" class="aq-sidebar transition-all px-[8px] max-w-[260px] min-w-[260px] flex-grow bg-gray-shade_3 text-gray-shade_e h-full max-h-full">
 
                 <div class="flex justify-between items-center my-[26px]" id="sidebar-header">
                     <span class="font-sans text-lg pl-[8px]">Menu</span>
@@ -120,17 +133,24 @@
                         <span class="py-2">AquiLLM</span>
                     </div>
                 </a> -->
+
                 <div class="flex flex-col">
                     {% if user.is_authenticated %}
                         {% for link in nav_links %}
-                            <!-- y margin is distance between elements (8px) minus the padding of the elements (3px) == 5 -->
-                            <!-- padding is 3 due to the inbuilt padding of text in html.  any more or less padding makes it look unbalanced -->
-                            <a href="{% url link.url %}" class="my-[5px] pl-[8px] py-[3px] font-sans text-lg w-full hover:bg-gray-shade_5 rounded-[12px] transition-all">{{ link.text }}</a>
+                            {% if "ingest" in link.url or "insert" in link.url %}
+                                <a href="#" data-url="{% url link.url %}" class="open-modal my-[5px] pl-[8px] py-[3px] font-sans text-lg w-full hover:bg-gray-shade_5 rounded-[12px] transition-all">
+                                    {{ link.text }}
+                                </a>
+                            {% else %}
+                                <a href="{% url link.url %}" class="my-[5px] pl-[8px] py-[3px] font-sans text-lg w-full hover:bg-gray-shade_5 rounded-[12px] transition-all">
+                                    {{ link.text }}
+                                </a>
+                            {% endif %}
                 
-                            {% if forloop.counter == 4 %}  {# Insert a separator after the 4th link #}
+                            {% if forloop.counter == 4 %}
                                 <div class="relative flex items-center"> 
                                     <div class="flex-grow border-t border-gray-shade_4"></div>
-                                        <span class="font-sans text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Utilities</span>
+                                    <span class="font-sans text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Utilities</span>
                                     <div class="flex-grow border-t border-gray-shade_4"></div>
                                 </div>
                             {% endif %}
@@ -144,8 +164,8 @@
             </div>
 
             <!-- Page Content -->
-            <div class="flex-grow overflow-auto bg-gray-shade_2" id="page-content-wrapper">
-                <div class="flex-grow overflow-y-auto h-full">
+            <div class="bg-gray-shade_2 max-h-full h-full w-full" id="page-content-wrapper">
+                <div class="h-full max-h-full text-gray-shade_e">
                     {% block content %}
                     <!-- Your page content goes here -->
                     {% endblock %}
@@ -180,6 +200,94 @@
             }
         });
 
+        // Add highlighting for which link you're currently on
+        const sidebarLinks = document.querySelectorAll(".aq-sidebar a");
+        const currentPath = window.location.pathname; // Get the current URL path
+
+        sidebarLinks.forEach(link => {
+            // Check if the link matches the current page URL
+            if (link.getAttribute("href") === currentPath) {
+                link.classList.add("bg-gray-shade_5", "text-white"); 
+            }
+
+            // the link on the element and the browser are different, so check for this specific case
+            if (link.getAttribute("href") === "/new_ws_convo/" && currentPath.includes("/ws_convo")){
+                link.classList.add("bg-gray-shade_5", "text-white");
+            }
+        });
+
+        // Modal functionality
+
+        // Function to open the modal
+        function openModal(htmlContent) {
+            document.getElementById('modal-body').innerHTML = htmlContent;
+            document.getElementById('modal-overlay').classList.remove('opacity-0');
+            document.getElementById('modal-overlay').classList.remove('pointer-events-none');
+            document.getElementById('modal-overlay').classList.add('opacity-100');
+            document.getElementById('modal-overlay').classList.add('pointer-events-all');
+        }
+
+        // Function to close the modal
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.add('opacity-0');
+            document.getElementById('modal-overlay').classList.add('pointer-events-none');
+            document.getElementById('modal-overlay').classList.remove('opacity-100');
+            document.getElementById('modal-overlay').classList.remove('pointer-events-all');
+            document.getElementById('modal-body').innerHTML = '';
+        }
+
+        // Listen for clicks on elements with class 'open-modal'
+        document.querySelectorAll('.open-modal').forEach(link => {
+            link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const url = this.getAttribute('data-url');
+            fetch(url, {
+                headers: {
+                'X-Requested-With': 'XMLHttpRequest' // Tell Django this is an AJAX request so the page doesnt reload upon form submission
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                openModal(html);
+            })
+            .catch(error => {
+                console.error('Error loading modal content:', error);
+            });
+            });
+        });
+
+        // Close the modal when the close button is clicked
+        document.getElementById('modal-close').addEventListener('click', closeModal);
+
+        // Optionally, close the modal when clicking outside the modal content:
+        document.getElementById('modal-overlay').addEventListener('click', function (e) {
+            if (e.target === this) {
+            closeModal();
+            }
+        });
+
+        document.getElementById('modal-body').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: form.method,
+            body: formData,
+            headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            // Optionally check if the form submission was successful
+            // For now, just update the modal with the response (which might include errors)
+            document.getElementById('modal-body').innerHTML = html;
+            // Or if successful, close the modal:
+            // closeModal();
+        })
+        .catch(error => console.error('Form submission error:', error));
+        });
     });
 </script>
     </script>

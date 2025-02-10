@@ -1,9 +1,9 @@
 {% extends "aquillm/base.html" %}
 
 {% block content %}
-<div class="flex flex-col-reverse h-full items-center">
+<div class="flex flex-col-reverse h-full max-h-full items-center">
     
-    <div class="border-t border-gray-shade_6 w-[80%] mt-[32px] mb-[160px] flex flex-col items-center">
+    <div class="border-t border-gray-shade_6 w-[80%] mb-[32px] flex flex-col items-center">
         
         <div id="exception-box" class="sticky top-0 z-50 font-mono text-red-700"></div>
         
@@ -13,7 +13,7 @@
                     type="text" 
                     id="message-input"
                     style="color: #eeeeee; font-family: sans-serif;"
-                    class="px-4 py-2 mr-[16px] flex-grow w-full rounded-lg bg-gray-shade_3 disabled:cursor-not-allowed placeholder:text-gray-shade_7 placeholder:font-sans "
+                    class="px-4 py-2 mr-[16px] flex-grow w-full rounded-lg bg-gray-shade_3 b focus:border-0 disabled:cursor-not-allowed placeholder:text-gray-shade_7 placeholder:font-sans "
                     placeholder="Type your message here..."
                     autocomplete="off"
                 />
@@ -46,11 +46,9 @@
                 </details>
             </div>
         </div>
-        
-        
     </div>
 
-    <div class="flex w-[80%]">
+    <div class="flex w-[80%] overflow-y-auto h-full max-h-full px-[32px]">
         <div id="conversation-root">
 
         </div>
@@ -454,7 +452,7 @@
                 'max-w-full': true,
                 'h-full': true,
                 'mx-auto': true,
-                'overflow-y-auto': true
+                // 'overflow-y-auto': true
             }
         }, content);
     }

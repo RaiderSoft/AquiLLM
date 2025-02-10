@@ -3,6 +3,7 @@ module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
     "../aquillm/templates/**/*.html",
+    "../aquillm/aquillm/**/*.py",
   ],
   theme: {
     extend: {

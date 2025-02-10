@@ -105,8 +105,22 @@ class ArXiVForm(forms.Form):
 
 
 class PDFDocumentForm(forms.Form):
-    title = forms.CharField(label="Article Title")
-    pdf_file = forms.FileField(label="PDF File")
+    title = forms.CharField(
+        label="Article Title",  
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Article Title:', 
+            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+        })
+    )
+
+    pdf_file = forms.FileField(
+        label="PDF File",
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'hidden',  # hide the default file input
+            'id': 'pdf-file-input'  # assign an ID for linking the custom label
+        })
+    )
+
     # TODO: make function sig not weird
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
