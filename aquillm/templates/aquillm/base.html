@@ -93,7 +93,7 @@
                     {% else %}
                     <form method="post" action="{% url 'account_login' %}">
                         {% csrf_token %}
-                        <button class="bg-deep-secondary hover:bg-lighter-secondary hover:underline text-lg px-3 py-1 rounded-lg font-black" type="submit">Log In</button>
+                        <button class="font-sans text-lg px-3 h-[40px] mr-[24px] text-accent-light underline transition-colors py-1 rounded-[20px]" type="submit">Log In</button>
                     </form>
                     {% endif %}
                 </div>
@@ -157,10 +157,6 @@
                         {% endfor %}
                     {% endif %}
                 </div>
-
-                <!-- <div class="flex justify-center p-5 mt-auto">
-                    <img id="aquillm-logo" src="{% static 'images/aquila.svg' %}" alt="AquiLLM Logo">
-                </div> -->
             </div>
 
             <!-- Page Content -->

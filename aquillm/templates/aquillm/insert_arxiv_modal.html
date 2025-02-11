@@ -1,13 +1,37 @@
 
-<h1>Insert arXiv</h1>
+<div class="bg-gray-shade_4 flex items-center justify-center h-[80px]">
+    <span class="font-sans text-gray-shade_e text-2xl font-bold">
+        Insert arXiv
+    </span>
+</div>
+
 {% if status_message %}
     <div class="status_message">
         {{ status_message }}
     </div>
 {% endif %}
 
-<form action="{% url 'insert_arxiv' %}" method="post" enctype="multipart/form-data">
+<form action="{% url 'insert_arxiv' %}" method="post" enctype="multipart/form-data" class="flex flex-col justify-center p-[32px] text-gray-shade_e font-sans">
     {% csrf_token %}
-    {{ form }}
+    <div class="form-group w-full">
+        {{ form.arxiv_id }} 
+        {% if form.arxiv_id.errors %}
+            <p class="text-red-500 text-sm">{{ form.arxiv_id.errors }}</p>
+        {% endif %}
+    </div>
+
+    <div class="flex-grow border-t border-gray-shade_a my-[32px]"></div>
+
+    <div class="form-group">
+        <label class="block font-medium">Collection</label>
+
+        {{ form.collection }}
+        {% if form.collection.errors %}
+            <p class="text-red-500 text-sm">{{ form.collection.errors }}</p>
+        {% endif %}
+    </div>
+
+
+    {% csrf_token %}
     <input class="w-full bg-deep-secondary hover:bg-lighter-secondary text-white font-bold p-2 rounded" type="submit" value="Submit">
 </form>

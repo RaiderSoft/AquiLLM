@@ -96,8 +96,15 @@ class SearchForm(forms.Form):
 
 
 class ArXiVForm(forms.Form):
+    arxiv_id = forms.CharField(
+        label="Article arXiv Identifier",  
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Article arXiv Identifier:', 
+            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+        })
+    )
+
     collection = forms.ChoiceField(widget=forms.RadioSelect)
-    arxiv_id = forms.CharField(label="Article arXiv Identifier", max_length=100)
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -135,11 +142,30 @@ class PDFDocumentForm(forms.Form):
         )
     
 class VTTDocumentForm(forms.Form):
-    title = forms.CharField(label="Transcript Title")
-    audio_file = forms.FileField(label="Audio File (optional)", required=False)
-    vtt_file = forms.FileField(label=".vtt Transcript File")
-    
+    title = forms.CharField(
+        label="Transcript Title",  
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Transcript Title:', 
+            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+        })
+    )
 
+    vtt_file = forms.FileField(
+        label="Audio File (optional)",
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'hidden',
+            'id': 'audio-file-input'
+        })
+    )
+
+    vtt_file = forms.FileField(
+        label=".vtt Transcript File",
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'hidden',
+            'id': 'vtt-file-input'
+        })
+    )
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
