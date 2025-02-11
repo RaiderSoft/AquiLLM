@@ -171,30 +171,62 @@
     </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const menuToggle = document.getElementById("menu-toggle");
-        const sidebar = document.getElementById("aq-sidebar");
-        const sidebarHeader = document.getElementById("sidebar-header");
+    const menuToggle = document.getElementById("menu-toggle");
+    const sidebar = document.getElementById("aq-sidebar");
 
-        menuToggle.addEventListener("click", function(e) {
-            e.preventDefault();
-            sidebar.classList.toggle("ml-[-260px]");
-            menuToggle.classList.toggle("bg-accent");
-            menuToggle.classList.toggle("pl-[24px]");
-            
-            if (sidebar.classList.contains("ml-[-260px]")){
-                setTimeout(() => {
-                    menuToggle.classList.remove("hover:bg-gray-shade_5")
-                    menuToggle.classList.add("hover:bg-accent-light")
-                    menuToggle.style.transform = "translateX(60px)";
-                }, 100);
-            }
-            else {
-                menuToggle.style.transform = "translateX(0px)";
-                menuToggle.classList.remove("hover:bg-accent-light")
-                menuToggle.classList.add("hover:bg-gray-shade_5")
-            }
-        });
+    menuToggle.addEventListener("click", function(e) {
+        e.preventDefault();
+        sidebar.classList.toggle("ml-[-260px]");
+        menuToggle.classList.toggle("bg-accent");
+        menuToggle.classList.toggle("pl-[24px]");
+        
+        if (sidebar.classList.contains("ml-[-260px]")) {
+            setTimeout(() => {
+                menuToggle.classList.remove("hover:bg-gray-shade_5");
+                menuToggle.classList.add("hover:bg-accent-light");
+                menuToggle.style.transform = "translateX(60px)";
+            }, 100);
+        } else {
+            menuToggle.style.transform = "translateX(0px)";
+            menuToggle.classList.remove("hover:bg-accent-light");
+            menuToggle.classList.add("hover:bg-gray-shade_5");
+        }
+        
+        // Save the sidebar state in localStorage
+        localStorage.setItem("sidebarClosed", sidebar.classList.contains("ml-[-260px]"));
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // use localStorage to have the sidebar state persist.
+        const sidebarClosed = localStorage.getItem("sidebarClosed");
+    
+        if (sidebarClosed === "true") {
+            // Temporarily disable transitions
+            sidebar.style.transition = "none";
+            menuToggle.style.transition = "none";
+
+            sidebar.classList.add("ml-[-260px]");
+
+            menuToggle.style.transform = "translateX(60px)";
+            menuToggle.classList.add("bg-accent");
+            menuToggle.classList.add("pl-[24px]");
+            menuToggle.classList.remove("hover:bg-gray-shade_5");
+            menuToggle.classList.add("hover:bg-accent-light");
+
+            // Re-enable transitions after a short delay (50ms seems to work well)
+            setTimeout(() => {
+                sidebar.style.transition = "";
+                menuToggle.style.transition = "";
+            }, 50);
+
+        } else {
+            sidebar.classList.remove("ml-[-260px]");
+            menuToggle.style.transform = "translateX(0px)";
+            menuToggle.classList.remove("bg-accent");
+            menuToggle.classList.remove("pl-[24px]");
+            menuToggle.classList.remove("hover:bg-accent-light");
+            menuToggle.classList.add("hover:bg-gray-shade_5");
+        }
 
         // Add highlighting for which link you're currently on
         const sidebarLinks = document.querySelectorAll(".aq-sidebar a");
@@ -255,10 +287,10 @@
         // Close the modal when the close button is clicked
         document.getElementById('modal-close').addEventListener('click', closeModal);
 
-        // Optionally, close the modal when clicking outside the modal content:
+        // Close the modal when clicking outside the modal content:
         document.getElementById('modal-overlay').addEventListener('click', function (e) {
             if (e.target === this) {
-            closeModal();
+                closeModal();
             }
         });
 
