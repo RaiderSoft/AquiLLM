@@ -37,7 +37,7 @@
         {% if user.is_authenticated %}
         {% csrf_token %}
 
-        <h1 class="font-sans text-5xl text-accent-light pb-[24px] mb-[24px] pointer-events-none w-[30%] text-center z-50">Welcome, {{ user.username }}</h1>
+        <h1 class="font-sans text-5xl text-accent-light pb-[24px] mb-[24px] pointer-events-none w-[30%] text-center z-10">Welcome, {{ user.username }}</h1>
             
         {% else %}
         {% csrf_token %}

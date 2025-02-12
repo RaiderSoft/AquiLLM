@@ -499,7 +499,7 @@ def health_check(request):
 @require_http_methods(['GET'])
 @login_required
 def user_ws_convos(request):
-    convos = WSConversation.objects.filter(owner=request.user).order_by('-updated_at')
+    convos = WSConversation.objects.filter(owner=request.user).order_by('-created_at') # this used to be updated-at
     return render(request, 'aquillm/user_ws_convos.html', {'conversations': convos})
 
 
