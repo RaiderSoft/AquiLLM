@@ -31,11 +31,27 @@
     <div id="modal-overlay" class="z-50 opacity-0 pointer-events-none fixed inset-0 bg-black bg-opacity-50 backdrop-blur flex items-center justify-center transition-all">
         <div id="modal-content" class="bg-gray-shade_3 border border-gray-shade_6 rounded-[32px] shadow-lg relative overflow-hidden h-[80%] w-[500px]">
             
-            <!-- Close button -->
             <button id="modal-close" class="absolute top-[20px] right-[20px] h-[40px] w-[40px] rounded-[20px] text-xl text-gray-shade_e bg-gray-shade_5 hover:bg-gray-shade_3 transition-colors">&times;</button>
-            <!-- This is where the form (or other content) will be loaded -->
+
             <div id="modal-body"></div>
         </div>
+    </div>
+
+    <div id="account-menu-modal" class="flex flex-col items-left gap-[16px] absolute top-[10%] right-[5%] p-[16px] rounded-[12px] bg-gray-shade_4 border border-gray-shade_6 font-sans hidden text-gray-shade_e">
+        <p class="w-full text-center border-b border-gray-shade_6">
+            <strong>{{ user.username }}</strong>
+        </p>
+
+        <button>
+            Manage Account
+        </button>
+
+        <form method="post" action="{% url 'account_logout' %}">
+            {% csrf_token %}
+            <button class="text-red" type="submit">
+                Logout
+            </button>
+        </form>
     </div>
 
     <div class="flex flex-col max-h-screen h-screen" id="wrapper">
@@ -86,18 +102,18 @@
 
                 <div class="flex items-center my-2 text-lightest-primary">
                     {% if user.is_authenticated %}
-                    <form method="post" action="{% url 'account_logout' %}">
-                        {% csrf_token %}
-                        <!-- border radius is half of svg size (20) + padding (12) / 2 to make a circle -->
-                        <div class="my-[12px] mr-[24px] hover:bg-gray-shade_6 transition-all rounded-[24px] p-[12px] outline outline-gray-shade_e outline-2 cursor-pointer">
-                            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <g clip-path="url(#clip0_42_68)">
-                                <path d="M16 16C17.5823 16 19.129 15.5308 20.4446 14.6518C21.7602 13.7727 22.7855 12.5233 23.391 11.0615C23.9965 9.59966 24.155 7.99113 23.8463 6.43928C23.5376 4.88743 22.7757 3.46197 21.6569 2.34315C20.538 1.22433 19.1126 0.462403 17.5607 0.153721C16.0089 -0.15496 14.4003 0.00346629 12.9385 0.608967C11.4767 1.21447 10.2273 2.23985 9.34824 3.55544C8.46919 4.87103 8 6.41775 8 8C8.00212 10.1211 8.84565 12.1547 10.3455 13.6545C11.8453 15.1544 13.8789 15.9979 16 16ZM16 2.66667C17.0548 2.66667 18.086 2.97946 18.963 3.5655C19.8401 4.15153 20.5237 4.98449 20.9274 5.95903C21.331 6.93357 21.4366 8.00592 21.2309 9.04049C21.0251 10.0751 20.5171 11.0254 19.7712 11.7712C19.0254 12.5171 18.075 13.0251 17.0405 13.2309C16.0059 13.4366 14.9336 13.331 13.959 12.9274C12.9845 12.5237 12.1515 11.8401 11.5655 10.963C10.9795 10.086 10.6667 9.05484 10.6667 8C10.6667 6.58552 11.2286 5.22896 12.2288 4.22877C13.229 3.22857 14.5855 2.66667 16 2.66667Z" fill="#eeeeee"/>
-                                <path d="M16 18.6666C12.8185 18.6702 9.76829 19.9356 7.51862 22.1852C5.26894 24.4349 4.00353 27.4851 4 30.6666C4 31.0202 4.14048 31.3594 4.39052 31.6094C4.64057 31.8595 4.97971 32 5.33333 32C5.68696 32 6.02609 31.8595 6.27614 31.6094C6.52619 31.3594 6.66667 31.0202 6.66667 30.6666C6.66667 28.1913 7.65 25.8173 9.40034 24.067C11.1507 22.3166 13.5246 21.3333 16 21.3333C18.4754 21.3333 20.8493 22.3166 22.5997 24.067C24.35 25.8173 25.3333 28.1913 25.3333 30.6666C25.3333 31.0202 25.4738 31.3594 25.7239 31.6094C25.9739 31.8595 26.313 32 26.6667 32C27.0203 32 27.3594 31.8595 27.6095 31.6094C27.8595 31.3594 28 31.0202 28 30.6666C27.9965 27.4851 26.7311 24.4349 24.4814 22.1852C22.2317 19.9356 19.1815 18.6702 16 18.6666Z" fill="#eeeeee"/>
-                                </g>
-                            </svg>
-                        </div>
-                    </form>
+                    
+                        <button id="account-management-toggle-button">
+                            <!-- border radius is half of svg size (20) + padding (12) / 2 to make a circle -->
+                            <div class="my-[12px] mr-[24px] hover:bg-gray-shade_6 transition-all rounded-[24px] p-[12px] outline outline-gray-shade_e outline-2 cursor-pointer">
+                                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <g clip-path="url(#clip0_42_68)">
+                                    <path d="M16 16C17.5823 16 19.129 15.5308 20.4446 14.6518C21.7602 13.7727 22.7855 12.5233 23.391 11.0615C23.9965 9.59966 24.155 7.99113 23.8463 6.43928C23.5376 4.88743 22.7757 3.46197 21.6569 2.34315C20.538 1.22433 19.1126 0.462403 17.5607 0.153721C16.0089 -0.15496 14.4003 0.00346629 12.9385 0.608967C11.4767 1.21447 10.2273 2.23985 9.34824 3.55544C8.46919 4.87103 8 6.41775 8 8C8.00212 10.1211 8.84565 12.1547 10.3455 13.6545C11.8453 15.1544 13.8789 15.9979 16 16ZM16 2.66667C17.0548 2.66667 18.086 2.97946 18.963 3.5655C19.8401 4.15153 20.5237 4.98449 20.9274 5.95903C21.331 6.93357 21.4366 8.00592 21.2309 9.04049C21.0251 10.0751 20.5171 11.0254 19.7712 11.7712C19.0254 12.5171 18.075 13.0251 17.0405 13.2309C16.0059 13.4366 14.9336 13.331 13.959 12.9274C12.9845 12.5237 12.1515 11.8401 11.5655 10.963C10.9795 10.086 10.6667 9.05484 10.6667 8C10.6667 6.58552 11.2286 5.22896 12.2288 4.22877C13.229 3.22857 14.5855 2.66667 16 2.66667Z" fill="#eeeeee"/>
+                                    <path d="M16 18.6666C12.8185 18.6702 9.76829 19.9356 7.51862 22.1852C5.26894 24.4349 4.00353 27.4851 4 30.6666C4 31.0202 4.14048 31.3594 4.39052 31.6094C4.64057 31.8595 4.97971 32 5.33333 32C5.68696 32 6.02609 31.8595 6.27614 31.6094C6.52619 31.3594 6.66667 31.0202 6.66667 30.6666C6.66667 28.1913 7.65 25.8173 9.40034 24.067C11.1507 22.3166 13.5246 21.3333 16 21.3333C18.4754 21.3333 20.8493 22.3166 22.5997 24.067C24.35 25.8173 25.3333 28.1913 25.3333 30.6666C25.3333 31.0202 25.4738 31.3594 25.7239 31.6094C25.9739 31.8595 26.313 32 26.6667 32C27.0203 32 27.3594 31.8595 27.6095 31.6094C27.8595 31.3594 28 31.0202 28 30.6666C27.9965 27.4851 26.7311 24.4349 24.4814 22.1852C22.2317 19.9356 19.1815 18.6702 16 18.6666Z" fill="#eeeeee"/>
+                                    </g>
+                                </svg>
+                            </div>
+                        </button>
 
                     {% else %}
                     <form method="post" action="{% url 'account_login' %}">
@@ -235,8 +251,6 @@
         const sidebarClosed = localStorage.getItem("sidebarClosed");
         const conversationDropdownClosed = localStorage.getItem("conversationDropdownClosed");
         const conversationDropdownIndicatorRotated = localStorage.getItem("conversationDropdownIndicatorRotated");
-
-        console.log(conversationDropdownClosed);
 
         if (conversationDropdownClosed === "true")
         {
@@ -533,6 +547,24 @@
             closeDeleteConfirm();
         }
     });
+
+    document.getElementById("account-management-toggle-button").addEventListener("click", function(event){
+        event.stopPropagation();
+        document.getElementById("account-menu-modal").classList.remove("hidden");
+    });
+
+    function closeAccountManagementModal() {
+        document.getElementById("account-menu-modal").classList.add("hidden");
+    }
+
+    document.addEventListener('click', function(event) {
+        const accountManagementModal = document.getElementById("account-menu-modal");
+
+        if (accountManagementModal && !accountManagementModal.contains(event.target)) {
+            closeAccountManagementModal();
+        }
+    });
+
 </script>
     </script>
     {% block scripts %}{% endblock %}
