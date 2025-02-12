@@ -35,6 +35,7 @@ urlpatterns = [
     
     # API endpoints
     path("api/collections/", views.get_collections_json, name="get_collections_json"),
+    path("api/collections/delete/<int:collection_id>/", views.delete_collection, name="delete_collection"),
     
     # React app specific routes - redirect old URLs to React app versions
     path('collections/', lambda request: redirect('/app/collections/')),

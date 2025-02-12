@@ -167,48 +167,6 @@ class CollectionPermission(models.Model):
             
 
 
-class Folder(models.Model):
-    name = models.CharField(max_length=100)
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='children')
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='folders')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ('name', 'parent', 'collection')
-        ordering = ['name']
-
-    def __str__(self):
-        return f"{self.name} ({self.collection.name})"
-
-    def get_path(self):
-        path = [self.name]
-        current = self
-        while current.parent:
-            current = current.parent
-            path.append(current.name)
-        return '/'.join(reversed(path))
-
-    def get_all_children(self):
-        children = list(self.children.all())
-        for child in self.children.all():
-            children.extend(child.get_all_children())
-        return children
-
-    @property
-    def documents(self):
-        # Combine documents from all document types
-        all_documents = []
-        for doc_type in DESCENDED_FROM_DOCUMENT:
-            related_name = f"{doc_type.__name__.lower()}_documents"
-            all_documents.extend(getattr(self, related_name).all())
-        return all_documents
-
-    @property
-    def document_count(self):
-        return sum(getattr(self, f"{doc_type.__name__.lower()}_documents").count() 
-                  for doc_type in DESCENDED_FROM_DOCUMENT)
-
 class Document(models.Model):
     pkid = models.BigAutoField(primary_key=True, editable=False)
     id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)

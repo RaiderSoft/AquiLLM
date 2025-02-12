@@ -661,6 +661,21 @@ def collection_detail(request, collection_id):
     return render(request, 'aquillm/collection_detail.html', context)
 
 @login_required
+@requires_csrf_token
+@require_http_methods(['DELETE'])
+def delete_collection(request, collection_id):
+    """View to delete a collection"""
+    try:
+        collection = get_object_or_404(Collection, id=collection_id)
+        if not collection.user_can_manage(request.user):
+            return HttpResponseForbidden("You don't have permission to delete this collection")
+        collection.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"Error deleting collection {collection_id}: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
 @require_http_methods(['POST'])
 def move_document(request, doc_id):
     """View to move a document to a different collection"""

@@ -105,7 +105,7 @@ const CollectionsPage: React.FC = () => {
 
   const handleDeleteCollection = (collection: Folder) => {
     if (window.confirm(`Are you sure you want to delete "${collection.name}"?`)) {
-      fetch(`/api/collections/${collection.id}/`, {
+      fetch(`/api/collections/delete/${collection.id}/`, {
         method: 'DELETE',
         headers: {
           'X-CSRFToken': getCookie('csrftoken')

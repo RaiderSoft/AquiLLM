@@ -46,7 +46,7 @@ const CollectionSettingsMenu: React.FC<CollectionSettingsMenuProps> = ({
     <div ref={menuRef} style={{ position: 'relative' }}>
       <button
         style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
       >
         ⚙️
       </button>
