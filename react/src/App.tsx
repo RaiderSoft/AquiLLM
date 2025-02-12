@@ -6,6 +6,7 @@ import NewConversation from './pages/NewConversation';
 import Conversations from './pages/Conversations';
 import Search from './pages/Search';
 import CollectionsPage from './pages/CollectionsPage';
+import CollectionView from './pages/CollectionView';
 import IngestArxiv from './pages/IngestArxiv';
 import IngestPDF from './pages/IngestPDF';
 import IngestTranscript from './pages/IngestTranscript';
@@ -17,6 +18,7 @@ const App: React.FC = () => {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="collections" element={<CollectionsPage />} />
+          <Route path="collections/:id" element={<CollectionView />} />
           <Route path="new-conversation" element={<NewConversation />} />
           <Route path="conversations" element={<Conversations />} />
           <Route path="search" element={<Search />} />

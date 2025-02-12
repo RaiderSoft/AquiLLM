@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Folder } from '../components/Collections/CollectionsTree';
 import MoveCollectionModal from '../components/Collections/MoveCollectionModal';
 import CreateCollectionModal from '../components/Collections/CreateCollectionModal';
@@ -6,6 +7,7 @@ import CollectionSettingsMenu from '../components/Collections/CollectionSettings
 import { getCookie } from '../utils/csrf';
 
 const CollectionsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [collections, setCollections] = useState<Folder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +127,10 @@ const CollectionsPage: React.FC = () => {
     console.log('Manage collaborators for:', collection);
   };
 
+  const handleCollectionClick = (collection: Folder) => {
+    navigate(`/collections/${collection.id}`);
+  };
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
@@ -163,8 +169,10 @@ const CollectionsPage: React.FC = () => {
               backgroundColor: '#2d2d2d',
               borderRadius: '0.5rem',
               padding: '1.5rem',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+              cursor: 'pointer'
             }}
+            onClick={() => handleCollectionClick(collection)}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{collection.name}</h2>
@@ -176,41 +184,47 @@ const CollectionsPage: React.FC = () => {
               />
             </div>
             
-            <div style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#9ca3af' }}>
+            <div style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#9ca3af' }} onClick={(e) => e.stopPropagation()}>
               <div>Documents: {collection.document_count}</div>
               <div>Sub collections: {collection.children.length}</div>
               <div>Created: {collection.created_at}</div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <button style={{
-                padding: '0.5rem',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                borderRadius: '0.375rem',
-                border: 'none',
-                cursor: 'pointer'
-              }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
+              <button
+                style={{
+                  padding: '0.5rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
                 Ingest PDF
               </button>
-              <button style={{
-                padding: '0.5rem',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                borderRadius: '0.375rem',
-                border: 'none',
-                cursor: 'pointer'
-              }}>
+              <button
+                style={{
+                  padding: '0.5rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
                 Ingest from arXiv
               </button>
-              <button style={{
-                padding: '0.5rem',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                borderRadius: '0.375rem',
-                border: 'none',
-                cursor: 'pointer'
-              }}>
+              <button
+                style={{
+                  padding: '0.5rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
                 Ingest Transcript
               </button>
             </div>
@@ -221,7 +235,7 @@ const CollectionsPage: React.FC = () => {
               border: '2px dashed #4b5563',
               borderRadius: '0.375rem',
               textAlign: 'center'
-            }}>
+            }} onClick={(e) => e.stopPropagation()}>
               <div>Drag Files Here</div>
               <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
                 <span>browse files</span> or <span>browse folders</span>

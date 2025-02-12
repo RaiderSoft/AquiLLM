@@ -390,19 +390,65 @@ def update_collection_permissions(request, col_id):
 @require_http_methods(['GET'])
 @login_required
 def collection(request, col_id):
-    collection = get_object_or_404(Collection, pk=col_id)
-    if not collection.user_can_view(request.user):
-        raise PermissionDenied()
-    
-    # Get all collections the user can edit for move functionality
-    available_collections = Collection.objects.filter_by_user_perm(request.user, 'EDIT')
-    
-    return render(request, 'aquillm/collection.html', {
-        'collection': collection,
-        'can_edit': collection.user_can_edit(request.user),
-        'can_delete': collection.user_can_manage(request.user),
-        'available_collections': available_collections,
-    })
+    """View to display a collection and its contents"""
+    try:
+        collection = get_object_or_404(Collection, pk=col_id)
+        if not collection.user_can_view(request.user):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        # Return JSON if requested
+        if 'application/json' in request.headers.get('Accept', ''):
+            try:
+                # Get documents from all document types
+                documents = []
+                for model in DESCENDED_FROM_DOCUMENT:
+                    docs = model.objects.filter(collection=collection)
+                    for doc in docs:
+                        documents.append({
+                            'id': str(doc.id),
+                            'title': getattr(doc, 'title', None) or getattr(doc, 'name', 'Untitled'),
+                            'type': doc.__class__.__name__,
+                            'created_at': doc.created_at.isoformat() if hasattr(doc, 'created_at') and doc.created_at else None,
+                        })
+
+                # Get child collections
+                children = [{
+                    'id': child.id,
+                    'name': child.name,
+                    'document_count': len([doc for doc in child.documents]) if hasattr(child, 'documents') else 0,
+                } for child in collection.children.all()]
+
+                response_data = {
+                    'collection': {
+                        'id': collection.id,
+                        'name': collection.name,
+                        'parent': collection.parent.id if collection.parent else None,
+                        'created_at': collection.created_at.isoformat() if hasattr(collection, 'created_at') and collection.created_at else None,
+                        'updated_at': collection.updated_at.isoformat() if hasattr(collection, 'updated_at') and collection.updated_at else None,
+                    },
+                    'documents': documents,
+                    'children': children,
+                    'can_edit': collection.user_can_edit(request.user),
+                    'can_manage': collection.user_can_manage(request.user),
+                }
+                return JsonResponse(response_data)
+            except Exception as e:
+                logger.error(f"Error processing collection data: {str(e)}")
+                return JsonResponse({'error': str(e)}, status=500)
+        
+        # Get all collections the user can edit for move functionality
+        available_collections = Collection.objects.filter_by_user_perm(request.user, 'EDIT')
+        
+        # Return HTML template for browser requests
+        return render(request, 'aquillm/collection.html', {
+            'collection': collection,
+            'can_edit': collection.user_can_edit(request.user),
+            'can_delete': collection.user_can_manage(request.user),
+            'available_collections': available_collections,
+        })
+    except Exception as e:
+        logger.error(f"Error in collection view: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 @require_http_methods(['GET', 'POST'])
 @login_required

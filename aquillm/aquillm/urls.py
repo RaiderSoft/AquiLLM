@@ -34,7 +34,7 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     
     # API endpoints
-    path("api/collections/", views.get_collections_json, name="api_collections"),
+    path("api/collections/", views.get_collections_json, name="get_collections_json"),
     
     # React app specific routes - redirect old URLs to React app versions
     path('collections/', lambda request: redirect('/app/collections/')),
