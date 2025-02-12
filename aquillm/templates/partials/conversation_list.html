@@ -7,7 +7,7 @@
         {% for conversation in conversations %}
             <li id="convo-{{ conversation.id }}" class="conversation-item relative mt-[8px] ml-[8px]">
                 <div class="flex justify-between items-center rounded-[8px] pl-[8px] mr-[8px] hover:bg-gray-shade_5 h-[40px]">
-                    <a href="{% url 'ws_convo' convo_id=conversation.pk %}" class="conversation-link no-highlight max-w-[150px] overflow-hidden" style="white-space: nowrap; text-overflow: ellipsis;">
+                    <a href="{% url 'ws_convo' convo_id=conversation.pk %}" class="conversation-link max-w-[150px] p-1 rounded-[4px] overflow-hidden" style="white-space: nowrap; text-overflow: ellipsis;">
                         {{ conversation.name|default:"Untitled Conversation" }}
                     </a>
 

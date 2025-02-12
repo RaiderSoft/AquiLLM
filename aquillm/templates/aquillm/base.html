@@ -202,6 +202,9 @@
 <script>
     const menuToggle = document.getElementById("menu-toggle");
     const sidebar = document.getElementById("aq-sidebar");
+    const conversationDropdown = document.getElementById("conversation-dropdown");
+    const dropdownIndicator = document.getElementById("dropdown-indicator");
+    const conversationDropdownButton = document.getElementById("conversation-dropdown-btn");
 
     var searchInput = document.getElementById("conversation-search");
 
@@ -223,13 +226,48 @@
             menuToggle.classList.add("hover:bg-gray-shade_5");
         }
         
-        // Save the sidebar state in localStorage
+        // Save the sidebar and conversation dropdown state in localStorage
         localStorage.setItem("sidebarClosed", sidebar.classList.contains("ml-[-260px]"));
     });
 
     document.addEventListener('DOMContentLoaded', function() {
         // use localStorage to have the sidebar state persist.
         const sidebarClosed = localStorage.getItem("sidebarClosed");
+        const conversationDropdownClosed = localStorage.getItem("conversationDropdownClosed");
+        const conversationDropdownIndicatorRotated = localStorage.getItem("conversationDropdownIndicatorRotated");
+
+        console.log(conversationDropdownClosed);
+
+        if (conversationDropdownClosed === "true")
+        {
+            conversationDropdown.style.transition = "none";
+            dropdownIndicator.style.transition = "none";
+
+            conversationDropdown.style.height = "0px";
+            conversationDropdown.style.marginTop = "0px";
+            conversationDropdownButton.classList.remove("bg-gray-shade_5");
+            dropdownIndicator.style.transform = "rotate(0deg)";
+
+            setTimeout(() => {
+                dropdownIndicator.style.transition = "";
+                conversationDropdown.style.transition = "";
+            }, 50);
+        }
+
+        else {
+            conversationDropdown.style.transition = "none";
+            dropdownIndicator.style.transition = "none";
+
+            conversationDropdown.style.height = "296px";
+            conversationDropdown.style.marginTop = "10px";
+            conversationDropdownButton.classList.add("bg-gray-shade_5");
+            dropdownIndicator.style.transform = "rotate(180deg)";
+
+            setTimeout(() => {
+                dropdownIndicator.style.transition = "";
+                conversationDropdown.style.transition = "";
+            }, 50);
+        }
     
         if (sidebarClosed === "true") {
             // Temporarily disable transitions
@@ -366,26 +404,28 @@
 
     // Toggle the entire conversation dropdown
     function toggleDropdown() {  
-        const conversationDropdown = document.getElementById("conversation-dropdown");
-        const dropdownIndicator = document.getElementById("dropdown-indicator");
-
-        document.getElementById("conversation-dropdown-btn").classList.toggle("bg-gray-shade_5");
+        
 
         if (conversationDropdown.style.height === "0px")
         {
-            // This height is calculated via the base maximum height (200px)
+            // This height is calculated via the base maximum height (240px)
             // + height of search bar (28px) + half of height of one element in 
             // the dropdown (20px) + dropdown padding (8px)
+            conversationDropdownButton.classList.add("bg-gray-shade_5");
             conversationDropdown.style.height = "296px";
             conversationDropdown.style.marginTop = "10px";
             dropdownIndicator.style.transform = "rotate(180deg)";
         }
         else
         {
+            conversationDropdownButton.classList.remove("bg-gray-shade_5");
             conversationDropdown.style.height = "0px";
             conversationDropdown.style.marginTop = "0px";
             dropdownIndicator.style.transform = "rotate(0deg)";
         }
+
+        localStorage.setItem("conversationDropdownClosed", conversationDropdown.style.height === "0px");
+        localStorage.setItem("conversationDropdownIndicatorRotated", dropdownIndicator.style.transform === "rotate(180deg)");
     }
 
     // Keep track of the currently open modal (if any)
