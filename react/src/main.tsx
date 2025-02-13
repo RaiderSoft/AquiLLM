@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { createRoot } from 'react-dom/client';
 import TestComponent from './components/TestComponent';
 import PDFIngestionMonitor from './components/PDFIngestionMonitor';
@@ -35,3 +36,4 @@ window.mountReactComponent = (
     console.error(`Component '${componentName}' not found`);
   }
 };
+

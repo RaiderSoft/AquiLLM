@@ -5,7 +5,7 @@ set -e
 
 
 cd /app/react
-npm ci
+npm install
 npm run watch &
 npx tailwindcss -o /app/aquillm/aquillm/static/index.css
 npx tailwindcss -o /app/aquillm/aquillm/static/index.css

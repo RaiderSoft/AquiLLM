@@ -65,7 +65,29 @@ class CollectionQuerySet(models.QuerySet):
 class Collection(models.Model):
     name = models.CharField(max_length=100)
     users = models.ManyToManyField(User, through='CollectionPermission')
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='children')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     objects = CollectionQuerySet.as_manager()
+
+    class Meta:
+        unique_together = ('name', 'parent')
+        ordering = ['name']
+
+    def get_path(self):
+        path = [self.name]
+        current = self
+        while current.parent:
+            current = current.parent
+            path.append(current.name)
+        return '/'.join(reversed(path))
+
+    def get_all_children(self):
+        children = list(self.children.all())
+        for child in self.children.all():
+            children.extend(child.get_all_children())
+        return children
+
     # returns a list of documents, not a queryset.
     @property
     def documents(self):
@@ -98,6 +120,21 @@ class Collection(models.Model):
         documents = functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection__in=collections)) for x in DESCENDED_FROM_DOCUMENT])
         return documents
 
+    def move_to(self, new_parent=None):
+        """Move this collection to a new parent"""
+        if new_parent and new_parent.id == self.id:
+            raise ValidationError("Cannot move a collection to itself")
+        
+        # Check for circular reference
+        if new_parent:
+            parent_check = new_parent
+            while parent_check is not None:
+                if parent_check.id == self.id:
+                    raise ValidationError("Cannot create circular reference in collection hierarchy")
+                parent_check = parent_check.parent
+        
+        self.parent = new_parent
+        self.save()
 
     def __str__(self):
         return f'{self.name}'
@@ -136,13 +173,14 @@ class CollectionPermission(models.Model):
 class Document(models.Model):
     pkid = models.BigAutoField(primary_key=True, editable=False)
     id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
-
     title = models.CharField(max_length=200)
     full_text = models.TextField()
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='%(class)s_documents')
+
     full_text_hash = models.CharField(max_length=64, db_index=True)
     ingested_by = models.ForeignKey(User, on_delete=models.RESTRICT)
     ingestion_date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         abstract = True
         constraints = [
@@ -164,8 +202,8 @@ class Document(models.Model):
       
         with transaction.atomic():
             is_new = self.pk is None
-
             super().save(*args, **kwargs)
+
             result = self.create_chunks.delay(self)
             try:
                 for _ in range(4):
@@ -180,13 +218,13 @@ class Document(models.Model):
                 result.revoke()
                 self.delete()
 
+    def move_to(self, new_collection):
+        """Move this document to a new collection"""
+        if not new_collection.user_can_edit(self.ingested_by):
+            raise ValidationError("User does not have permission to move documents to this collection")
+        self.collection = new_collection
+        self.save()
 
-#   |-----------CHUNK-----------|
-#   <---------chunk_size-------->
-#                       <------->  chunk_overlap
-#                       <-----chunk_pitch-->                               == chunk_size - chunk_overlap
-#                       |-----------CHUNK-----------|
-#                                           |-----------CHUNK-----------|
     def delete(self, *args, **kwargs):
         TextChunk.objects.filter(doc_id=self.id).delete()
         super().delete(*args, **kwargs)

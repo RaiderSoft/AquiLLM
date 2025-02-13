@@ -55,6 +55,7 @@ urlpatterns = [
     path("ready", views.health_check),
     path("react_test", views.react_test, name="react_test"),
     path("pdf_ingestion_monitor/<int:doc_id>/", views.pdf_ingestion_monitor, name="pdf_ingestion_monitor"),
+
 ] + debug_toolbar_urls()
 
 if DEBUG:
