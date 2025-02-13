@@ -39,8 +39,7 @@ else:
 INSTALLED_APPS = [
     "daphne",
     "chat",
-    "folders",
-    "frontend",
+    "ingest",
     "django.contrib.sites",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -57,7 +56,6 @@ INSTALLED_APPS = [
     "django_extensions",
     'django.contrib.postgres',
     'debug_toolbar',
-    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -227,3 +225,17 @@ STORAGES = {
 }
 
 CSRF_TRUSTED_ORIGINS =['https://' + os.getenv("HOST_NAME")]
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [('redis', 6379)],
+        },
+    }
+}
+
+CELERY_BROKER_URL = "redis://redis:6379"
+CELERY_RESULT_BACKEND = "redis://redis:6379"
+CELERY_ACCEPT_CONTENT = ['pickle', 'json']

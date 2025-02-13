@@ -297,57 +297,11 @@ def user_collections(request):
 @require_http_methods(['GET'])
 @login_required
 def get_collections_json(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        name = data.get('name')
-        if not name:
-            return JsonResponse({'error': 'Name is required'}, status=400)
-
-        with transaction.atomic():
-            collection = Collection.objects.create(name=name)
-            CollectionPermission.objects.create(
-                collection=collection,
-                user=request.user,
-                permission='MANAGE'
-            )
-
-            # Handle additional permissions
-            for viewer in data.get('viewers', []):
-                CollectionPermission.objects.create(
-                    collection=collection,
-                    user=get_user_model().objects.get(id=viewer),
-                    permission='VIEW'
-                )
-            for editor in data.get('editors', []):
-                CollectionPermission.objects.create(
-                    collection=collection,
-                    user=get_user_model().objects.get(id=editor),
-                    permission='EDIT'
-                )
-            for admin in data.get('admins', []):
-                CollectionPermission.objects.create(
-                    collection=collection,
-                    user=get_user_model().objects.get(id=admin),
-                    permission='MANAGE'
-                )
-
-            return JsonResponse({
-                'id': collection.id,
-                'name': collection.name,
-                'document_count': len(collection.documents),
-                'permission': 'MANAGE'
-            })
-
     colperms = CollectionPermission.objects.filter(user=request.user)
-    collections = []
-    for colperm in colperms:
-        collections.append({
-            'id': colperm.collection.id,
-            'name': colperm.collection.name,
-            'document_count': len(colperm.collection.documents),
-            'permission': colperm.permission
-        })
-    return JsonResponse(collections, safe=False)
+    return JsonResponse({"collections": [{'id': colperm.collection.id,
+                                          'name': colperm.collection.name,
+                                          'document_count': len(colperm.collection.documents),
+                                          'permission': colperm.permission} for colperm in colperms]})
 
 @require_http_methods(['POST'])
 @login_required
@@ -389,19 +343,11 @@ def update_collection_permissions(request, col_id):
 @require_http_methods(['GET'])
 @login_required
 def collection(request, col_id):
-    collection = get_object_or_404(Collection, pk=col_id)
-    if not collection.user_can_view(request.user):
-        raise PermissionDenied()
-    
-    # Get all collections the user can edit for move functionality
-    available_collections = Collection.objects.filter_by_user_perm(request.user, 'EDIT')
-    
-    return render(request, 'aquillm/collection.html', {
-        'collection': collection,
-        'can_edit': collection.user_can_edit(request.user),
-        'can_delete': collection.user_can_manage(request.user),
-        'available_collections': available_collections,
-    })
+    col = get_object_or_404(Collection, pk=col_id)
+    if not col.user_can_view(request.user):
+        return HttpResponseForbidden("User does not have permission to view this collection.")
+    can_delete = col.user_can_edit(request.user)
+    return render(request, 'aquillm/collection.html', {'collection': col, 'can_delete': can_delete})
 
 @require_http_methods(['GET', 'POST'])
 @login_required
@@ -414,7 +360,7 @@ def ingest_pdf(request):
             collection = form.cleaned_data['collection']
             title = form.cleaned_data['title'].strip()
             PDFDocument(title=title, pdf_file=pdf_file, collection=collection, ingested_by=request.user).save()
-            status_message = "Success"
+            status_message = "Ingestion Started"
         else:
             status_message = "Invalid Form Input"
     else:
@@ -534,3 +480,7 @@ def move_document(request, doc_id):
     
     return JsonResponse({'success': True})
 
+@login_required
+@require_http_methods(['GET'])
+def pdf_ingestion_monitor(request, doc_id):
+    return render(request, 'aquillm/pdf_ingestion_monitor.html', {'doc_id': doc_id})

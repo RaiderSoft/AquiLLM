@@ -13,11 +13,14 @@ services:
       - POSTGRES_HOST=db
       - STORAGE_HOST=storage:4566
       - DJANGO_DEBUG=1
+      - C_FORCE_ROOT=1
     restart: on-failure
     depends_on:
       db:
         condition: service_healthy
       storage:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - .:/app
@@ -59,6 +62,14 @@ services:
       timeout: 10s
       start_period: 20s
 
+  redis:
+    image: redis:7.4-bookworm
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 
 volumes:

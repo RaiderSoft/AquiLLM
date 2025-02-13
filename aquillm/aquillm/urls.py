@@ -28,8 +28,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('', views.index, name='index'),
     path('accounts/', include('allauth.urls')),
-    path('api/', include('folders.urls')),  # New folder management API endpoints
-    path('app/', include('frontend.urls')),  # New React frontend
     path("search/", views.search, name='search'),
     path("insert_arxiv/", views.insert_arxiv, name='insert_arxiv'),
     path('user_conversations/', views.user_conversations, name="user_conversations"),
@@ -56,6 +54,7 @@ urlpatterns = [
     path("health", views.health_check),
     path("ready", views.health_check),
     path("react_test", views.react_test, name="react_test"),
+    path("pdf_ingestion_monitor/<int:doc_id>/", views.pdf_ingestion_monitor, name="pdf_ingestion_monitor"),
 ] + debug_toolbar_urls()
 
 if DEBUG:
