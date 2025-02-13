@@ -449,36 +449,7 @@ if DEBUG:
         return HttpResponse(status=200)
 
 
-@login_required
-@require_http_methods(['POST'])
-def move_document(request, doc_id):
-    document = None
-    for model in DESCENDED_FROM_DOCUMENT:
-        try:
-            document = model.objects.get(id=doc_id)
-            break
-        except model.DoesNotExist:
-            continue
-    
-    if not document:
-        return JsonResponse({'error': 'Document not found'}, status=404)
-    
-    target_collection_id = request.POST.get('target_collection')
-    try:
-        target_collection = Collection.objects.get(id=target_collection_id)
-    except Collection.DoesNotExist:
-        return JsonResponse({'error': 'Target folder not found'}, status=404)
-    
-    # Check permissions
-    if not (document.collection.user_can_edit(request.user) and target_collection.user_can_edit(request.user)):
-        return JsonResponse({'error': 'Permission denied'}, status=403)
-    
-    # Move document
-    document.collection = target_collection
-    document.folder = None  # Reset folder when moving to new collection
-    document.save()
-    
-    return JsonResponse({'success': True})
+
 
 @login_required
 @require_http_methods(['GET'])
