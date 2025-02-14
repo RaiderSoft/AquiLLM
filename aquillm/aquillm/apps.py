@@ -53,7 +53,7 @@ class AquillmConfig(AppConfig):
     async_anthropic_client = None
     get_embedding = None
     llm_interface: LLMInterface = None
-    system_prompt = "You are a helpful assistant embedded in a retrieval augmented generation system."
+    system_prompt = "You are a helpful assistant embedded in a retrieval augmented generation system. Use the search functions available to you to search for results. `****Assistant made a call to vector_search with the following parameters:****` is provided for your information, so that you can see when tools were called earlier in the conversation. It is not how you call tools. Call them through your normal tool/function calling interface."
 
     google_genai_client = None
     default_llm = "CLAUDE"

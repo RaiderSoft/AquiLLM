@@ -276,7 +276,7 @@ def validate_pdf_extension(value):
     
 
 class PDFDocument(Document):
-    pdf_file = models.FileField(upload_to= 'pdfs/',validators=[FileExtensionValidator(['pdf'])])
+    pdf_file = models.FileField(upload_to= 'pdfs/', max_length=500, validators=[FileExtensionValidator(['pdf'])])
 
     def save(self, *args, **kwargs):
         self.extract_text()
@@ -288,7 +288,7 @@ class PDFDocument(Document):
         reader = PdfReader(self.pdf_file)
         for page in reader.pages:
             text += page.extract_text() + '\n'
-        self.full_text = text
+        self.full_text = text.replace('\0', '')
 
 
 class TeXDocument(Document):
