@@ -15,6 +15,7 @@ from pypdf import PdfReader
 
 import functools 
 
+import time
 # for hashing full_text of documents to ensure unique contents
 import hashlib
 
@@ -42,6 +43,9 @@ from .llm import Conversation as convo_model
 logger = logging.getLogger(__name__)
 
 from pydantic_core import to_jsonable_python
+
+from .celery import app
+from celery.states import state, RECEIVED, FAILURE
 
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW'):
@@ -129,49 +133,6 @@ class CollectionPermission(models.Model):
             super().save(*args, **kwargs)
             
 
-
-class Folder(models.Model):
-    name = models.CharField(max_length=100)
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='children')
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='folders')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ('name', 'parent', 'collection')
-        ordering = ['name']
-
-    def __str__(self):
-        return f"{self.name} ({self.collection.name})"
-
-    def get_path(self):
-        path = [self.name]
-        current = self
-        while current.parent:
-            current = current.parent
-            path.append(current.name)
-        return '/'.join(reversed(path))
-
-    def get_all_children(self):
-        children = list(self.children.all())
-        for child in self.children.all():
-            children.extend(child.get_all_children())
-        return children
-
-    @property
-    def documents(self):
-        # Combine documents from all document types
-        all_documents = []
-        for doc_type in DESCENDED_FROM_DOCUMENT:
-            related_name = f"{doc_type.__name__.lower()}_documents"
-            all_documents.extend(getattr(self, related_name).all())
-        return all_documents
-
-    @property
-    def document_count(self):
-        return sum(getattr(self, f"{doc_type.__name__.lower()}_documents").count() 
-                  for doc_type in DESCENDED_FROM_DOCUMENT)
-
 class Document(models.Model):
     pkid = models.BigAutoField(primary_key=True, editable=False)
     id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
@@ -179,7 +140,6 @@ class Document(models.Model):
     title = models.CharField(max_length=200)
     full_text = models.TextField()
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
-    folder = models.ForeignKey(Folder, on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_documents')
     full_text_hash = models.CharField(max_length=64, db_index=True)
     ingested_by = models.ForeignKey(User, on_delete=models.RESTRICT)
     ingestion_date = models.DateTimeField(auto_now_add=True)
@@ -206,8 +166,19 @@ class Document(models.Model):
             is_new = self.pk is None
 
             super().save(*args, **kwargs)
-
-            self.create_chunks()
+            result = self.create_chunks.delay(self)
+            try:
+                for _ in range(4):
+                    if result.status == FAILURE:
+                        raise Exception(f"Task failed")
+                    if result.status >= RECEIVED:
+                        return
+                    time.sleep(1)
+                raise Exception("Task was not received in time")
+            except Exception as e:
+                logger.error(f"Error creating chunks for document {self.id}: {str(e)}")
+                result.revoke()
+                self.delete()
 
 
 #   |-----------CHUNK-----------|
@@ -220,6 +191,8 @@ class Document(models.Model):
         TextChunk.objects.filter(doc_id=self.id).delete()
         super().delete(*args, **kwargs)
 
+
+    @app.task(serializer='pickle', on_failure=delete)
     def create_chunks(self): #naive method, just number of characters
 
         chunk_size = apps.get_app_config('aquillm').chunk_size

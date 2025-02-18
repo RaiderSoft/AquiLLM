@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import TestComponent from './components/TestComponent';
+import PDFIngestionMonitor from './components/PDFIngestionMonitor';
 
 // Type for the components mapping
 type ComponentsMap = {
@@ -23,6 +24,7 @@ window.mountReactComponent = (
   
   const components: ComponentsMap = {
     TestComponent: TestComponent,
+    PDFIngestionMonitor: PDFIngestionMonitor,
     // Add other components here
   };
   
