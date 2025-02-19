@@ -2,11 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { FileSystemItem } from '../types/FileSystemItem';
 import { FolderIcon } from '../icons/folder';
 import { DocumentIcon } from '../icons/document';
+import { Folder } from './CollectionsTree';
 
 // Props for the FileSystemViewer
 interface FileSystemViewerProps {
   mode: 'browse' | 'select';                   // The current mode
   items: FileSystemItem[];                     // The items (collections/documents) to display
+  collection: Folder;                           // The current collection
   onOpenItem?: (item: FileSystemItem) => void; // Callback when a user clicks a row to "open" or navigate
   onRemoveItem?: (item: FileSystemItem) => void;  // Callback for removing/deleting an item
   onSelectCollection?: (item: FileSystemItem) => void; // Callback for selecting a collection (in select mode)
@@ -15,6 +17,7 @@ interface FileSystemViewerProps {
 const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
   mode,
   items,
+  collection,
   onOpenItem,
   onRemoveItem,
   onSelectCollection
@@ -38,6 +41,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
       case 'PDFDocument':
         return <DocumentIcon />;
     }
+
   };
 
   // Handle checkbox toggles
@@ -144,7 +148,11 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
             }}
           />
         </div>
-        {/* Example "Add Content" / "Remove" buttons (optional) */}
+        
+        <span className='flex items-center text-align-center text-gray-shade_a text-sm'>
+            Root/{collection.path}
+        </span>
+
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             style={{
@@ -181,10 +189,10 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
 
       {/* Table */}
       <div style={{ overflow: 'auto' }}>
-        <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse'}}>
           <thead className='bg-gray-shade_4'>
-            <tr className='border-b border-b-gray-shade_6'>
-              <th style={{ padding: '1rem', textAlign: 'left' }} className='h-full flex items-center justify-left'>
+            <tr className='border-b border-b-gray-shade_6 h-[40px] max-h-[40px]'>
+              <th style={{ textAlign: 'left' }} className='h-full flex items-center justify-left'>
                 <input
                   type="checkbox"
                   checked={allDisplayedSelected && filteredItems.length > 0}
@@ -199,12 +207,13 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                     borderRadius: "4px",
                     width: '16px',
                     height: '16px',
+                    marginLeft: "1rem"
                   }}
                 />
               </th>
-              <th style={{ padding: '1rem', textAlign: 'left' }}>Type</th>
-              <th style={{ padding: '1rem', textAlign: 'left' }}>Name</th>
-              <th style={{ padding: '1rem', textAlign: 'left' }}>Manage</th>
+              <th style={{ textAlign: 'left' }}>Type</th>
+              <th style={{ textAlign: 'left' }}>Name</th>
+              <th style={{ textAlign: 'left' }}>Manage</th>
             </tr>
           </thead>
           <tbody>
@@ -213,11 +222,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               return (
                 <tr
                     key={item.id}
-                    className='hover:bg-gray-shade_3 transition-colors'
+                    className='h-[40px] max-h-[40px] hover:bg-gray-shade_3 transition-colors'
                     style={{
-                        height: '40px',
-                        maxHeight: '40px',
-                        borderBottom: '1px solid #666666',
+                        borderBottom: '1px solid #555555',
                         cursor: 'pointer',                      
                         color: getTextColorForType(item.type),
                     }}
@@ -225,7 +232,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                         onOpenItem?.(item);
                     }}
                 >
-                    <td style={{ padding: '1rem', textAlign: 'left'  }}>
+                    <td style={{ textAlign: 'left'  }}>
                       <input
                           type="checkbox"
                           style={{
@@ -238,6 +245,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                             borderRadius: "4px",
                             width: '16px',
                             height: '16px',
+                            marginLeft: "1rem"
                           }}
                           checked={isSelected}
                           onChange={(e) => {
@@ -247,12 +255,12 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                         />
                     </td>
 
-                    <td style={{ padding: '1rem', textAlign: 'left' }} className='flex justify-left items-center gap-[16px] h-full'>
+                    <td style={{ textAlign: 'left', fontSize: '14px' }} className='flex justify-left items-center gap-[16px] h-full'>
                         {getIconForType(item.type)}
                         {item.type}
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'left'  }}>{item.name}</td>
-                    <td style={{ padding: '1rem', textAlign: 'left'  }}>{renderManageCell(item)}</td>
+                    <td style={{ textAlign: 'left', fontSize: '14px'  }}>{item.name}</td>
+                    <td style={{ textAlign: 'left', fontSize: '14px'  }}>{renderManageCell(item)}</td>
                 </tr>
               );
             })}

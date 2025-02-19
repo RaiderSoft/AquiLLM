@@ -54,25 +54,26 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
       right: 0,
       bottom: 0,
       backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      backdropFilter: 'blur(10px)',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 1000,
     },
     content: {
-      backgroundColor: 'white',
-      padding: '2rem',
-      borderRadius: '8px',
+      backgroundColor: '#333333',
+      padding: '1.5rem',
+      borderRadius: '32px',
+      border: '1px solid #777777',
       width: '100%',
       maxWidth: '400px',
       position: 'relative' as const,
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      boxShadow: '0 0px 10px rgba(0, 0, 0, 0.5)',
     },
     title: {
       fontSize: '1.5rem',
       fontWeight: 'bold',
       marginBottom: '1.5rem',
-      color: '#1a1a1a',
     },
     form: {
       display: 'flex',
@@ -82,22 +83,21 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
     label: {
       display: 'block',
       marginBottom: '0.5rem',
-      color: '#4a5568',
-      fontWeight: 500,
     },
     input: {
       width: '100%',
       padding: '0.75rem',
-      border: '1px solid #e2e8f0',
+      backgound: '#444444',
+      border: '1px solid #777777',
       borderRadius: '0.375rem',
       fontSize: '1rem',
-      color: '#FFFFFF',
+      color: '#eeeeee',
     },
     buttonContainer: {
       display: 'flex',
       justifyContent: 'flex-end',
       gap: '0.75rem',
-      marginTop: '1.5rem',
+      marginTop: '1rem',
     },
     button: {
       padding: '0.5rem 1rem',
@@ -107,13 +107,13 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
       cursor: 'pointer',
     },
     cancelButton: {
-      backgroundColor: '#e2e8f0',
-      color: '#4a5568',
+      backgroundColor: '#666666',
+      color: '#eeeeee',
       border: 'none',
     },
     submitButton: {
-      backgroundColor: '#3182ce',
-      color: 'white',
+      backgroundColor: '#1C79D8',
+      color: '#eeeeee',
       border: 'none',
     }
   };
@@ -131,6 +131,7 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
               id="collectionName"
               type="text"
               value={name}
+              className="bg-gray-shade_4 border border-gray-shade_7 rounded-md p-2 text-gray-shade_1"
               onChange={(e) => setName(e.target.value)}
               style={modalStyles.input}
               placeholder="Enter collection name"

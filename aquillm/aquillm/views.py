@@ -350,6 +350,7 @@ def get_collections_json(request):
                 'id': collection.id,
                 'name': collection.name,
                 'parent': collection.parent.id if collection.parent else None,
+                'path': collection.get_path(),
                 'document_count': len(collection.documents),
                 'children_count': collection.children.count(),
                 'permission': 'MANAGE'
@@ -363,6 +364,7 @@ def get_collections_json(request):
             'id': colperm.collection.id,
             'name': colperm.collection.name,
             'parent': colperm.collection.parent.id if colperm.collection.parent else None,
+            'path': colperm.collection.get_path(),
             'document_count': len(colperm.collection.documents),
             'children_count': colperm.collection.children.count(),
             'permission': colperm.permission
@@ -492,6 +494,7 @@ def collection(request, col_id):
                     'collection': {
                         'id': collection.id,
                         'name': collection.name,
+                        'path': collection.get_path(),
                         'parent': collection.parent.id if collection.parent else None,
                         'created_at': collection.created_at.isoformat() if hasattr(collection, 'created_at') and collection.created_at else None,
                         'updated_at': collection.updated_at.isoformat() if hasattr(collection, 'updated_at') and collection.updated_at else None,
@@ -512,6 +515,7 @@ def collection(request, col_id):
         # Return HTML template for browser requests
         return render(request, 'aquillm/collection.html', {
             'collection': collection,
+            'path': collection.get_path(),
             'can_edit': collection.user_can_edit(request.user),
             'can_delete': collection.user_can_manage(request.user),
             'available_collections': available_collections,

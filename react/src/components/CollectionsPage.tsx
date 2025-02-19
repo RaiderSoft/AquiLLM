@@ -41,7 +41,7 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
           name: col.name,
           parent: col.parent, // Use the parent's id or null if no parent.
           collection: col.id,
-          path: col.name,
+          path: col.path,
           children: [], // You could also parse children if provided.
           document_count: col.document_count,
           children_count: col.children_count,
@@ -107,7 +107,7 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
           name: col.name,
           parent: null,
           collection: col.id,
-          path: col.name,
+          path: col.path,
           children: col.children || [],
           document_count: col.document_count,
           children_count: col.children_count,

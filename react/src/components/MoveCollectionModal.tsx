@@ -27,9 +27,8 @@ const modalStyles = {
   },
   content: {
     backgroundColor: '#333333',
-    padding: '2rem',
+    padding: '1rem',
     borderRadius: '32px',
-    borderColor: '#7777777',
     width: '100%',
     maxWidth: '600px',
     position: 'relative' as const,
@@ -40,26 +39,26 @@ const modalStyles = {
   title: {
     fontSize: '1.5rem',
     fontWeight: 'bold',
-    marginBottom: '1.5rem',
+    marginBottom: '1rem',
     color: '#eeeeee',
   },
   breadcrumb: {
     marginBottom: '1rem',
-    fontSize: '0.9rem',
+    fontSize: '1rem',
     color: '#555',
+    width: '100%'
   },
   list: {
     listStyle: 'none',
     padding: 0,
     margin: 0,
-    border: '1px solid #e2e8f0',
-    borderRadius: '4px',
+    borderRadius: '8px',
+    border: '1px solid #777777',
     maxHeight: '300px',
-    overflowY: 'auto',
+    overflowy: 'auto',
   },
   listItem: {
     padding: '0.75rem 1rem',
-    borderBottom: '1px solid #e2e8f0',
     cursor: 'pointer',
   },
   listItemHover: {
@@ -70,22 +69,20 @@ const modalStyles = {
     justifyContent: 'flex-end',
     gap: '0.75rem',
     marginTop: '1.5rem',
+    marginBottom: '.5rem',
   },
   button: {
     padding: '0.5rem 1rem',
-    borderRadius: '0.375rem',
+    borderRadius: '20px',
     fontSize: '0.875rem',
-    fontWeight: 500,
     cursor: 'pointer',
   },
   cancelButton: {
-    backgroundColor: '#e2e8f0',
-    color: '#4a5568',
+    color: '#eeeeee',
     border: 'none',
   },
   submitButton: {
-    backgroundColor: '#3182ce',
-    color: 'white',
+    color: 'eeeeee',
     border: 'none',
   },
 };
@@ -140,32 +137,43 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
 
   return (
     <div style={modalStyles.overlay}>
-      <div style={modalStyles.content}>
+      <div style={modalStyles.content} className='border-gray-shade_7 border flex flex-col items-center justify-left'> 
+
         <h3 style={modalStyles.title}>Move Collection</h3>
+
         {/* Breadcrumb Navigation */}
-        <div style={modalStyles.breadcrumb}>
-          {breadcrumb.length > 0 ? (
-            <>
-              <button onClick={handleGoBack} style={{ marginRight: '16px' }}>
-                ← Back
-              </button>
+        <div style={modalStyles.breadcrumb} className='flex flex-col items-center justify-center'>
+          <span className='text-gray-shade_a'>
+            <strong>{folder.name}</strong> will be moved to:
+          </span>
+          <div>          
+            {breadcrumb.length > 0 ? (
+            <>      
               {breadcrumb.map((b, idx) => (
-                <span key={b.id}>
+                <span key={b.id} className="text-accent-light">
                   {b.name}{idx < breadcrumb.length - 1 ? ' / ' : ''}
                 </span>
               ))}
             </>
-          ) : (
-            <span className='text-accent-light'>Root Level</span>
-          )}
+            ) : (
+              <span className='text-accent-light'>Root</span>
+            )}
+          </div>
+        </div>
+
+        <div className='w-full flex justify-left'>
+          <button onClick={handleGoBack} style={{ marginRight: '32px' }} className='text-gray-shade_a hover:bg-gray-shade_6 transition-all rounded-[8px] p-[4px] mb-[8px]'>
+                  ← Back
+          </button>
         </div>
 
         {/* List of collections at the current level */}
-        <ul style={modalStyles.list}>
+        <ul style={modalStyles.list} className='w-full'>
           {currentItems.map(item => (
             <li
               key={item.id}
               style={modalStyles.listItem}
+              className='hover:bg-gray-shade_4 transition-all rounded-[8px]'
               onClick={() => handleItemClick({ id: item.id, type: 'collection', name: item.name })}
             >
               {item.name}
@@ -183,6 +191,7 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
           <button
             type="button"
             onClick={onClose}
+            className='bg-gray-shade_6'
             style={{ ...modalStyles.button, ...modalStyles.cancelButton }}
           >
             Cancel
@@ -190,9 +199,10 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
           <button
             type="button"
             onClick={handleSelectCurrent}
+            className='bg-accent'
             style={{ ...modalStyles.button, ...modalStyles.submitButton }}
           >
-            Select This Folder
+            Select This Location
           </button>
         </div>
       </div>

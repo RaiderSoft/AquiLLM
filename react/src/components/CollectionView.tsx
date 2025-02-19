@@ -28,7 +28,6 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
   // State for move modal (for moving the current collection)
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
-  // We'll reuse the current collection as the folder to move.
   
   // State for all available collections for moving purposes.
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
@@ -52,13 +51,14 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         if (!data.collection) {
           throw new Error('Invalid response format');
         }
+
         // Set collection data (including children)
         setCollection({
           id: data.collection.id,
           name: data.collection.name,
           parent: data.collection.parent,
           collection: data.collection.id,
-          path: data.collection.name,
+          path: data.collection.path,
           children: data.children || [],
           document_count: data.documents?.length || 0,
           children_count: data.children?.length || 0,
@@ -69,6 +69,9 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
             ? new Date(data.collection.updated_at).toISOString()
             : new Date().toISOString(),
         });
+
+        console.log(collection);
+
         // Transform documents data
         const transformedDocuments = (data.documents || []).map((doc: any) => ({
           id: doc.id,
@@ -204,7 +207,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   return (
     <div style={{ padding: '2rem' }} className='font-sans'>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center' }} className='mb-[32px]'>
+      <div style={{ display: 'flex', alignItems: 'end', justifyContent: 'center' }} className='mb-[32px] px-[40px]'>
         <button
           onClick={handleBack}
           style={{
@@ -232,8 +235,14 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         />
       </div>
 
+      <div className="relative flex items-center mb-[24px]"> 
+          <div className="flex-grow border-t border-gray-shade_4"></div>
+            <span className="font-sans text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Add Content</span>
+          <div className="flex-grow border-t border-gray-shade_4"></div>
+      </div>
+
       {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: '32px' }} className='mb-[32px]'>
+      <div style={{ display: 'flex', gap: '32px' }} className='mb-[24px]'>
         <button
           style={{
             padding: '0.5rem 1rem',
@@ -272,11 +281,16 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         </button>
       </div>
 
-      <div className='mb-[32px] w-full border-t border-gray-shade_4'></div>
+      <div className="relative flex items-center mb-[24px]"> 
+          <div className="flex-grow border-t border-gray-shade_4"></div>
+            <span className="font-sans text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Browse</span>
+          <div className="flex-grow border-t border-gray-shade_4"></div>
+      </div>
 
       <FileSystemViewer
         mode="browse"
         items={contents}
+        collection={collection}
         onOpenItem={handleOpenItem}
         onRemoveItem={handleRemoveItem}
       />
