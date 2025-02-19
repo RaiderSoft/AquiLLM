@@ -15,7 +15,6 @@ from pypdf import PdfReader
 
 import functools 
 
-import time
 # for hashing full_text of documents to ensure unique contents
 import hashlib
 
@@ -44,8 +43,8 @@ logger = logging.getLogger(__name__)
 
 from pydantic_core import to_jsonable_python
 
-from .celery import app
-from celery.states import state, RECEIVED, FAILURE
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW'):
@@ -65,7 +64,29 @@ class CollectionQuerySet(models.QuerySet):
 class Collection(models.Model):
     name = models.CharField(max_length=100)
     users = models.ManyToManyField(User, through='CollectionPermission')
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='children')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     objects = CollectionQuerySet.as_manager()
+
+    class Meta:
+        unique_together = ('name', 'parent')
+        ordering = ['name']
+
+    def get_path(self):
+        path = [self.name]
+        current = self
+        while current.parent:
+            current = current.parent
+            path.append(current.name)
+        return '/'.join(reversed(path))
+
+    def get_all_children(self):
+        children = list(self.children.all())
+        for child in self.children.all():
+            children.extend(child.get_all_children())
+        return children
+
     # returns a list of documents, not a queryset.
     @property
     def documents(self):
@@ -98,6 +119,21 @@ class Collection(models.Model):
         documents = functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection__in=collections)) for x in DESCENDED_FROM_DOCUMENT])
         return documents
 
+    def move_to(self, new_parent=None):
+        """Move this collection to a new parent"""
+        if new_parent and new_parent.id == self.id:
+            raise ValidationError("Cannot move a collection to itself")
+        
+        # Check for circular reference
+        if new_parent:
+            parent_check = new_parent
+            while parent_check is not None:
+                if parent_check.id == self.id:
+                    raise ValidationError("Cannot create circular reference in collection hierarchy")
+                parent_check = parent_check.parent
+        
+        self.parent = new_parent
+        self.save()
 
     def __str__(self):
         return f'{self.name}'
@@ -133,16 +169,46 @@ class CollectionPermission(models.Model):
             super().save(*args, **kwargs)
             
 
+@receiver(post_save, sender=CollectionPermission)
+def propagate_collection_permission(sender, instance, created, **kwargs):
+    """
+    Signal handler to propagate permission changes from a parent collection to its nested child collections.
+
+    When a CollectionPermission is saved (either a new creation or update) for a specific user and parent collection,
+    this handler retrieves all child collections (recursively) of the parent collection and ensures that the same permission
+    is set for this user on each child collection.
+
+    This implementation always propagates the parent's permission to the child collections.
+    If we want to avoid overriding an explicit child permission, we can add extra logic to check for an 'inherited' flag or similar.
+    """
+    # Retrieve the parent collection from the permission instance.
+    parent_collection = instance.collection
+
+    # Use the helper method to get all direct and nested children.
+    child_collections = parent_collection.get_all_children()
+
+    for child in child_collections:
+        # For each child, get or create the CollectionPermission for the same user.
+        child_perm, perm_created = CollectionPermission.objects.get_or_create(
+            user=instance.user,
+            collection=child,
+            defaults={'permission': instance.permission}
+        )
+        # If the permission exists but is different, update it.
+        if not perm_created and child_perm.permission != instance.permission:
+            child_perm.permission = instance.permission
+            child_perm.save()
+
 class Document(models.Model):
     pkid = models.BigAutoField(primary_key=True, editable=False)
     id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
-
     title = models.CharField(max_length=200)
     full_text = models.TextField()
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='%(class)s_documents')
     full_text_hash = models.CharField(max_length=64, db_index=True)
     ingested_by = models.ForeignKey(User, on_delete=models.RESTRICT)
     ingestion_date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         abstract = True
         constraints = [
@@ -164,35 +230,20 @@ class Document(models.Model):
       
         with transaction.atomic():
             is_new = self.pk is None
-
             super().save(*args, **kwargs)
-            result = self.create_chunks.delay(self)
-            try:
-                for _ in range(4):
-                    if result.status == FAILURE:
-                        raise Exception(f"Task failed")
-                    if result.status >= RECEIVED:
-                        return
-                    time.sleep(1)
-                raise Exception("Task was not received in time")
-            except Exception as e:
-                logger.error(f"Error creating chunks for document {self.id}: {str(e)}")
-                result.revoke()
-                self.delete()
+            self.create_chunks()
 
+    def move_to(self, new_collection):
+        """Move this document to a new collection"""
+        if not new_collection.user_can_edit(self.ingested_by):
+            raise ValidationError("User does not have permission to move documents to this collection")
+        self.collection = new_collection
+        self.save()
 
-#   |-----------CHUNK-----------|
-#   <---------chunk_size-------->
-#                       <------->  chunk_overlap
-#                       <-----chunk_pitch-->                               == chunk_size - chunk_overlap
-#                       |-----------CHUNK-----------|
-#                                           |-----------CHUNK-----------|
     def delete(self, *args, **kwargs):
         TextChunk.objects.filter(doc_id=self.id).delete()
         super().delete(*args, **kwargs)
 
-
-    @app.task(serializer='pickle', on_failure=delete)
     def create_chunks(self): #naive method, just number of characters
 
         chunk_size = apps.get_app_config('aquillm').chunk_size
