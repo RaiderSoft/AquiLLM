@@ -4,6 +4,7 @@ import { Folder } from '../components/Collections/CollectionsTree';
 import MoveCollectionModal from '../components/Collections/MoveCollectionModal';
 import CreateCollectionModal from '../components/Collections/CreateCollectionModal';
 import CollectionSettingsMenu from '../components/Collections/CollectionSettingsMenu';
+import IngestPDFButton from '../components/IngestPDFButton';
 import { getCookie } from '../utils/csrf';
 
 const CollectionsPage: React.FC = () => {
@@ -191,18 +192,7 @@ const CollectionsPage: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
-              <button
-                style={{
-                  padding: '0.5rem',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  borderRadius: '0.375rem',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Ingest PDF
-              </button>
+              <IngestPDFButton collectionId={collection.id} />
               <button
                 style={{
                   padding: '0.5rem',
