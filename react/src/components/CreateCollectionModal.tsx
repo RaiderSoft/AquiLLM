@@ -37,6 +37,7 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
       path: name.trim(),
       children: [],
       document_count: 0,
+      children_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

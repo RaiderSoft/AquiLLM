@@ -39,6 +39,7 @@ urlpatterns = [
     path("document/<uuid:doc_id>/", views.document, name="document"),
     path("user_collections/", views.user_collections, name="user_collections"),
     path("get_collections_json/", views.get_collections_json, name="get_collections_json"),
+    path("collection/move/<int:collection_id>/", views.move_collection, name="move_collection"),
     path("collection/<int:col_id>/", views.collection, name="collection"),
     path("collection/<int:col_id>/permissions/", views.update_collection_permissions, name="update_collection_permissions"),
     path("ingest_pdf/", views.ingest_pdf, name="ingest_pdf"),

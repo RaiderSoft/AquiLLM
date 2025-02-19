@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404
 from pgvector.django import L2Distance
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import requires_csrf_token
@@ -348,7 +349,9 @@ def get_collections_json(request):
             return JsonResponse({
                 'id': collection.id,
                 'name': collection.name,
+                'parent': collection.parent.id if collection.parent else None,
                 'document_count': len(collection.documents),
+                'children_count': collection.children.count(),
                 'permission': 'MANAGE'
             })
 
@@ -359,10 +362,54 @@ def get_collections_json(request):
         collections.append({
             'id': colperm.collection.id,
             'name': colperm.collection.name,
+            'parent': colperm.collection.parent.id if colperm.collection.parent else None,
             'document_count': len(colperm.collection.documents),
+            'children_count': colperm.collection.children.count(),
             'permission': colperm.permission
         })
     return JsonResponse({"collections": collections})
+
+@require_http_methods(["POST"])
+@login_required
+def move_collection(request, collection_id):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    new_parent_id = data.get("new_parent_id")  # Can be None
+
+    try:
+        collection = Collection.objects.get(id=collection_id)
+    except Collection.DoesNotExist:
+        return JsonResponse({"error": "Collection not found"}, status=404)
+
+    # Check that the user has permission to manage (move) this collection.
+    if not collection.user_can_manage(request.user):
+        return JsonResponse({"error": "You do not have permission to move this collection"}, status=403)
+
+    # If a new parent is provided, fetch it.
+    new_parent = None
+    if new_parent_id:
+        try:
+            new_parent = Collection.objects.get(id=new_parent_id)
+        except Collection.DoesNotExist:
+            return JsonResponse({"error": "Target parent collection not found"}, status=404)
+
+    try:
+        collection.move_to(new_parent=new_parent)
+    except ValidationError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({
+        "message": "Collection moved successfully",
+        "collection": {
+            "id": collection.id,
+            "name": collection.name,
+            "parent": collection.parent.id if collection.parent else None,
+            "path": collection.get_path(),
+        }
+    })
 
 @require_http_methods(['POST'])
 @login_required

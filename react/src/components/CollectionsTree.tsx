@@ -11,6 +11,7 @@ export interface Folder {
     path: string;          // Full path in format: "parent/child/grandchild"
     children: Folder[];    // Nested collections
     document_count: number;
+    children_count: number;
     created_at: string;
     updated_at: string;
   }

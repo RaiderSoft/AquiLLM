@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { FileSystemItem } from '../types/FileSystemItem';
-import { FolderIcon } from '../icons/folder.tsx';
-import { DocumentIcon } from '../icons/document.tsx';
+import { FolderIcon } from '../icons/folder';
+import { DocumentIcon } from '../icons/document';
 
 // Props for the FileSystemViewer
 interface FileSystemViewerProps {
@@ -31,10 +31,11 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
   }, [items, searchQuery]);
 
   const getIconForType = (type: string) => {
+
     switch (type) {
       case 'collection':
         return <FolderIcon />
-      case 'pdf':
+      case 'PDFDocument':
         return <DocumentIcon />;
     }
   };
@@ -87,7 +88,6 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
         <button
           className='text-red'
           style={{
-            padding: '0.25rem 0.5rem',
             borderRadius: '0.25rem',
             border: 'none',
             cursor: 'pointer'
@@ -181,19 +181,30 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
 
       {/* Table */}
       <div style={{ overflow: 'auto' }}>
-        <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <thead className='bg-gray-shade_4'>
             <tr className='border-b border-b-gray-shade_6'>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>
+              <th style={{ padding: '1rem', textAlign: 'left' }} className='h-full flex items-center justify-left'>
                 <input
                   type="checkbox"
                   checked={allDisplayedSelected && filteredItems.length > 0}
                   onChange={handleToggleSelectAll}
+                  style={{
+                    zIndex: 100,
+                    appearance: 'none',         // Standard
+                    WebkitAppearance: 'none',   // Chrome, Safari
+                    MozAppearance: 'none',      // Firefox
+                    backgroundColor: "#555555",
+                    border: "1px solid #777777",
+                    borderRadius: "4px",
+                    width: '16px',
+                    height: '16px',
+                  }}
                 />
               </th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>Type</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>Name</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>Manage</th>
+              <th style={{ padding: '1rem', textAlign: 'left' }}>Type</th>
+              <th style={{ padding: '1rem', textAlign: 'left' }}>Name</th>
+              <th style={{ padding: '1rem', textAlign: 'left' }}>Manage</th>
             </tr>
           </thead>
           <tbody>
@@ -202,39 +213,46 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               return (
                 <tr
                     key={item.id}
+                    className='hover:bg-gray-shade_3 transition-colors'
                     style={{
                         height: '40px',
                         maxHeight: '40px',
                         borderBottom: '1px solid #666666',
-                        cursor: 'pointer',
+                        cursor: 'pointer',                      
                         color: getTextColorForType(item.type),
                     }}
                     onClick={() => {
                         onOpenItem?.(item);
                     }}
                 >
-                    <td style={{ padding: '1rem', textAlign: 'center'  }}>
-                        <input
-                            type="checkbox"
-                            style={{
-                                backgroundColor: "#555555",
-                                border: "1px solid #777777",
-                                borderRadius: "8px",
-                            }}
-                            checked={isSelected}
-                            onChange={(e) => {
-                                e.stopPropagation();
-                                handleToggleSelect(item.id);
-                            }}
+                    <td style={{ padding: '1rem', textAlign: 'left'  }}>
+                      <input
+                          type="checkbox"
+                          style={{
+                            zIndex: 100,
+                            appearance: 'none',         // Standard
+                            WebkitAppearance: 'none',   // Chrome, Safari
+                            MozAppearance: 'none',      // Firefox
+                            backgroundColor: "#555555",
+                            border: "1px solid #777777",
+                            borderRadius: "4px",
+                            width: '16px',
+                            height: '16px',
+                          }}
+                          checked={isSelected}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleToggleSelect(item.id);
+                          }}
                         />
                     </td>
 
-                    <td style={{ padding: '1rem', textAlign: 'center'  }}>
+                    <td style={{ padding: '1rem', textAlign: 'left' }} className='flex justify-left items-center gap-[16px] h-full'>
                         {getIconForType(item.type)}
                         {item.type}
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'center'  }}>{item.name}</td>
-                    <td style={{ padding: '1rem', textAlign: 'center'  }}>{renderManageCell(item)}</td>
+                    <td style={{ padding: '1rem', textAlign: 'left'  }}>{item.name}</td>
+                    <td style={{ padding: '1rem', textAlign: 'left'  }}>{renderManageCell(item)}</td>
                 </tr>
               );
             })}

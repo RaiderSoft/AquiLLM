@@ -60,39 +60,54 @@ const CollectionSettingsMenu: React.FC<CollectionSettingsMenuProps> = ({
           position: 'absolute',
           right: 0,
           top: '100%',
-          backgroundColor: '#2d2d2d',
-          borderRadius: '0.375rem',
-          boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+          backgroundColor: '#444444',
+          borderRadius: '32px',
+          borderColor: '#777777',
+          boxShadow: '0 0px 10px rgba(0,0,0,0.5)',
           padding: '0.5rem',
           zIndex: 10,
           minWidth: '200px',
         }}>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               onManageCollaborators(collection);
               setIsOpen(false);
             }}
             style={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              gap: '0.5rem',
               width: '100%',
               textAlign: 'left',
               padding: '0.5rem 1rem',
               border: 'none',
               backgroundColor: 'transparent',
-              color: 'white',
+              color: '#eeeeee',
               cursor: 'pointer',
               borderRadius: '0.25rem',
+              textWrap: 'nowrap',
             }}
           >
-            👥 Manage Collaborators
+            
+            <svg width="18" height="16" viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9.20841 10.375V9.29167C9.20841 8.71703 8.98014 8.16593 8.57381 7.7596C8.16748 7.35327 7.61638 7.125 7.04175 7.125H2.70841C2.13378 7.125 1.58268 7.35327 1.17635 7.7596C0.770021 8.16593 0.541748 8.71703 0.541748 9.29167V10.375M12.4584 10.375V9.29167C12.4581 8.8116 12.2983 8.34525 12.0042 7.96584C11.71 7.58642 11.2982 7.31543 10.8334 7.19542M8.66675 0.695417C9.13281 0.814746 9.54589 1.0858 9.84089 1.46583C10.1359 1.84587 10.296 2.31328 10.296 2.79438C10.296 3.27547 10.1359 3.74288 9.84089 4.12292C9.54589 4.50295 9.13281 4.774 8.66675 4.89333M7.04175 2.79167C7.04175 3.98828 6.0717 4.95833 4.87508 4.95833C3.67846 4.95833 2.70841 3.98828 2.70841 2.79167C2.70841 1.59505 3.67846 0.625 4.87508 0.625C6.0717 0.625 7.04175 1.59505 7.04175 2.79167Z" stroke="#EEEEEE" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+
+            Manage Collaborators
           </button>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               onMove(collection);
               setIsOpen(false);
             }}
             style={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              gap: '0.5rem',
               width: '100%',
               textAlign: 'left',
               padding: '0.5rem 1rem',
@@ -103,26 +118,41 @@ const CollectionSettingsMenu: React.FC<CollectionSettingsMenuProps> = ({
               borderRadius: '0.25rem',
             }}
           >
-            📦 Move Collection
+
+            <svg width="15px" height="15px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22 14C22 17.7712 22 19.6569 20.8284 20.8284C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2.51839 20.1752 2.22937 19.3001 2.10149 18M2 12V6.94975C2 6.06722 2 5.62595 2.06935 5.25839C2.37464 3.64031 3.64031 2.37464 5.25839 2.06935C5.62595 2 6.06722 2 6.94975 2C7.33642 2 7.52976 2 7.71557 2.01738C8.51665 2.09229 9.27652 2.40704 9.89594 2.92051C10.0396 3.03961 10.1763 3.17633 10.4497 3.44975L11 4C11.8158 4.81578 12.2237 5.22367 12.7121 5.49543C12.9804 5.64471 13.2651 5.7626 13.5604 5.84678C14.0979 6 14.6747 6 15.8284 6H16.2021C18.8345 6 20.1506 6 21.0062 6.76946C21.0849 6.84024 21.1598 6.91514 21.2305 6.99383C21.8004 7.62741 21.9482 8.51364 21.9866 10" stroke="#eeeeee" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M2 15C8.44365 15 6.55635 15 13 15M13 15L8.875 12M13 15L8.875 18" stroke="#eeeeee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+
+            Move Collection
           </button>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               onDelete(collection);
               setIsOpen(false);
             }}
             style={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              gap: '0.5rem',
               width: '100%',
               textAlign: 'left',
               padding: '0.5rem 1rem',
               border: 'none',
               backgroundColor: 'transparent',
-              color: '#ef4444',
+              color: '#EC3D3D',
               cursor: 'pointer',
               borderRadius: '0.25rem',
             }}
           >
-            🗑️ Delete
+            
+            <svg width="15" height="17" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0.5 3H1.5M1.5 3H9.5M1.5 3V10C1.5 10.2652 1.60536 10.5196 1.79289 10.7071C1.98043 10.8946 2.23478 11 2.5 11H7.5C7.76522 11 8.01957 10.8946 8.20711 10.7071C8.39464 10.5196 8.5 10.2652 8.5 10V3M3 3V2C3 1.73478 3.10536 1.48043 3.29289 1.29289C3.48043 1.10536 3.73478 1 4 1H6C6.26522 1 6.51957 1.10536 6.70711 1.29289C6.89464 1.48043 7 1.73478 7 2V3M4 5.5V8.5M6 5.5V8.5" stroke="#EC3D3D" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+
+            Delete
           </button>
         </div>
       )}
