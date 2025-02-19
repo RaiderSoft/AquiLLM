@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Folder } from './CollectionsTree';
 import { FileSystemItem } from '../types/FileSystemItem';
+import { FolderIcon } from '../icons/folder.tsx';
 
 interface MoveCollectionModalProps {
   folder: Folder | null; // The collection being moved
@@ -12,30 +13,6 @@ interface MoveCollectionModalProps {
 
 /* Example inline modal styles */
 const modalStyles = {
-  overlay: {
-    position: 'fixed' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-    backdropFilter: 'blur(10px)',
-  },
-  content: {
-    backgroundColor: '#333333',
-    padding: '1rem',
-    borderRadius: '32px',
-    width: '100%',
-    maxWidth: '600px',
-    position: 'relative' as const,
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    font: 'sans',
-    color: '#eeeeee',
-  },
   title: {
     fontSize: '1.5rem',
     fontWeight: 'bold',
@@ -120,6 +97,10 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
     }
   };
 
+  const insertFolderIcon = () => {
+    return <FolderIcon />;
+  }
+
   // "Select This Folder" button will select the current folder (i.e. currentParentId)
   const handleSelectCurrent = () => {
     onSubmit(folder!.id, currentParentId);
@@ -136,8 +117,8 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
   if (!isOpen || !folder) return null;
 
   return (
-    <div style={modalStyles.overlay}>
-      <div style={modalStyles.content} className='border-gray-shade_7 border flex flex-col items-center justify-left'> 
+    <div className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black bg-opacity-75 z-[100] backdrop-blur-[10px]">
+      <div className='border-gray-shade_7 border flex flex-col items-center justify-left bg-gray-shade_3 p-[1rem] rounded-[32px] w-full max-w-[600px] position-relative box-shadow-[0_4px_6px_rgba(0,0,0,0.1)] font-sans text-gray-shade_e'> 
 
         <h3 style={modalStyles.title}>Move Collection</h3>
 
@@ -151,7 +132,7 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
             <>      
               {breadcrumb.map((b, idx) => (
                 <span key={b.id} className="text-accent-light">
-                  {b.name}{idx < breadcrumb.length - 1 ? ' / ' : ''}
+                    {b.name}{idx < breadcrumb.length - 1 ? ' / ' : ''}
                 </span>
               ))}
             </>
@@ -173,9 +154,10 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
             <li
               key={item.id}
               style={modalStyles.listItem}
-              className='hover:bg-gray-shade_4 transition-all rounded-[8px]'
+              className='hover:bg-gray-shade_4 transition-all rounded-[8px] text-accent-light flex items-center justify-left gap-[16px]'
               onClick={() => handleItemClick({ id: item.id, type: 'collection', name: item.name })}
             >
+              {insertFolderIcon()}
               {item.name}
             </li>
           ))}

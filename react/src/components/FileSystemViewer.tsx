@@ -182,7 +182,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
             placeholder="Search..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className='bg-gray-shade_4 border border-gray-shade_7 placeholder:text-gray-shade_b rounded-[20px]'
+            className='bg-gray-shade_4 border border-gray-shade_7 placeholder:text-gray-shade_b placeholder:pl-[8px] rounded-[20px]'
             style={{
               padding: '0.5rem',
             }}
@@ -238,7 +238,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                   checked={allDisplayedSelected && filteredItems.length > 0}
                   onChange={handleToggleSelectAll}
                   style={{
-                    zIndex: 100,
+                    zIndex: 10,
                     appearance: 'none',         // Standard
                     WebkitAppearance: 'none',   // Chrome, Safari
                     MozAppearance: 'none',      // Firefox
@@ -277,7 +277,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                       <input
                           type="checkbox"
                           style={{
-                            zIndex: 100,
+                            zIndex: 10,
                             appearance: 'none',         // Standard
                             WebkitAppearance: 'none',   // Chrome, Safari
                             MozAppearance: 'none',      // Firefox
@@ -286,7 +286,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                             borderRadius: "4px",
                             width: '16px',
                             height: '16px',
-                            marginLeft: "1rem"
+                            marginLeft: "1rem",
                           }}
                           checked={isSelected}
                           onChange={(e) => {
