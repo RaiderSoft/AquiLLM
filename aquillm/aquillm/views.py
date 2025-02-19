@@ -14,12 +14,14 @@ from django.shortcuts import get_object_or_404
 from pgvector.django import L2Distance
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist
 
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import requires_csrf_token
 
 from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
-from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, DESCENDED_FROM_DOCUMENT
+from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, Document, RawTextDocument, DESCENDED_FROM_DOCUMENT
 from . import vtt
 from .settings import DEBUG
 
@@ -297,8 +299,18 @@ def user_collections(request):
         form = NewCollectionForm(user=request.user)
         return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form}) 
 
+# @requires_csrf_token
+# @require_http_methods(['GET'])
+# @login_required
+# def get_collections_json(request):
+#     colperms = CollectionPermission.objects.filter(user=request.user)
+#     return JsonResponse({"collections": [{'id': colperm.collection.id,
+#                                           'name': colperm.collection.name,
+#                                           'document_count': len(colperm.collection.documents),
+#                                           'permission': colperm.permission} for colperm in colperms]})
+
 @requires_csrf_token
-@require_http_methods(['GET'])
+@require_http_methods(['GET', 'POST'])
 @login_required
 def get_collections_json(request):
     if request.method == 'POST':
@@ -338,20 +350,115 @@ def get_collections_json(request):
             return JsonResponse({
                 'id': collection.id,
                 'name': collection.name,
+                'parent': collection.parent.id if collection.parent else None,
+                'path': collection.get_path(),
                 'document_count': len(collection.documents),
+                'children_count': collection.children.count(),
                 'permission': 'MANAGE'
             })
 
+    # For GET requests, get all collections where the user has any permission
     colperms = CollectionPermission.objects.filter(user=request.user)
     collections = []
     for colperm in colperms:
         collections.append({
             'id': colperm.collection.id,
             'name': colperm.collection.name,
+            'parent': colperm.collection.parent.id if colperm.collection.parent else None,
+            'path': colperm.collection.get_path(),
             'document_count': len(colperm.collection.documents),
+            'children_count': colperm.collection.children.count(),
             'permission': colperm.permission
         })
-    return JsonResponse(collections, safe=False)
+    return JsonResponse({"collections": collections})
+
+@require_http_methods(["POST"])
+@login_required
+def move_collection(request, collection_id):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    new_parent_id = data.get("new_parent_id")  # Can be None
+
+    try:
+        collection = Collection.objects.get(id=collection_id)
+    except Collection.DoesNotExist:
+        return JsonResponse({"error": "Collection not found"}, status=404)
+
+    # Check that the user has permission to manage (move) this collection.
+    if not collection.user_can_manage(request.user):
+        return JsonResponse({"error": "You do not have permission to move this collection"}, status=403)
+
+    # If a new parent is provided, fetch it.
+    new_parent = None
+    if new_parent_id:
+        try:
+            new_parent = Collection.objects.get(id=new_parent_id)
+        except Collection.DoesNotExist:
+            return JsonResponse({"error": "Target parent collection not found"}, status=404)
+
+    try:
+        collection.move_to(new_parent=new_parent)
+    except ValidationError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({
+        "message": "Collection moved successfully",
+        "collection": {
+            "id": collection.id,
+            "name": collection.name,
+            "parent": collection.parent.id if collection.parent else None,
+            "path": collection.get_path(),
+        }
+    })
+
+def get_document_by_id(doc_id):
+    for model in [PDFDocument, TeXDocument, RawTextDocument, VTTDocument]:
+        try:
+            return model.objects.get(id=doc_id)
+        except model.DoesNotExist:
+            continue
+    raise ObjectDoesNotExist("Document not found")
+
+
+@require_http_methods(["POST"])
+@login_required
+def move_document(request, doc_id):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    new_collection_id = data.get("new_collection_id")
+    if new_collection_id is None:
+        return JsonResponse({"error": "new_collection_id is required"}, status=400)
+
+    try:
+        document = get_document_by_id(doc_id)
+    except ObjectDoesNotExist:
+        return JsonResponse({"error": "Document not found"}, status=404)
+
+    try:
+        new_collection = Collection.objects.get(id=new_collection_id)
+    except Collection.DoesNotExist:
+        return JsonResponse({"error": "Target collection not found"}, status=404)
+
+    try:
+        # Call the move_to method on the document
+        document.move_to(new_collection)
+    except ValidationError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({
+        "message": "Document moved successfully",
+        "document": {
+            "id": str(document.id),
+            "title": document.title,
+            "collection": new_collection.id,
+        }
+    })
 
 @require_http_methods(['POST'])
 @login_required
@@ -390,22 +497,79 @@ def update_collection_permissions(request, col_id):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+# @require_http_methods(['GET'])
+# @login_required
+# def collection(request, col_id):
+#     col = get_object_or_404(Collection, pk=col_id)
+#     if not col.user_can_view(request.user):
+#         return HttpResponseForbidden("User does not have permission to view this collection.")
+#     can_delete = col.user_can_edit(request.user)
+#     return render(request, 'aquillm/collection.html', {'collection': col, 'can_delete': can_delete})
+
 @require_http_methods(['GET'])
 @login_required
 def collection(request, col_id):
-    collection = get_object_or_404(Collection, pk=col_id)
-    if not collection.user_can_view(request.user):
-        raise PermissionDenied()
-    
-    # Get all collections the user can edit for move functionality
-    available_collections = Collection.objects.filter_by_user_perm(request.user, 'EDIT')
-    
-    return render(request, 'aquillm/collection.html', {
-        'collection': collection,
-        'can_edit': collection.user_can_edit(request.user),
-        'can_delete': collection.user_can_manage(request.user),
-        'available_collections': available_collections,
-    })
+    """View to display a collection and its contents"""
+    try:
+        collection = get_object_or_404(Collection, pk=col_id)
+        if not collection.user_can_view(request.user):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        # Return JSON if requested
+        if 'application/json' in request.headers.get('Accept', ''):
+            try:
+                # Get documents from all document types
+                documents = []
+                for model in DESCENDED_FROM_DOCUMENT:
+                    docs = model.objects.filter(collection=collection)
+                    for doc in docs:
+                        documents.append({
+                            'id': str(doc.id),
+                            'title': getattr(doc, 'title', None) or getattr(doc, 'name', 'Untitled'),
+                            'type': doc.__class__.__name__,
+                            'created_at': doc.created_at.isoformat() if hasattr(doc, 'created_at') and doc.created_at else None,
+                        })
+
+                # Get child collections
+                children = [{
+                    'id': child.id,
+                    'name': child.name,
+                    'document_count': len([doc for doc in child.documents]) if hasattr(child, 'documents') else 0,
+                } for child in collection.children.all()]
+
+                response_data = {
+                    'collection': {
+                        'id': collection.id,
+                        'name': collection.name,
+                        'path': collection.get_path(),
+                        'parent': collection.parent.id if collection.parent else None,
+                        'created_at': collection.created_at.isoformat() if hasattr(collection, 'created_at') and collection.created_at else None,
+                        'updated_at': collection.updated_at.isoformat() if hasattr(collection, 'updated_at') and collection.updated_at else None,
+                    },
+                    'documents': documents,
+                    'children': children,
+                    'can_edit': collection.user_can_edit(request.user),
+                    'can_manage': collection.user_can_manage(request.user),
+                }
+                return JsonResponse(response_data)
+            except Exception as e:
+                logger.error(f"Error processing collection data: {str(e)}")
+                return JsonResponse({'error': str(e)}, status=500)
+        
+        # Get all collections the user can edit for move functionality
+        available_collections = Collection.objects.filter_by_user_perm(request.user, 'EDIT')
+        
+        # Return HTML template for browser requests
+        return render(request, 'aquillm/collection.html', {
+            'collection': collection,
+            'path': collection.get_path(),
+            'can_edit': collection.user_can_edit(request.user),
+            'can_delete': collection.user_can_manage(request.user),
+            'available_collections': available_collections,
+        })
+    except Exception as e:
+        logger.error(f"Error in collection view: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 @require_http_methods(['GET', 'POST'])
 @login_required
@@ -418,7 +582,7 @@ def ingest_pdf(request):
             collection = form.cleaned_data['collection']
             title = form.cleaned_data['title'].strip()
             PDFDocument(title=title, pdf_file=pdf_file, collection=collection, ingested_by=request.user).save()
-            status_message = "Success"
+            status_message = "Ingestion Started"
         else:
             status_message = "Invalid Form Input"
     else:
@@ -515,34 +679,9 @@ if DEBUG:
         return HttpResponse(status=200)
 
 
-@login_required
-@require_http_methods(['POST'])
-def move_document(request, doc_id):
-    document = None
-    for model in DESCENDED_FROM_DOCUMENT:
-        try:
-            document = model.objects.get(id=doc_id)
-            break
-        except model.DoesNotExist:
-            continue
-    
-    if not document:
-        return JsonResponse({'error': 'Document not found'}, status=404)
-    
-    target_collection_id = request.POST.get('target_collection')
-    try:
-        target_collection = Collection.objects.get(id=target_collection_id)
-    except Collection.DoesNotExist:
-        return JsonResponse({'error': 'Target folder not found'}, status=404)
-    
-    # Check permissions
-    if not (document.collection.user_can_edit(request.user) and target_collection.user_can_edit(request.user)):
-        return JsonResponse({'error': 'Permission denied'}, status=403)
-    
-    # Move document
-    document.collection = target_collection
-    document.folder = None  # Reset folder when moving to new collection
-    document.save()
-    
-    return JsonResponse({'success': True})
 
+
+@login_required
+@require_http_methods(['GET'])
+def pdf_ingestion_monitor(request, doc_id):
+    return render(request, 'aquillm/pdf_ingestion_monitor.html', {'doc_id': doc_id})

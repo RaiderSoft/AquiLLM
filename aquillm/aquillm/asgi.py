@@ -19,15 +19,15 @@ from channels.security.websocket import AllowedHostsOriginValidator
 
 
 
-from chat.routing import websocket_urlpatterns
-
+from chat.routing import websocket_urlpatterns as chat_patterns
+from ingest.routing import websocket_urlpatterns as ingest_patterns
 
 application = ProtocolTypeRouter(
     {
         "http": asgi_app,
         "websocket": AllowedHostsOriginValidator(
             AuthMiddlewareStack(
-                URLRouter(websocket_urlpatterns)
+                URLRouter(chat_patterns + ingest_patterns)
             )
         )
 
