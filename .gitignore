@@ -168,3 +168,7 @@ pdfs/
 aquillm/prod_static
 aquillm/aquillm/static/js/dist
 aquillm/aquillm/static/index.css 
+
+# Django staticfiles
+*/staticfiles/
+staticfiles/
