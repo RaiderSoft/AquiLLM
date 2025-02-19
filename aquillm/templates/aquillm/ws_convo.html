@@ -7,36 +7,38 @@
         
         <div id="exception-box" class="sticky top-0 z-50 font-mono text-red-700"></div>
         
-        <div class="flex justify-start flex-col mt-[32px] gap-[8px] bg-gray-shade_3 p-4 rounded-[32px] w-[80%]">
-            <div class="flex flex-grow items-center w-full ">
-                <input 
-                    type="text" 
-                    id="message-input"
-                    style="color: #eeeeee; font-family: sans-serif;"
-                    class="px-4 py-2 mr-[16px] flex-grow w-full rounded-lg bg-gray-shade_3 b focus:border-0 disabled:cursor-not-allowed placeholder:text-gray-shade_7 placeholder:font-sans "
-                    placeholder="Type your message here..."
-                    autocomplete="off"
-                />
+        <div class="flex items-center justify-center mt-[32px] w-full gap-[32px]">
+            <div class="flex justify-start flex-col gap-[8px] bg-gray-shade_3 py-2 px-4 rounded-[32px] w-full">
+                <div class="flex flex-grow items-center w-full ">
+                    <input 
+                        type="text" 
+                        id="message-input"
+                        style="color: #eeeeee; font-family: sans-serif;"
+                        class="px-2 py-2 mr-[16px] flex-grow w-full rounded-lg bg-gray-shade_3 b focus:border-0 disabled:cursor-not-allowed placeholder:text-gray-shade_7 placeholder:font-sans "
+                        placeholder="Type your message here..."
+                        autocomplete="off"
+                    />
 
-                <button 
-                    id="send-button"
-                    class="p-4 bg-accent text-gray-shade_e rounded-[24px] disabled:cursor-not-allowed"
-                    title="Send Message"
-                    >
-                    
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <g clip-path="url(#clip0_42_63)">
-                        <path d="M14.3246 5.31061L6.51295 0.643942C5.90283 0.280198 5.1809 0.0611376 4.42721 0.0110503C3.67351 -0.0390371 2.9175 0.0818059 2.24301 0.36018C1.56852 0.638553 1.0019 1.06358 0.60598 1.58813C0.210062 2.11268 0.000316079 2.71626 0 3.33194V12.6653C0.000134919 13.2812 0.209892 13.8851 0.605993 14.4099C1.00209 14.9347 1.56905 15.3599 2.24393 15.6382C2.91881 15.9166 3.67523 16.0372 4.42924 15.9868C5.18324 15.9364 5.90535 15.7169 6.51541 15.3526L14.327 10.6859C14.8456 10.3763 15.2672 9.97165 15.5579 9.50465C15.8485 9.03765 16 8.52148 16 7.99794C16 7.47441 15.8485 6.95823 15.5579 6.49124C15.2672 6.02424 14.8456 5.61954 14.327 5.30994L14.3246 5.31061ZM13.3551 9.61061L5.54346 14.2773C5.17746 14.495 4.74458 14.6261 4.29276 14.6559C3.84093 14.6858 3.38778 14.6132 2.98345 14.4464C2.57912 14.2795 2.2394 14.0248 2.00187 13.7104C1.76435 13.3961 1.63829 13.0343 1.63765 12.6653V3.33194C1.63311 2.96217 1.75679 2.59886 1.99448 2.28376C2.23217 1.96865 2.57423 1.71454 2.98135 1.55061C3.32762 1.4072 3.71055 1.33229 4.09905 1.33194C4.61973 1.33356 5.12603 1.4712 5.54346 1.72461L13.3551 6.39127C13.6658 6.57707 13.9185 6.81981 14.0926 7.09985C14.2668 7.3799 14.3575 7.68938 14.3575 8.00327C14.3575 8.31717 14.2668 8.62665 14.0926 8.9067C13.9185 9.18674 13.6658 9.42948 13.3551 9.61528V9.61061Z" fill="#EEEEEE"/>
-                        </g>
-                    </svg>
+                    <button 
+                        id="send-button"
+                        class="p-4 bg-accent text-gray-shade_e rounded-[24px] disabled:cursor-not-allowed"
+                        title="Send Message"
+                        >
+                        
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g clip-path="url(#clip0_42_63)">
+                            <path d="M14.3246 5.31061L6.51295 0.643942C5.90283 0.280198 5.1809 0.0611376 4.42721 0.0110503C3.67351 -0.0390371 2.9175 0.0818059 2.24301 0.36018C1.56852 0.638553 1.0019 1.06358 0.60598 1.58813C0.210062 2.11268 0.000316079 2.71626 0 3.33194V12.6653C0.000134919 13.2812 0.209892 13.8851 0.605993 14.4099C1.00209 14.9347 1.56905 15.3599 2.24393 15.6382C2.91881 15.9166 3.67523 16.0372 4.42924 15.9868C5.18324 15.9364 5.90535 15.7169 6.51541 15.3526L14.327 10.6859C14.8456 10.3763 15.2672 9.97165 15.5579 9.50465C15.8485 9.03765 16 8.52148 16 7.99794C16 7.47441 15.8485 6.95823 15.5579 6.49124C15.2672 6.02424 14.8456 5.61954 14.327 5.30994L14.3246 5.31061ZM13.3551 9.61061L5.54346 14.2773C5.17746 14.495 4.74458 14.6261 4.29276 14.6559C3.84093 14.6858 3.38778 14.6132 2.98345 14.4464C2.57912 14.2795 2.2394 14.0248 2.00187 13.7104C1.76435 13.3961 1.63829 13.0343 1.63765 12.6653V3.33194C1.63311 2.96217 1.75679 2.59886 1.99448 2.28376C2.23217 1.96865 2.57423 1.71454 2.98135 1.55061C3.32762 1.4072 3.71055 1.33229 4.09905 1.33194C4.61973 1.33356 5.12603 1.4712 5.54346 1.72461L13.3551 6.39127C13.6658 6.57707 13.9185 6.81981 14.0926 7.09985C14.2668 7.3799 14.3575 7.68938 14.3575 8.00327C14.3575 8.31717 14.2668 8.62665 14.0926 8.9067C13.9185 9.18674 13.6658 9.42948 13.3551 9.61528V9.61061Z" fill="#EEEEEE"/>
+                            </g>
+                        </svg>
 
-                </button>
+                    </button>
+                </div>
             </div>
 
             <!-- Collections Section -->
-            <div class="mb-2">
+            <div class="">
                 <details class="w-full">
-                    <summary class="cursor-pointer w-[max-content] ml-4 px-[16px] py-[2px] text-gray-shade_e font-sans bg-accent h-[36px] rounded-[18px] flex items-center">
+                    <summary class="cursor-pointer w-[max-content] px-[16px] py-[2px] text-gray-shade_e font-sans bg-accent h-[36px] rounded-[18px] flex items-center">
                         <span>Select Collections</span>
                         <span class="ml-2 text-sm text-gray-500" id="selected-count"></span>
                     </summary>
