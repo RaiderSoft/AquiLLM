@@ -15,12 +15,13 @@ from pgvector.django import L2Distance
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist
 
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import requires_csrf_token
 
 from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
-from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, DESCENDED_FROM_DOCUMENT
+from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, Document, RawTextDocument, DESCENDED_FROM_DOCUMENT
 from . import vtt
 from .settings import DEBUG
 
@@ -410,6 +411,52 @@ def move_collection(request, collection_id):
             "name": collection.name,
             "parent": collection.parent.id if collection.parent else None,
             "path": collection.get_path(),
+        }
+    })
+
+def get_document_by_id(doc_id):
+    for model in [PDFDocument, TeXDocument, RawTextDocument, VTTDocument]:
+        try:
+            return model.objects.get(id=doc_id)
+        except model.DoesNotExist:
+            continue
+    raise ObjectDoesNotExist("Document not found")
+
+
+@require_http_methods(["POST"])
+@login_required
+def move_document(request, doc_id):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    new_collection_id = data.get("new_collection_id")
+    if new_collection_id is None:
+        return JsonResponse({"error": "new_collection_id is required"}, status=400)
+
+    try:
+        document = get_document_by_id(doc_id)
+    except ObjectDoesNotExist:
+        return JsonResponse({"error": "Document not found"}, status=404)
+
+    try:
+        new_collection = Collection.objects.get(id=new_collection_id)
+    except Collection.DoesNotExist:
+        return JsonResponse({"error": "Target collection not found"}, status=404)
+
+    try:
+        # Call the move_to method on the document
+        document.move_to(new_collection)
+    except ValidationError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({
+        "message": "Document moved successfully",
+        "document": {
+            "id": str(document.id),
+            "title": document.title,
+            "collection": new_collection.id,
         }
     })
 

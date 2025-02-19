@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FileSystemItem } from '../types/FileSystemItem';
 import { FolderIcon } from '../icons/folder';
 import { DocumentIcon } from '../icons/document';
 import { Folder } from './CollectionsTree';
+import ContextMenu from './CustomContextMenu';
 
 // Props for the FileSystemViewer
 interface FileSystemViewerProps {
@@ -12,6 +13,8 @@ interface FileSystemViewerProps {
   onOpenItem?: (item: FileSystemItem) => void; // Callback when a user clicks a row to "open" or navigate
   onRemoveItem?: (item: FileSystemItem) => void;  // Callback for removing/deleting an item
   onSelectCollection?: (item: FileSystemItem) => void; // Callback for selecting a collection (in select mode)
+  onMove?: (item: FileSystemItem) => void; // Callback for moving a collection (in browse mode)
+  onContextMenuRename?: (item: FileSystemItem) => void; // Callback for renaming a collection (in browse mode)
 }
 
 const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
@@ -20,7 +23,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
   collection,
   onOpenItem,
   onRemoveItem,
-  onSelectCollection
+  onSelectCollection,
+  onMove,
+  onContextMenuRename,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -32,6 +37,41 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
       item.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [items, searchQuery]);
+
+  // Define a state to track the custom context menu
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    item: FileSystemItem | null;
+  }>({ visible: false, x: 0, y: 0, item: null });
+
+  // Handler for right-click on an item:
+  const handleContextMenu = (e: React.MouseEvent, item: FileSystemItem) => {
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      item,
+    });
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // You might add logic to check if the click was outside the context menu
+      if (contextMenu.visible) {
+        setContextMenu({ visible: false, x: 0, y: 0, item: null });
+      }
+    };
+  
+    if (contextMenu.visible) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [contextMenu.visible]);
 
   const getIconForType = (type: string) => {
 
@@ -222,6 +262,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               return (
                 <tr
                     key={item.id}
+                    onContextMenu={(e) => handleContextMenu(e, item)}
                     className='h-[40px] max-h-[40px] hover:bg-gray-shade_3 transition-colors'
                     style={{
                         borderBottom: '1px solid #555555',
@@ -266,6 +307,29 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
             })}
           </tbody>
         </table>
+
+        {contextMenu.visible && contextMenu.item && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            item={contextMenu.item}
+            onClose={() => setContextMenu({ visible: false, x: 0, y: 0, item: null })}
+            onViewDetails={(item) => {
+              // Implement viewing details
+              console.log('View details for', item);
+            }}
+            onRename={(item) => {
+              // Implement renaming logic (e.g. open a rename modal)
+              console.log('Rename', item);
+              onContextMenuRename?.(item);
+            }}
+            onMove={(item) => {
+              console.log('Move', item);
+              onMove?.(item);
+            }}
+          />
+        )}
+
       </div>
 
       {/* Pagination Controls (placeholder) */}

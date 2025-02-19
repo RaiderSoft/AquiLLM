@@ -26,10 +26,8 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // State for move modal (for moving the current collection)
+  const [movingItem, setMovingItem] = useState<FileSystemItem | null>(null);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
-  
-  // State for all available collections for moving purposes.
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
 
   // Fetch current collection details (children and documents)
@@ -134,6 +132,10 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
       });
   }, []);
 
+  const handleRenameItem = () => {
+    // TODO: Implement rename functionality
+  }
+
   // Navigation handlers
   const handleBack = () => {
     if (onBack) {
@@ -166,38 +168,61 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
     }
   };
 
+  // Context Menu onMove handler (from FileSystemViewer)
+  const handleContextMove = (item: FileSystemItem) => {
+    // When user right-clicks on an item and selects "Move"
+    setMovingItem(item);
+    setIsMoveModalOpen(true);
+  };
+
   // Handler for moving the current collection.
-  const handleMoveCollection = (folderId: number, newParentId: number | null) => {
-    fetch(`/collection/move/${folderId}/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken'),
-      },
-      body: JSON.stringify({
-        new_parent_id: newParentId, // if null, move to root
-      }),
-      credentials: 'include',
-    })
-      .then(res => {
-        if (!res.ok) {
-          return res.json().then(data => {
-            throw new Error(data.error || 'Failed to move collection');
-          });
-        }
-        return res.json();
+  const handleMoveSubmit = (itemId: number, newParentId: number | null) => {
+    if (!movingItem) return;
+    if (movingItem.type === 'collection') {
+      // Call collection move endpoint:
+      fetch(`/collection/move/${itemId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ new_parent_id: newParentId }),
+        credentials: 'include',
       })
-      .then(data => {
-        console.log('Collection moved successfully:', data);
-        // Optionally, update the view or redirect if necessary.
-        // For example, re-fetch current collection details or navigate away.
-        setIsMoveModalOpen(false);
-        // You might want to refresh the list of available collections, too.
+        .then(res => res.ok ? res.json() : res.json().then(data => { throw new Error(data.error || 'Failed to move collection'); }))
+        .then(data => {
+          console.log('Collection moved:', data);
+          setIsMoveModalOpen(false);
+          setMovingItem(null);
+          // Optionally, refresh the collection details.
+        })
+        .catch(err => {
+          console.error('Error moving collection:', err);
+          alert(`Error: ${err.message}`);
+        });
+    } else {
+      // Assume it's a document
+      fetch(`/document/move/${movingItem.id}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ new_collection_id: newParentId }),
+        credentials: 'include',
       })
-      .catch(err => {
-        console.error('Error moving collection:', err);
-        alert(`Error moving collection: ${err.message}`);
-      });
+        .then(res => res.ok ? res.json() : res.json().then(data => { throw new Error(data.error || 'Failed to move document'); }))
+        .then(data => {
+          console.log('Document moved:', data);
+          setIsMoveModalOpen(false);
+          setMovingItem(null);
+          // Optionally, refresh the document list.
+        })
+        .catch(err => {
+          console.error('Error moving document:', err);
+          alert(`Error: ${err.message}`);
+        });
+    }
   };
 
   if (loading) return <div>Loading...</div>;
@@ -231,7 +256,10 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
           collection={collection}
           onManageCollaborators={handleManageCollaborators}
           onDelete={handleDelete}
-          onMove={() => setIsMoveModalOpen(true)}
+          onMove={() => {
+            setMovingItem({ id: collection!.id, type: 'collection', name: collection!.name });
+            setIsMoveModalOpen(true);
+          }}
         />
       </div>
 
@@ -293,15 +321,17 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         collection={collection}
         onOpenItem={handleOpenItem}
         onRemoveItem={handleRemoveItem}
+        onMove={handleContextMove}
+        onContextMenuRename={handleRenameItem}
       />
 
       {/* Move Modal for moving the current collection */}
       <MoveCollectionModal
-        folder={collection}       // the collection being moved
-        collections={allCollections.filter(col => col.id !== collection?.id)} // full list of collections with parent information
+        folder={movingItem as Folder}       // the collection or document being moved
+        collections={allCollections.filter(collection => collection.id !== movingItem?.id)} // full list of collections with parent information
         isOpen={isMoveModalOpen}
-        onClose={() => setIsMoveModalOpen(false)}
-        onSubmit={handleMoveCollection} // your move handler that calls the API
+        onClose={() => { setIsMoveModalOpen(false); setMovingItem(null); }}
+        onSubmit={handleMoveSubmit} // your move handler that calls the API
       />
     </div>
   );

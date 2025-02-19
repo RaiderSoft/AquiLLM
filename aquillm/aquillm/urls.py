@@ -37,6 +37,7 @@ urlpatterns = [
     path("send_message/<int:convo_id>/", views.send_message, name="send_message"),
     path("pdf/<uuid:doc_id>/", views.pdf, name="pdf"),
     path("document/<uuid:doc_id>/", views.document, name="document"),
+    path("document/move/<uuid:doc_id>/", views.move_document, name="move_document"),
     path("user_collections/", views.user_collections, name="user_collections"),
     path("get_collections_json/", views.get_collections_json, name="get_collections_json"),
     path("collection/move/<int:collection_id>/", views.move_collection, name="move_collection"),
