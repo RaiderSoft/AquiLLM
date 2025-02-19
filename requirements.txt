@@ -28,5 +28,11 @@ pytest-django
 boto3
 websockets
 debugpy
-djangorestframework
-django-cors-headers
+channels-redis
+#djangorestframework
+
+celery[redis]
+#chunking experiments
+#google-genai
+#groq
+#instructor
