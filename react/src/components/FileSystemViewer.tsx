@@ -58,7 +58,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
   };
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = () => {
       // You might add logic to check if the click was outside the context menu
       if (contextMenu.visible) {
         setContextMenu({ visible: false, x: 0, y: 0, item: null });
