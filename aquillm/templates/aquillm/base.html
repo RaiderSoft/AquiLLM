@@ -24,6 +24,8 @@
                     <span class="py-2">AquiLLM</span>
                 </div>
             </a>
+            <div class="h-full flex flex-col justify-between">
+
             <div class="flex flex-col">
                 {% if user.is_authenticated %}
                     {% for link in nav_links %}
@@ -31,7 +33,10 @@
                     {% endfor %}
                 {% endif %}
             </div>
-
+            {% if user.is_authenticated %}
+                <div id="ingestion-monitor" class="px-5 py-2 text-lg font-bold hover:underline hover:bg-lighter-primary hover:outline-t-2 hover:outline-b-2 hover:outline-black hover:outline-dashed">Ingestion Monitor</div>
+            {% endif %}
+            </div>
             <div class="flex justify-center p-5 mt-auto">
                 <img id="aquillm-logo" src="{% static 'images/aquila.svg' %}" alt="AquiLLM Logo">
             </div>
@@ -90,6 +95,11 @@ document.addEventListener('DOMContentLoaded', function() {
         closeIcon.classList.toggle("hidden");
         navBarAquiLLMButtonContainer.classList.toggle("hidden")
     });
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ingest/dashboard/`;
+    mountReactComponent('ingestion-monitor', 'IngestionDashboardLauncher', {
+        wsUrl: wsUrl});
 });
 </script>
     </script>

@@ -2,7 +2,9 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import TestComponent from './components/TestComponent';
 import PDFIngestionMonitor from './components/PDFIngestionMonitor';
-
+import IngestionDashboard from './components/IngestionDashboard';
+import IngestionDashboardLauncher from './components/IngestionDashboardLauncher';
+import IngestRowContainer from './components/IngestRow';
 // Type for the components mapping
 type ComponentsMap = {
   [key: string]: React.ComponentType<any>;
@@ -25,6 +27,9 @@ window.mountReactComponent = (
   const components: ComponentsMap = {
     TestComponent: TestComponent,
     PDFIngestionMonitor: PDFIngestionMonitor,
+    IngestionDashboard: IngestionDashboard,
+    IngestionDashboardLauncher: IngestionDashboardLauncher,
+    IngestRowContainer: IngestRowContainer,
     // Add other components here
   };
   
@@ -35,3 +40,15 @@ window.mountReactComponent = (
     console.error(`Component '${componentName}' not found`);
   }
 };
+
+export function getCsrfCookie(): string {
+  const cookieName = "csrftoken";
+  const cookies = document.cookie.split("; ");
+  for (const cookie of cookies) {
+    const [name, value] = cookie.split("=");
+    if (name === cookieName) {
+      return decodeURIComponent(value);
+    }
+  }
+  throw new Error("CSRF token not found in cookies");
+}

@@ -1,21 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Terminal, ChevronDown, ChevronUp } from 'lucide-react';
+import { Terminal, X } from 'lucide-react';
+import { PDFIngestionMonitorProps, IngestionMessage } from '../types';
 
-interface Message {
-  messages?: string[];
-  progress?: number;
-  exception?: string;
-}
-
-interface PDFIngestionMonitorProps {
-  websocketUrl: string;
-}
-
-const PDFIngestionMonitor: React.FC<PDFIngestionMonitorProps> = ({ websocketUrl }) => {
+const PDFIngestionMonitor: React.FC<PDFIngestionMonitorProps> = ({ documentName, documentId }) => {
   const [progress, setProgress] = useState<number>(0);
   const [messages, setMessages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [showModal, setShowModal] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const ws = useRef<WebSocket | null>(null);
 
@@ -28,85 +19,104 @@ const PDFIngestionMonitor: React.FC<PDFIngestionMonitorProps> = ({ websocketUrl 
   }, [messages]);
 
   useEffect(() => {
-    ws.current = new WebSocket(websocketUrl);
+    if (!ws.current) {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${wsProtocol}//${window.location.host}/ingest/monitor/${documentId}/`;
+      ws.current = new WebSocket(wsUrl);
 
-    ws.current.onopen = () => {
-      console.log('Connected to WebSocket');
-    };
+      ws.current.onopen = () => {
+        console.log('Connected to WebSocket');
+      };
 
-    ws.current.onmessage = (event) => {
-      const data: Message = JSON.parse(event.data);
-      
-      if (data.progress !== undefined) {
-        setProgress(data.progress);
-      }
-      
-      if (data.messages) {
-        setMessages(prev => [...prev, ...(data.messages ?? [])]);
-      }
-      
-      if (data.exception) {
-        setError(data.exception);
-      }
-    };
+      ws.current.onmessage = (event) => {
+        const data: IngestionMessage = JSON.parse(event.data);
 
-    ws.current.onerror = (error) => {
-      setError('WebSocket connection error');
-    };
+        if (data.progress !== undefined) {
+          if (data.progress > progress) {
+            setProgress(data.progress);
+          }
+        }
 
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, [websocketUrl]);
+        if (data.messages) {
+          setMessages(prev => [...prev, ...(data.messages ?? [])]);
+        }
+
+        if (data.exception) {
+          setError(data.exception);
+        }
+      };
+
+      ws.current.onerror = () => {
+        setError('WebSocket connection error');
+      };
+
+      return () => {
+        if (ws.current) {
+          ws.current.close();
+        }
+      };
+    }
+  }, [documentId]);
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 space-y-6">
+    <div className="w-full max-w-3xl mx-auto p-3 space-y-6">
       {/* Progress Section */}
       <div className="space-y-2">
-        <div className="flex justify-between text-sm font-medium">
-          <span>Ingestion Progress</span>
-          <span>{progress}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div 
-            className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out"
-            style={{ width: `${progress}%` }}
-          ></div>
+        <a
+          className="font-medium text-blue-600 underline"
+          href={`/document/${documentId}/`}
+        >
+          {documentName}
+        </a>
+        <div className="flex items-center gap-2">
+          {/* Terminal icon that triggers the modal */}
+          <button onClick={() => setShowModal(true)} className="hover:text-blue-400">
+            <Terminal size={18} />
+          </button>
+          <div className="flex-grow bg-gray-200 rounded-full h-5">
+            <div
+              className="bg-blue-600 h-5 rounded-full transition-all duration-300 ease-in-out"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+          <span className="font-medium min-w-[3rem] text-right">{progress}%</span>
         </div>
       </div>
 
-      {/* Console Output */}
-      <div className="border rounded-lg bg-gray-900 text-gray-100">
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between gap-2 p-4 hover:bg-gray-800 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Terminal size={18} />
-            <span className="font-mono text-sm">Ingestion Log</span>
-          </div>
-          {isExpanded ? (
-            <ChevronUp size={18} className="text-gray-400" />
-          ) : (
-            <ChevronDown size={18} className="text-gray-400" />
-          )}
-        </button>
-        
-        {isExpanded && (
-          <div className="border-t border-gray-700 p-4">
-            <div className="font-mono text-sm h-64 overflow-y-auto space-y-1">
+      {/* Modal for Log */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-60">
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black opacity-50"
+            onClick={() => setShowModal(false)}
+          ></div>
+          {/* Modal Content */}
+          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg shadow-lg z-10 w-11/12 max-w-3xl h-[40vh] overflow-y-auto">
+            <div className="flex justify-between">
+              <div className="flex font-mono">
+                <Terminal size={18} className="mr-6" />
+                Ingestion Events for Document "{documentName}"
+              </div>
+
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-200 text-xl"
+              >
+                <X />
+              </button>
+            </div>
+            <div className="font-mono text-sm space-y-1">
               {messages.map((message, index) => (
                 <div key={index} className="text-gray-300">
-                  <span className="text-green-400"></span> {message}
+                  {message}
                 </div>
               ))}
               <div ref={messagesEndRef} />
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (

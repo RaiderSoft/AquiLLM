@@ -21,7 +21,8 @@ from django.contrib.auth import views as auth_views
 from debug_toolbar.toolbar import debug_toolbar_urls
 
 from chat import views as chat_views
-from . import views
+
+from . import views, api_views
 from .settings import DEBUG
 
 urlpatterns = [
@@ -54,6 +55,10 @@ urlpatterns = [
     path("ready", views.health_check),
     path("react_test", views.react_test, name="react_test"),
     path("pdf_ingestion_monitor/<int:doc_id>/", views.pdf_ingestion_monitor, name="pdf_ingestion_monitor"),
+    path("ingestion_dashboard/", views.ingestion_dashboard, name="ingestion_dashboard"),
+
+    path("api/ingest_arxiv", api_views.ingest_arxiv, name="api_ingest_arxiv"),
+    path("api/ingest_pdf", api_views.ingest_pdf, name="api_ingest_pdf"),
 ] + debug_toolbar_urls()
 
 if DEBUG:

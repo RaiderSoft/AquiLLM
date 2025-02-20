@@ -448,7 +448,21 @@ if DEBUG:
         breakpoint()
         return HttpResponse(status=200)
 
+@login_required
+@require_http_methods(['GET'])
+def ingestion_monitor(request):
+    in_progress = PDFDocument.objects.filter(ingestion_complete=False, ingested_by=request.user)
+    protocol = 'wss://' if request.is_secure() else 'ws://'
+    host = request.get_host()
+    return JsonResponse([{"documentName": doc.title,
+                          "documentId": doc.id,
+                          "websocketUrl": protocol + host + "/ingest/monitor/" + doc.id + "/"}
+                          for doc in in_progress])
 
+@login_required
+@require_http_methods(['GET'])
+def ingestion_dashboard(request):
+    return render(request, 'aquillm/ingestion_dashboard.html')
 
 
 @login_required

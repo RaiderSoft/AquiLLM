@@ -1,3 +1,5 @@
+from typing import Optional, Callable
+
 from django.db import models, transaction
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -45,7 +47,12 @@ logger = logging.getLogger(__name__)
 from pydantic_core import to_jsonable_python
 
 from .celery import app
-from celery.states import state, RECEIVED, FAILURE
+from celery.states import state, RECEIVED, STARTED, SUCCESS, FAILURE
+
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
+channel_layer = get_channel_layer()
 
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW'):
@@ -132,6 +139,49 @@ class CollectionPermission(models.Model):
 
             super().save(*args, **kwargs)
             
+@app.task(serializer='pickle', bind=True, track_started=True)
+def create_chunks(self, doc_id:str): #naive method, just number of characters
+    try:
+        doc = Document.get_document_by_id(uuid.UUID(doc_id))
+        async_to_sync(channel_layer.group_send)(f'ingestion-dashboard-{doc.ingested_by.id}', {
+            'type': 'document.ingestion.start',
+            'documentId': str(doc.id),
+            'documentTitle': doc.title,
+        })
+        chunk_size = apps.get_app_config('aquillm').chunk_size
+        overlap = apps.get_app_config('aquillm').chunk_overlap
+        chunk_pitch = chunk_size - overlap
+        # Delete existing chunks for this document
+        TextChunk.objects.filter(doc_id=doc.id).delete()
+        last_character = len(doc.full_text) - 1
+        # Create new chunks
+        
+        chunks = list([TextChunk(
+                    content = doc.full_text[chunk_pitch * i : min((chunk_pitch * i) + chunk_size, last_character + 1)],
+                    start_position=chunk_pitch * i,
+                    end_position=min((chunk_pitch * i) + chunk_size, last_character + 1),
+                    doc_id = doc.id,
+                    chunk_number = i) for i in range(last_character // chunk_pitch + 1)])
+        n_chunks = len(chunks)
+        done_chunks = [0] # this has to be a list because of the way python handles closures
+
+        def send_progress():
+            done_chunks[0] += 1
+            async_to_sync(channel_layer.group_send)(f'document-ingest-{doc.id}', {
+                'type': 'document.ingest.progress',
+                'progress': int((done_chunks[0] / n_chunks) * 100),
+            })
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as e:
+            e.map(functools.partial(TextChunk.get_chunk_embedding, callback=send_progress), chunks)
+        
+        TextChunk.objects.bulk_create(chunks)
+        doc.ingestion_complete = True
+        doc.save(dont_rechunk=True)
+    except Exception as e:
+        logger.error(f"Error creating chunks for document {doc.id}: {str(e)}")
+        self.update_state(state=FAILURE)
+        doc.delete()    
 
 class Document(models.Model):
     pkid = models.BigAutoField(primary_key=True, editable=False)
@@ -143,6 +193,7 @@ class Document(models.Model):
     full_text_hash = models.CharField(max_length=64, db_index=True)
     ingested_by = models.ForeignKey(User, on_delete=models.RESTRICT)
     ingestion_date = models.DateTimeField(auto_now_add=True)
+    ingestion_complete = models.BooleanField(default=True)
     class Meta:
         abstract = True
         constraints = [
@@ -157,21 +208,32 @@ class Document(models.Model):
     def chunks(self):
         return TextChunk.objects.filter(doc_id=self.id)
 
+    @staticmethod
+    def get_document_by_id(doc_id: uuid.UUID):
+        for t in DESCENDED_FROM_DOCUMENT:
+            doc = t.objects.filter(id=doc_id).first()
+            if doc:
+                return doc
+        return None
+
     def save(self, *args, **kwargs):
+        if kwargs.pop('dont_rechunk', False):
+            super().save(*args, **kwargs)
+            return
         if len(self.full_text) < 100:
             raise ValidationError("The full text of a document must be at least 100 characters long.")
         self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
-      
-        with transaction.atomic():
-            is_new = self.pk is None
-
-            super().save(*args, **kwargs)
-            result = self.create_chunks.delay(self)
+        is_new = (self.pk is None) or (self.full_text_hash != Document.get_document_by_id(doc_id=self.id).full_text_hash)
+        
+        super().save(*args, **kwargs)
+        if is_new:
+            self.ingestion_complete = False
+            result = create_chunks.delay(str(self.id))
             try:
                 for _ in range(4):
-                    if result.status == FAILURE:
+                    if state(result.status) == state(FAILURE):
                         raise Exception(f"Task failed")
-                    if result.status >= RECEIVED:
+                    if state(result.status) in [state(RECEIVED), state(STARTED), state(SUCCESS)]:
                         return
                     time.sleep(1)
                 raise Exception("Task was not received in time")
@@ -192,28 +254,7 @@ class Document(models.Model):
         super().delete(*args, **kwargs)
 
 
-    @app.task(serializer='pickle', on_failure=delete)
-    def create_chunks(self): #naive method, just number of characters
-
-        chunk_size = apps.get_app_config('aquillm').chunk_size
-        overlap = apps.get_app_config('aquillm').chunk_overlap
-        chunk_pitch = chunk_size - overlap
-        # Delete existing chunks for this document
-        TextChunk.objects.filter(doc_id=self.id).delete()
-        last_character = len(self.full_text) - 1
-        # Create new chunks
-
-        chunks = list([TextChunk(
-                    content = self.full_text[chunk_pitch * i : min((chunk_pitch * i) + chunk_size, last_character + 1)],
-                    start_position=chunk_pitch * i,
-                    end_position=min((chunk_pitch * i) + chunk_size, last_character + 1),
-                    doc_id = self.id,
-                    chunk_number = i) for i in range(last_character // chunk_pitch + 1)])
-        
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as e:
-            e.map(TextChunk.get_chunk_embedding, chunks)
-        
-        TextChunk.objects.bulk_create(chunks)
+    
 
     def __str__(self):
         return f'{ContentType.objects.get_for_model(self)} -- {self.title} in {self.collection.name}'
@@ -389,9 +430,10 @@ class TextChunk(models.Model):
         super().save(*args, **kwargs)
 
     @retry(wait=wait_exponential())
-    def get_chunk_embedding(self):
+    def get_chunk_embedding(self, callback:Optional[Callable[[], None]]=None):
         self.embedding = get_embedding(self.content, input_type='search_document')
-
+        if callback:
+            callback()
     @classmethod
     def rerank(cls, query:str, chunks, top_k: int):
         cohere = apps.get_app_config('aquillm').cohere_client
