@@ -251,8 +251,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                   }}
                 />
               </th>
-              <th style={{ textAlign: 'left' }}>Type</th>
+              
               <th style={{ textAlign: 'left' }}>Name</th>
+              <th style={{ textAlign: 'left' }}>Type</th>
               <th style={{ textAlign: 'left' }}>Manage</th>
             </tr>
           </thead>
@@ -295,12 +296,14 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                           }}
                         />
                     </td>
+                    
+                    <td style={{ textAlign: 'left', fontSize: '14px'  }}>{item.name}</td>
 
                     <td style={{ textAlign: 'left', fontSize: '14px' }} className='flex justify-left items-center gap-[16px] h-full'>
                         {getIconForType(item.type)}
                         {item.type}
                     </td>
-                    <td style={{ textAlign: 'left', fontSize: '14px'  }}>{item.name}</td>
+
                     <td style={{ textAlign: 'left', fontSize: '14px'  }}>{renderManageCell(item)}</td>
                 </tr>
               );
