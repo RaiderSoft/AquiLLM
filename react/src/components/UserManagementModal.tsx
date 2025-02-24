@@ -269,23 +269,40 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
   if (!isOpen || !collection) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col shadow-xl">
-        <div className="flex justify-between items-center border-b border-gray-700 px-6 py-4">
-          <h2 className="text-xl font-semibold text-white">
-            Manage Collaborators for "{collection.name}"
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-shade_3 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="px-6 py-4 border-b border-gray-shade_4 flex justify-between items-center">
+          <h2 className="text-xl font-semibold">
+            Manage Collaborators: {collection?.name}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="px-6 py-4 overflow-y-auto flex-grow">
+        {/* Help information about permission inheritance */}
+        <div className="px-6 py-3 bg-gray-shade_4 border-b border-gray-shade_3">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 mt-0.5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h3 className="text-sm font-semibold text-blue-400 mb-1">About Permissions</h3>
+              <p className="text-xs text-gray-300 mb-2">
+                Users with permissions on a collection automatically inherit access to all subcollections:
+              </p>
+              <ul className="text-xs text-gray-300 list-disc list-inside ml-2 space-y-1">
+                <li><span className="font-semibold">Viewer</span> - Can view documents but cannot make changes</li>
+                <li><span className="font-semibold">Editor</span> - Can add, edit, and delete documents</li>
+                <li><span className="font-semibold">Admin</span> - Can manage users and collection settings</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto p-6 flex-grow">
           {/* Success message */}
           {successMessage && (
             <div className="mb-4 bg-green-900 text-white p-3 rounded">
@@ -343,25 +360,30 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
                               <p className="text-white">{user.username}</p>
                               <p className="text-gray-400 text-sm">{user.email || 'No email'}</p>
                             </div>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => addUser(user, 'VIEW')}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-sm"
-                              >
-                                Viewer
-                              </button>
-                              <button
-                                onClick={() => addUser(user, 'EDIT')}
-                                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
-                              >
-                                Editor
-                              </button>
-                              <button
-                                onClick={() => addUser(user, 'MANAGE')}
-                                className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-sm"
-                              >
-                                Admin
-                              </button>
+                            <div className="mt-2">
+                              <div className="flex space-x-2">
+                                <button
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                                  onClick={() => addUser(user, 'VIEW')}
+                                  title="Viewer: Can only view documents - this permission will apply to all subcollections"
+                                >
+                                  Viewer
+                                </button>
+                                <button
+                                  className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs"
+                                  onClick={() => addUser(user, 'EDIT')}
+                                  title="Editor: Can add, edit and delete documents - this permission will apply to all subcollections"
+                                >
+                                  Editor
+                                </button>
+                                <button
+                                  className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs"
+                                  onClick={() => addUser(user, 'MANAGE')}
+                                  title="Admin: Can manage users and collection settings - this permission will apply to all subcollections"
+                                >
+                                  Admin
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </li>
@@ -385,15 +407,39 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
                             <p className="text-gray-400 text-sm">{user.email || 'No email'}</p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <select
-                              value={user.permission}
-                              onChange={(e) => changeUserPermission(user.id, e.target.value as 'VIEW' | 'EDIT' | 'MANAGE')}
-                              className="bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            <button
+                              className={`px-2 py-1 rounded text-xs ${
+                                user.permission === 'VIEW'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                              onClick={() => changeUserPermission(user.id, 'VIEW')}
+                              title="Viewer: Can only view documents - this permission will apply to all subcollections"
                             >
-                              <option value="VIEW">Viewer</option>
-                              <option value="EDIT">Editor</option>
-                              <option value="MANAGE">Admin</option>
-                            </select>
+                              Viewer
+                            </button>
+                            <button
+                              className={`px-2 py-1 rounded text-xs ${
+                                user.permission === 'EDIT'
+                                  ? 'bg-green-600 text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                              onClick={() => changeUserPermission(user.id, 'EDIT')}
+                              title="Editor: Can add, edit and delete documents - this permission will apply to all subcollections"
+                            >
+                              Editor
+                            </button>
+                            <button
+                              className={`px-2 py-1 rounded text-xs ${
+                                user.permission === 'MANAGE'
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                              onClick={() => changeUserPermission(user.id, 'MANAGE')}
+                              title="Admin: Can manage users and collection settings - this permission will apply to all subcollections"
+                            >
+                              Admin
+                            </button>
                             <button
                               onClick={() => removeUser(user.id)}
                               className="text-red-500 hover:text-red-400"
