@@ -74,8 +74,9 @@ class NewCollectionForm(forms.Form):
 class SearchForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         collections_attrs = {
-            'class': 'rounded-md bg-lightest-primary',
+            'class': 'rounded-lg bg-gray-shade_3 mb-4 max-h-[300px] overflow-y-auto px-4 py-2 border border-gray-shade_7',
         }
         self.fields['collections'] = UserCollectionMultipleChoiceField(
             user=user,
@@ -85,13 +86,16 @@ class SearchForm(forms.Form):
         )
 
     query_attrs = {
-        'class': 'w-full h-full resize-none p-3 mb-3 rounded-md bg-lightest-primary text-wrap',
+        'class': 'w-full h-full resize-none p-3 mb-4 rounded-md bg-gray-shade_3 placeholder:text-gray-shade_a text-wrap text-gray-shade_e',
         'rows': 4,
         'placeholder': 'Send a message'}
-    query = forms.CharField(label="", widget=forms.Textarea(attrs=query_attrs), max_length=10000)
+    
+    query = forms.CharField(label="Query", widget=forms.Textarea(attrs=query_attrs), max_length=10000)
+
     top_k_attrs = {
-        'class': 'w-full m-2 p-2 rounded-md bg-lightest-primary'
+        'class': 'w-full p-2 rounded-md bg-gray-shade_3 placeholder:text-gray-shade_9 text-gray-shade_e mb-4',
     }
+
     top_k = forms.IntegerField(widget=forms.NumberInput(attrs=top_k_attrs), min_value=1, max_value=200, initial=5)
 
 

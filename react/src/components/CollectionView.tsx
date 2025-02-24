@@ -5,6 +5,7 @@ import FileSystemViewer from '../components/FileSystemViewer';
 import MoveCollectionModal from '../components/MoveCollectionModal';
 import { FileSystemItem } from '../types/FileSystemItem';
 import { getCookie } from '../utils/csrf';
+import IngestRowContainer from '../components/IngestRow';
 
 interface CollectionContent {
   id: number;
@@ -275,45 +276,11 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
           <div className="flex-grow border-t border-gray-shade_4"></div>
       </div>
 
-      {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: '32px' }} className='mb-[24px]'>
-        <button
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            borderRadius: '20px',
-            border: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          Ingest PDF
-        </button>
-        <button
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            borderRadius: '20px',
-            border: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          Ingest from arXiv
-        </button>
-        <button
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            borderRadius: '20px',
-            border: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          Ingest Transcript
-        </button>
-      </div>
+      <IngestRowContainer
+        ingestArxivUrl='api/ingest_arxiv/'
+        ingestPdfUrl='api/ingest_pdf/'
+        collectionId={collectionId}
+      />
 
       <div className="relative flex items-center mb-[24px]"> 
           <div className="flex-grow border-t border-gray-shade_4"></div>

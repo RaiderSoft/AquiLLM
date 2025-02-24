@@ -3,48 +3,60 @@
 {% block title %}AquiLLM Search{% endblock %}
 
 {% block content %}
-    <h1>Search</h1>
     {% if error_message %}
         <div class="error_message">
             {{ error_message }}
         </div>
     {% endif %}
-    <form action="/search/" method="post">
-        {% csrf_token %}
-        {{ form }}
-        <input type="submit" value="Submit">
-    </form>
-    {% if reranked_results %}
-    <h2>Reranked Search Results</h2>
-    <ul>
+    <div class="flex gap-[40px] items-center justify-center h-full w-full text-gray-shade_e font-sans">
+        <div class="flex flex-col items-center justify-center">
+            <form action="/search/" method="post">
+                {% csrf_token %}
+                {{ form }}
 
-        {% for item in reranked_results %}
-            <li>
-                {% include "aquillm/text_chunk.html" with item=item %}
-            </li>
-        {% endfor %}
-    </ul>
-{% endif %}
-    {% if vector_results %}
-        <h2>Vector Search Results</h2>
-        <ul>
+                <div class="w-full flex justify-center">
+                    <input type="submit" value="Submit" class="bg-accent text-gray-shade_e p-[8px] rounded-[8px] cursor-pointer">
+                </div>
+            </form>
+        </div>
 
-            {% for item in vector_results %}
-                <li>
-                    {% include "aquillm/text_chunk.html" with item=item %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% endif %}
-    {% if trigram_results %}
-        <h2>Trigram Search Results</h2>
-        <ul>
-            {% for item in trigram_results %}
-            <li>
-                {% include "aquillm/text_chunk.html" with item=item %}
-            </li>
-            {% endfor %}
-        </ul>
+        {% if reranked_results or vector_results or trigram_result %}
+            <div class="max-h-[90%] overflow-y-auto bg-gray-shade_3 rounded-lg p-[16px] my-[64px]">     
+                <h1 style="text-align: center;" class="text-lg border-b border-gray-shade_7 pb-[16px] mb-[16px]"><strong>Search Results</strong></h1>
+                {% if reranked_results %}
+                    <h2 class="text-accent-light"><strong>Reranked Search Results</strong></h2>
+                    <ul class="ml-[16px]">
 
-    {% endif %}
+                        {% for item in reranked_results %}
+                            <li>
+                                {% include "aquillm/text_chunk.html" with item=item %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {% if vector_results %}
+                    <h2 class="text-accent-light"><strong>Vector Search Results</strong></h2>
+                    <ul class="ml-[16px]">
+
+                        {% for item in vector_results %}
+                            <li>
+                                {% include "aquillm/text_chunk.html" with item=item %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {% if trigram_results %}
+                    <h2 class="text-accent-light"><strong>Trigram Search Results</strong></h2>
+                    <ul class="ml-[16px]">
+                        {% for item in trigram_results %}
+                        <li>
+                            {% include "aquillm/text_chunk.html" with item=item %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
 {% endblock %}

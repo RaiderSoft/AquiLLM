@@ -4,6 +4,8 @@ import TestComponent from './components/TestComponent';
 import PDFIngestionMonitor from './components/PDFIngestionMonitor';
 import CollectionsPage from './components/CollectionsPage';
 import CollectionView from './components/CollectionView';
+import IngestRowContainer from './components/IngestRow';
+import SearchPage from './components/SearchPage';
 
 // Type for the components mapping
 type ComponentsMap = {
@@ -29,6 +31,8 @@ window.mountReactComponent = (
     PDFIngestionMonitor: PDFIngestionMonitor,
     CollectionsPage: CollectionsPage,
     CollectionView: CollectionView,
+    IngestRowContainer: IngestRowContainer,
+    SearchPage: SearchPage,
     // Add other components here
   };
   
@@ -39,3 +43,15 @@ window.mountReactComponent = (
     console.error(`Component '${componentName}' not found`);
   }
 };
+
+export function getCsrfCookie(): string {
+  const cookieName = "csrftoken";
+  const cookies = document.cookie.split("; ");
+  for (const cookie of cookies) {
+    const [name, value] = cookie.split("=");
+    if (name === cookieName) {
+      return decodeURIComponent(value);
+    }
+  }
+  throw new Error("CSRF token not found in cookies");
+}

@@ -21,7 +21,7 @@ from django.contrib.auth import views as auth_views
 from debug_toolbar.toolbar import debug_toolbar_urls
 
 from chat import views as chat_views
-from . import views
+from . import views, api_views
 from .settings import DEBUG
 
 urlpatterns = [
@@ -36,6 +36,8 @@ urlpatterns = [
     path("new_convo/", views.new_convo, name="new_convo"),
     path("send_message/<int:convo_id>/", views.send_message, name="send_message"),
     path("pdf/<uuid:doc_id>/", views.pdf, name="pdf"),
+    path("api/ingest_arxiv", api_views.ingest_arxiv, name="api_ingest_arxiv"),
+    path("api/ingest_pdf", api_views.ingest_pdf, name="api_ingest_pdf"),
     path("document/<uuid:doc_id>/", views.document, name="document"),
     path("document/move/<uuid:doc_id>/", views.move_document, name="move_document"),
     path("user_collections/", views.user_collections, name="user_collections"),

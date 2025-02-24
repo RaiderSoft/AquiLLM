@@ -45,8 +45,6 @@ def react_test(request):
 @require_http_methods(['GET', 'POST'])
 @login_required
 def search(request):
-    
-
 
     vector_results = []
     trigram_results = []
