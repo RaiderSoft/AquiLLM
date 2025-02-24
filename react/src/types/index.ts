@@ -10,6 +10,7 @@ export interface IngestionMessage {
   messages?: string[];
   progress?: number;
   exception?: string;
+  complete?: boolean;
 }
 
 export interface IngestionDashboardProps {

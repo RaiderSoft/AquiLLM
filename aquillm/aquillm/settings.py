@@ -32,7 +32,7 @@ SECRET_KEY = ""
 if DEBUG:
     SECRET_KEY = "django-insecure-_fj8e0)w#wu48c673prc3$%+h36!df0#)0upbl6t%x#_w3zk60"
 else:
-    SECRET_KEY = os.environ.get('SECRET_KEY')
+    SECRET_KEY = os.environ['SECRET_KEY']
 
 # Application definition
 
@@ -96,10 +96,10 @@ WSGI_APPLICATION = "aquillm.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-POSTGRES_USER = os.environ.get("POSTGRES_USER")
-POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
-POSTGRES_NAME = os.environ.get("POSTGRES_NAME")
-POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
+POSTGRES_USER = os.environ["POSTGRES_USER"]
+POSTGRES_HOST = os.environ["POSTGRES_HOST"]
+POSTGRES_NAME = os.environ["POSTGRES_NAME"]
+POSTGRES_PASSWORD = os.environ["POSTGRES_PASSWORD"]
 
 DATABASES = {
     "default": {
@@ -176,8 +176,8 @@ SOCIALACCOUNT_ADAPTER = 'aquillm.adapters.RestrictDomains'
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
-            'client_id': os.getenv("GOOGLE_OAUTH2_CLIENT_ID"),
-            'secret': os.getenv("GOOGLE_OAUTH2_CLIENT_SECRET"),
+            'client_id': os.environ["GOOGLE_OAUTH2_CLIENT_ID"],
+            'secret': os.environ["GOOGLE_OAUTH2_CLIENT_SECRET"],
             'key': ''
         },
         'SCOPE': [
@@ -201,9 +201,9 @@ INTERNAL_IPS = [
 X_FRAME_OPTIONS = "SAMEORIGIN"
 USE_TZ=True
 DATA_UPLOAD_MAX_MEMORY_SIZE=  268435456
-ALLOWED_HOSTS =['aquillm.space', 'www.aquillm.space', 'localhost', 'alpha.aquillm.space', 'beta.aquillm.space']
-ALLOWED_HOSTS += [os.getenv("HOST_NAME")]
-
+ALLOWED_HOSTS =['localhost']
+if host_name := os.environ.get("HOST_NAME"):
+    ALLOWED_HOSTS += [host_name]
 ASGI_APPLICATION = "aquillm.asgi.application"
 
 
@@ -211,9 +211,9 @@ STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
-            "endpoint_url": "http://" + os.getenv("STORAGE_HOST"),
-            "access_key": os.getenv("STORAGE_ACCESS_KEY"),
-            "secret_key": os.getenv("STORAGE_SECRET_KEY"),
+            "endpoint_url": "http://" + os.environ["STORAGE_HOST"],
+            "access_key": os.environ["STORAGE_ACCESS_KEY"],
+            "secret_key": os.environ["STORAGE_SECRET_KEY"],
 
             "bucket_name": "aquillm",
             "file_overwrite": False,
@@ -224,7 +224,7 @@ STORAGES = {
     }
 }
 
-CSRF_TRUSTED_ORIGINS =['https://' + os.getenv("HOST_NAME")]
+CSRF_TRUSTED_ORIGINS =['https://' + os.environ["HOST_NAME"]]
 
 
 CHANNEL_LAYERS = {

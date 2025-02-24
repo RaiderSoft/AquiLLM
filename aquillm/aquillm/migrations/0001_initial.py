@@ -139,7 +139,7 @@ class Migration(migrations.Migration):
                 ('start_time', models.FloatField(null=True)),
                 ('chunk_number', models.PositiveIntegerField()),
                 ('embedding', pgvector.django.vector.VectorField(blank=True, dimensions=1024, null=True)),
-                ('doc_id', models.UUIDField(editable=False, validators=[aquillm.models.TextChunk.doc_id_validator])),
+                ('doc_id', models.UUIDField(editable=False, validators=[aquillm.models.doc_id_validator])),
                 ('keywords', django.contrib.postgres.fields.ArrayField(base_field=models.CharField(max_length=100), blank=True, null=True, size=10)),
             ],
             options={

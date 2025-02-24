@@ -36,7 +36,9 @@ const PDFIngestionMonitor: React.FC<PDFIngestionMonitorProps> = ({ documentName,
             setProgress(data.progress);
           }
         }
-
+        if (data.complete) {
+          setProgress(100);
+        }
         if (data.messages) {
           setMessages(prev => [...prev, ...(data.messages ?? [])]);
         }
