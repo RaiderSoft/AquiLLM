@@ -21,7 +21,7 @@
 
                     <button 
                         id="send-button"
-                        class="p-4 bg-accent text-gray-shade_e rounded-[24px] disabled:cursor-not-allowed"
+                        class="p-4 bg-accent text-gray-shade_e rounded-[24px] disabled:cursor-not-allowed mr-[-8px]"
                         title="Send Message"
                         >
                         
@@ -30,19 +30,29 @@
                             <path d="M14.3246 5.31061L6.51295 0.643942C5.90283 0.280198 5.1809 0.0611376 4.42721 0.0110503C3.67351 -0.0390371 2.9175 0.0818059 2.24301 0.36018C1.56852 0.638553 1.0019 1.06358 0.60598 1.58813C0.210062 2.11268 0.000316079 2.71626 0 3.33194V12.6653C0.000134919 13.2812 0.209892 13.8851 0.605993 14.4099C1.00209 14.9347 1.56905 15.3599 2.24393 15.6382C2.91881 15.9166 3.67523 16.0372 4.42924 15.9868C5.18324 15.9364 5.90535 15.7169 6.51541 15.3526L14.327 10.6859C14.8456 10.3763 15.2672 9.97165 15.5579 9.50465C15.8485 9.03765 16 8.52148 16 7.99794C16 7.47441 15.8485 6.95823 15.5579 6.49124C15.2672 6.02424 14.8456 5.61954 14.327 5.30994L14.3246 5.31061ZM13.3551 9.61061L5.54346 14.2773C5.17746 14.495 4.74458 14.6261 4.29276 14.6559C3.84093 14.6858 3.38778 14.6132 2.98345 14.4464C2.57912 14.2795 2.2394 14.0248 2.00187 13.7104C1.76435 13.3961 1.63829 13.0343 1.63765 12.6653V3.33194C1.63311 2.96217 1.75679 2.59886 1.99448 2.28376C2.23217 1.96865 2.57423 1.71454 2.98135 1.55061C3.32762 1.4072 3.71055 1.33229 4.09905 1.33194C4.61973 1.33356 5.12603 1.4712 5.54346 1.72461L13.3551 6.39127C13.6658 6.57707 13.9185 6.81981 14.0926 7.09985C14.2668 7.3799 14.3575 7.68938 14.3575 8.00327C14.3575 8.31717 14.2668 8.62665 14.0926 8.9067C13.9185 9.18674 13.6658 9.42948 13.3551 9.61528V9.61061Z" fill="#EEEEEE"/>
                             </g>
                         </svg>
-
                     </button>
                 </div>
             </div>
 
             <!-- Collections Section -->
+
+            
+
             <div class="">
-                <details class="w-full">
+                <details class="w-full font-sans text-gray-shade_e">
                     <summary class="cursor-pointer w-[max-content] px-[16px] py-[2px] text-gray-shade_e font-sans bg-accent h-[36px] rounded-[18px] flex items-center">
                         <span>Select Collections</span>
-                        <span class="ml-2 text-sm text-gray-500" id="selected-count"></span>
+                        <span class="ml-2 text-sm" id="selected-count"></span>
                     </summary>
-                    <div class="mt-2 p-2 border rounded-lg bg-white" id="collections-list">
+                    <div class="search-container mb-2">
+                        <input
+                          type="text"
+                          id="collection-search"
+                          placeholder="Search..."
+                          class="text-sm h-[36px] w-full p-2 border rounded-lg font-sans text-gray-shade_e bg-gray-shade_3 border-gray-shade_6 mt-2"
+                        />
+                    </div>
+                    <div class="mt-2 p-2 border rounded-lg bg-gray-shade_3 border-gray-shade_6 max-h-[160px] overflow-y-auto" id="collections-list">
                         <!-- Collections will be dynamically inserted here -->
                     </div>
                 </details>
@@ -631,45 +641,56 @@
         }
     }
     
-    function renderCollections() {
+    function renderCollections(searchTerm = '') {
         const container = document.getElementById('collections-list');
         container.innerHTML = '';
-        
-        collections.forEach(collection => {
+
+        // Filter collections based on the search term
+        const filteredCollections = collections.filter(collection =>
+            collection.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        filteredCollections.forEach(collection => {
             const div = document.createElement('div');
-            div.className = 'flex items-center p-2 hover:bg-gray-50 rounded';
-            
+            div.className = 'flex items-center p-2 hover:bg-gray-shade_4 rounded';
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.id = `collection-${collection.id}`;
-            checkbox.className = 'h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500';
+            checkbox.className = 'h-4 w-4 text-accent-light rounded border-gray-300 focus:ring-blue-500';
             checkbox.checked = selectedCollections.has(collection.id);
-            
+
             const label = document.createElement('label');
             label.htmlFor = `collection-${collection.id}`;
-            label.className = 'ml-2 text-sm text-gray-700';
+            label.className = 'ml-2 text-sm text-accent-light';
             label.textContent = collection.name;
-            
+
             checkbox.addEventListener('change', () => {
-                if (checkbox.checked) {
-                    selectedCollections.add(collection.id);
-                } else {
-                    selectedCollections.delete(collection.id);
-                }
-                updateSelectedCount();
+            if (checkbox.checked) {
+                selectedCollections.add(collection.id);
+            } else {
+                selectedCollections.delete(collection.id);
+            }
+            updateSelectedCount();
             });
-            
+
             div.appendChild(checkbox);
             div.appendChild(label);
             container.appendChild(div);
         });
     }
+
     
     function updateSelectedCount() {
         const countElement = document.getElementById('selected-count');
         const count = selectedCollections.size;
         countElement.textContent = count ? `(${count} selected)` : '';
     }
+
+    document.getElementById('collection-search').addEventListener('input', function (event) {
+        const searchTerm = event.target.value;
+        renderCollections(searchTerm);
+    });
     
     initWebSocket();
     
