@@ -535,6 +535,7 @@ def collection(request, col_id):
                     'id': child.id,
                     'name': child.name,
                     'document_count': len([doc for doc in child.documents]) if hasattr(child, 'documents') else 0,
+                    'created_at': child.created_at.isoformat() if hasattr(child, 'created_at') and child.created_at else None,
                 } for child in collection.children.all()]
 
                 response_data = {

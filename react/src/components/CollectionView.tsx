@@ -80,14 +80,16 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
             : new Date().toLocaleString(),
           document_count: 0,
         }));
+
         // Transform children (sub-collections) data
         const transformedChildren = (data.children || []).map((child: any) => ({
           id: child.id,
           type: 'collection', // explicitly mark it as a collection
           name: child.name,
-          created_at: child.created_at || null,
+          created_at: new Date(child.created_at || new Date()).toLocaleString(),
           document_count: child.document_count,
         }));
+
         // Merge children and documents for the file system viewer
         const combinedItems = [...transformedChildren, ...transformedDocuments];
         setContents(combinedItems);
@@ -242,13 +244,17 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
             display: 'flex',
             alignItems: 'center',
             color: '#9ca3af',
-            marginRight: '1rem'
           }}
         >
           ← Back
         </button>
-
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', flex: 1, textAlign: 'center' }}>
+        
+        {/* 
+            The right padding here is a little weird, because the padding on the the element to the right of it
+            has a padding of 0.5rem that slightly offsets this title off-center.  This padding re-centers it with respect
+            to the page. 
+        */}
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', flex: 1, textAlign: 'center', paddingRight: '0.5rem' }}>
           {collection.name}
         </h1>
 

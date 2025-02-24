@@ -176,22 +176,27 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
     <div style={{ backgroundColor: '#292929', borderRadius: '36px' }} className='font-sans border border-gray-shade_6 overflow-hidden'>
       {/* Top Bar: Search, etc. */}
       <div style={{ display: 'flex', justifyContent: 'space-between'}} className='bg-gray-shade_4 p-[16px] border-b border-b-gray-shade_6'>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className='bg-gray-shade_4 border border-gray-shade_7 placeholder:text-gray-shade_b placeholder:pl-[8px] rounded-[20px]'
-            style={{
-              padding: '0.5rem',
-            }}
-          />
+        <div className="flex gap-[16px]">
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className='bg-gray-shade_4 border border-gray-shade_7 placeholder:text-gray-shade_b placeholder:pl-[8px] rounded-[20px]'
+              style={{
+                padding: '0.5rem',
+              }}
+            />
+          </div>
+
+              {/* Divider between the search bar and current location */}
+          <div className='h-full border-r border-gray-shade_6'></div>
+          
+          <span className='flex items-center text-align-center text-gray-shade_a text-sm'>
+              Path: Root/{collection.path}
+          </span>
         </div>
-        
-        <span className='flex items-center text-align-center text-gray-shade_a text-sm'>
-            Root/{collection.path}
-        </span>
 
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
@@ -216,7 +221,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               cursor: 'pointer'
             }}
             onClick={() => {
-              // Example bulk remove
+
               const selectedItems = items.filter(i => selectedIds.has(i.id));
               selectedItems.forEach(item => onRemoveItem?.(item));
               setSelectedIds(new Set());
@@ -254,7 +259,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               
               <th style={{ textAlign: 'left' }}>Name</th>
               <th style={{ textAlign: 'left' }}>Type</th>
-              <th style={{ textAlign: 'left' }}>Manage</th>
+              <th style={{ textAlign: 'left' }}>Details</th>
             </tr>
           </thead>
           <tbody>
@@ -304,7 +309,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                         {item.type}
                     </td>
 
-                    <td style={{ textAlign: 'left', fontSize: '14px'  }}>{renderManageCell(item)}</td>
+                    <td style={{ textAlign: 'left', fontSize: '14px'  }}>{item.created_at}</td>
                 </tr>
               );
             })}
@@ -329,6 +334,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
             onMove={(item) => {
               console.log('Move', item);
               onMove?.(item);
+            }}
+            onRemove={(item) => {
+              {renderManageCell(item)}
             }}
           />
         )}

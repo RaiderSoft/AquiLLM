@@ -9,6 +9,7 @@ interface ContextMenuProps {
   onViewDetails: (item: FileSystemItem) => void;
   onRename: (item: FileSystemItem) => void;
   onMove: (item: FileSystemItem) => void;
+  onRemove: (item: FileSystemItem) => void;
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -19,6 +20,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onViewDetails,
   onRename,
   onMove,
+  onRemove,
 }) => {
   return (
     <div
@@ -52,6 +54,13 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           onClick={() => { onMove(item); onClose(); }}
         >
           Move
+        </li>
+        <li
+          style={{ padding: '4px 8px', cursor: 'pointer' }}
+          className="text-red"
+          onClick={() => { onRemove(item); onClose(); }}
+        >
+          Remove
         </li>
       </ul>
     </div>
