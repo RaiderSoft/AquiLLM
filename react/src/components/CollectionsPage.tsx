@@ -3,6 +3,7 @@ import { Folder } from '../components/CollectionsTree';
 import MoveCollectionModal from '../components/MoveCollectionModal';
 import CreateCollectionModal from '../components/CreateCollectionModal';
 import CollectionSettingsMenu from '../components/CollectionSettingsMenu';
+import UserManagementModal from '../components/UserManagementModal';
 import { getCookie } from '../utils/csrf';
 
 // Define the prop types
@@ -12,14 +13,17 @@ interface CollectionsPageProps {
 }
 
 const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase }) => {
-  // Remove react-router since we’ll handle navigation via props or window.location
+  // Remove react-router since we'll handle navigation via props or window.location
   const [collections, setCollectionsToView] = useState<Folder[]>([]);
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [folderToMove, setFolderToMove] = useState<Folder | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isUserManagementModalOpen, setIsUserManagementModalOpen] = useState<boolean>(false);
+  const [selectedCollection, setSelectedCollection] = useState<Folder | null>(null);
 
   // Fetch collections on mount using the provided API URL
   useEffect(() => {
@@ -147,8 +151,64 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
     }
   };
 
-  const handleManageCollaborators = (collection: Folder) => {
-    console.log('Manage collaborators for:', collection);
+  const handleManageCollaborators = (folder: Folder) => {
+    setSelectedCollection(folder);
+    setIsUserManagementModalOpen(true);
+  };
+
+  const handleCloseUserManagementModal = () => {
+    setIsUserManagementModalOpen(false);
+    setSelectedCollection(null);
+  };
+
+  const handleUserManagementSave = () => {
+    // Set success message
+    setSuccessMessage(`Collaborators for "${selectedCollection?.name}" updated successfully!`);
+    
+    // Clear message after 5 seconds
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 5000);
+
+    // Refresh collections after saving permissions
+    fetch(apiUrl, {
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Failed to refresh collections');
+        }
+        return res.json();
+      })
+      .then((data) => {
+        const collectionsData = data.collections || [];
+        const parsedCollections = collectionsData.map((col: any) => ({
+          id: col.id,
+          name: col.name,
+          parent: col.parent,
+          collection: col.id,
+          path: col.path,
+          children: [],
+          document_count: col.document_count,
+          children_count: col.children_count,
+          created_at: new Date(col.created_at || new Date()).toLocaleString(),
+          updated_at: new Date(col.updated_at || new Date()).toISOString(),
+        }));
+
+        const rootCollections = parsedCollections.filter((col: { parent: Folder | null }) => col.parent === null);
+        setAllCollections(parsedCollections);
+        setCollectionsToView(rootCollections);
+      })
+      .catch((err) => {
+        console.error('Error refreshing collections:', err);
+        setError('Failed to refresh collections after updating permissions');
+        
+        // Clear error message after 5 seconds
+        setTimeout(() => {
+          setError(null);
+        }, 5000);
+      });
   };
 
   // Instead of useNavigate, we use the provided detailUrlBase (if any) to redirect
@@ -195,130 +255,110 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
   if (error) return <div>{error}</div>;
 
   return (
-    <div style={{ padding: '2rem' }} className='font-sans overflow-y-auto'>
+    <div className='p-4'>
+      {/* Success notification */}
+      {successMessage && (
+        <div className='bg-green-600 text-white p-4 mb-4 rounded flex items-center justify-between'>
+          <span>{successMessage}</span>
+          <button onClick={() => setSuccessMessage(null)} className="text-white">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', textAlign: 'center', marginBottom: '1.5rem' }}>Collections</h1>
+      {/* Error message display */}
+      {error && (
+        <div className='bg-red-600 text-white p-4 mb-4 rounded flex items-center justify-between'>
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-white">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
-      <button
-          className='bg-accent'
-          style={{
-            padding: '0.5rem 1rem',
-            color: 'white',
-            borderRadius: '0.375rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            border: 'none',
-            cursor: 'pointer',
-            marginBottom: '1.5rem'
-          }}
-          onClick={handleOpenCreateModal}
-        >
-          <span>+</span>
-          <span>New Collection</span>
-        </button>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-        gap: '1.5rem'
-      }}>
-        {collections.map((collection) => (
-          <div
-            key={collection.id}
-            className='bg-gray-shade_3 text-gray-shade_e border border-gray-shade_7 hover:scale-[102%] transition-transform rounded-[20px]'
-            style={{
-              padding: '1.5rem',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            }}
-            onClick={() => handleCollectionClick(collection)}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.5rem' }}>
-
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }} className='cursor-pointer hover:underline'>{collection.name}</h2>
-
-              <CollectionSettingsMenu
-                collection={collection}
-                onMove={handleMoveClick}
-                onDelete={handleDeleteCollection}
-                onManageCollaborators={handleManageCollaborators}
-              />
-            </div>
-            
-            <div style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: '#9ca3af' }} onClick={(e) => e.stopPropagation()}>
-              <div className='pointer-events-none'>Documents: {collection.document_count}</div>
-              <div className='pointer-events-none'>Sub collections: {collection.children_count}</div>
-              <div className='pointer-events-none'>Created: {collection.created_at}</div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
-              <button
-                className='bg-accent'
-                style={{
-                  padding: '0.5rem',
-                  color: 'white',
-                  borderRadius: '0.375rem',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Ingest PDF
-              </button>
-              <button
-                className='bg-accent'
-                style={{
-                  padding: '0.5rem',
-                  color: 'white',
-                  borderRadius: '0.375rem',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Ingest from arXiv
-              </button>
-              <button
-                className='bg-accent'
-                style={{
-                  padding: '0.5rem',
-                  color: 'white',
-                  borderRadius: '0.375rem',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Ingest Transcript
-              </button>
-            </div>
-
-            <div style={{
-              marginTop: '1rem',
-              padding: '1rem',
-              border: '2px dashed #4b5563',
-              borderRadius: '0.375rem',
-              textAlign: 'center'
-            }} onClick={(e) => e.stopPropagation()}>
-              <div>Drag Files Here</div>
-              <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
-                <span>browse files</span> or <span>browse folders</span>
-              </div>
-            </div>
+      {/* Loading indicator */}
+      {loading ? (
+        <div>Loading collections...</div>
+      ) : (
+        <>
+          {/* Header section */}
+          <div className='flex justify-between items-center mb-4'>
+            <h1 className='text-2xl font-bold'>My Collections</h1>
+            <button
+              onClick={handleOpenCreateModal}
+              className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded'
+            >
+              New Collection
+            </button>
           </div>
-        ))}
-      </div>
 
-      <MoveCollectionModal
-        folder={folderToMove}
-        collections={allCollections.filter(col => col.id !== folderToMove?.id)}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleMoveCollection}
-      />
+          {/* Collections grid */}
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+            {collections.map((folder) => (
+              <div
+                key={folder.id}
+                className='bg-gray-shade_3 hover:bg-opacity-100 rounded-lg p-4 cursor-pointer transition duration-200 relative'
+                onClick={() => {
+                  if (detailUrlBase) {
+                    window.location.href = `${detailUrlBase}/${folder.id}/`;
+                  }
+                }}
+              >
+                <div className='flex justify-between items-start'>
+                  <div>
+                    <h2 className='text-xl font-semibold mb-2'>{folder.name}</h2>
+                    <p className='text-gray-300 mb-2'>
+                      {folder.document_count} documents • {folder.children_count} subcollections
+                    </p>
+                    <p className='text-gray-400 text-sm'>
+                      Created: {new Date(folder.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <CollectionSettingsMenu
+                    collection={folder}
+                    onMove={handleMoveClick}
+                    onDelete={(folder) => console.log('Delete folder:', folder)}
+                    onManageCollaborators={handleManageCollaborators}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Modals */}
+      {folderToMove && (
+        <MoveCollectionModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          folder={folderToMove}
+          collections={allCollections.filter(c => c.id !== folderToMove.id)}
+          onSubmit={(folderId, newParentId) => {
+            console.log(`Move folder ${folderId} to parent ${newParentId}`);
+            handleCloseModal();
+          }}
+        />
+      )}
 
       <CreateCollectionModal
         isOpen={isCreateModalOpen}
         onClose={handleCloseCreateModal}
         onSubmit={handleSubmitCreate}
       />
+
+      {selectedCollection && (
+        <UserManagementModal
+          isOpen={isUserManagementModalOpen}
+          onClose={handleCloseUserManagementModal}
+          onSave={handleUserManagementSave}
+          collection={selectedCollection}
+        />
+      )}
     </div>
   );
 };

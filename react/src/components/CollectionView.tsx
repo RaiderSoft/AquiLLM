@@ -30,6 +30,12 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   const [movingItem, setMovingItem] = useState<FileSystemItem | null>(null);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
+  const [permissionSource, setPermissionSource] = useState<{
+    direct: boolean;
+    source_collection_id: number | null;
+    source_collection_name: string | null;
+    permission_level: string | null;
+  } | null>(null);
 
   // Fetch current collection details (children and documents)
   useEffect(() => {
@@ -49,6 +55,11 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
       .then(data => {
         if (!data.collection) {
           throw new Error('Invalid response format');
+        }
+
+        // Store permission source information
+        if (data.permission_source) {
+          setPermissionSource(data.permission_source);
         }
 
         // Set collection data (including children)
@@ -270,6 +281,19 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         />
       </div>
 
+      {/* Permission Source Indicator */}
+      {permissionSource && !permissionSource.direct && permissionSource.source_collection_name && (
+        <div className="mb-4 p-3 bg-blue-600 bg-opacity-15 text-blue-300 rounded-md flex items-center">
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            You have access to this collection through <strong>{permissionSource.permission_level}</strong> permission 
+            inherited from parent collection: <strong>{permissionSource.source_collection_name}</strong>
+          </span>
+        </div>
+      )}
+
       <div className="relative flex items-center mb-[24px]"> 
           <div className="flex-grow border-t border-gray-shade_4"></div>
             <span className="font-sans text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Add Content</span>
@@ -300,7 +324,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
       {/* Move Modal for moving the current collection */}
       <MoveCollectionModal
-        folder={movingItem as Folder}       // the collection or document being moved
+        folder={movingItem as unknown as Folder}       // the collection or document being moved
         collections={allCollections.filter(collection => collection.id !== movingItem?.id)} // full list of collections with parent information
         isOpen={isMoveModalOpen}
         onClose={() => { setIsMoveModalOpen(false); setMovingItem(null); }}
