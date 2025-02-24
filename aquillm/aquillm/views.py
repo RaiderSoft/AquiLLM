@@ -320,7 +320,17 @@ def get_collections_json(request):
             return JsonResponse({'error': 'Name is required'}, status=400)
 
         with transaction.atomic():
-            collection = Collection.objects.create(name=name)
+            # Check if parent_id is provided to create a subcollection
+            parent_id = data.get('parent')
+            parent = None
+            
+            if parent_id:
+                parent = get_object_or_404(Collection, pk=parent_id)
+                # Ensure user has edit permission on parent
+                if not parent.user_can_edit(request.user):
+                    return JsonResponse({'error': 'You need EDIT permission on the parent collection to create a subcollection'}, status=403)
+            
+            collection = Collection.objects.create(name=name, parent=parent)
             CollectionPermission.objects.create(
                 collection=collection,
                 user=request.user,
@@ -354,7 +364,8 @@ def get_collections_json(request):
                 'path': collection.get_path(),
                 'document_count': len(collection.documents),
                 'children_count': collection.children.count(),
-                'permission': 'MANAGE'
+                'permission': 'MANAGE',
+                'note': 'Users with permissions on parent collections will automatically have access to this collection.'
             })
 
     # For GET requests, get all collections where the user has any permission
@@ -460,42 +471,100 @@ def move_document(request, doc_id):
         }
     })
 
-@require_http_methods(['POST'])
+@require_http_methods(['GET', 'POST'])
 @login_required
 def update_collection_permissions(request, col_id):
     collection = get_object_or_404(Collection, pk=col_id)
     if not collection.user_can_manage(request.user):
         return JsonResponse({'error': 'Permission denied'}, status=403)
 
-    try:
-        data = json.loads(request.body)
-        with transaction.atomic():
-            # Remove all existing permissions except the owner's
-            CollectionPermission.objects.filter(collection=collection).exclude(user=request.user).delete()
+    if request.method == 'GET':
+        # Get all permissions for this collection
+        permissions = CollectionPermission.objects.filter(collection=collection)
+        
+        # Group users by permission level
+        viewers = []
+        editors = []
+        admins = []
+        
+        for perm in permissions:
+            user_data = {
+                'id': perm.user.id,
+                'username': perm.user.username,
+                'email': perm.user.email,
+                'full_name': f"{perm.user.first_name} {perm.user.last_name}".strip()
+            }
+            
+            if perm.permission == 'VIEW':
+                viewers.append(user_data)
+            elif perm.permission == 'EDIT':
+                editors.append(user_data)
+            elif perm.permission == 'MANAGE':
+                admins.append(user_data)
+        
+        return JsonResponse({
+            'viewers': viewers,
+            'editors': editors,
+            'admins': admins
+        })
+    
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            # Find the owner (first user with MANAGE permission)
+            owner = None
+            earliest_manage_perm = CollectionPermission.objects.filter(
+                collection=collection,
+                permission='MANAGE'
+            ).order_by('id').first()
+            
+            if earliest_manage_perm:
+                owner = earliest_manage_perm.user
+            
+            with transaction.atomic():
+                # Remove all existing permissions except the owner's
+                if owner:
+                    CollectionPermission.objects.filter(collection=collection).exclude(user=owner).delete()
+                else:
+                    # If no owner identified, preserve the current user's permission
+                    CollectionPermission.objects.filter(collection=collection).exclude(user=request.user).delete()
 
-            # Add new permissions
-            for viewer in data.get('viewers', []):
-                CollectionPermission.objects.create(
-                    collection=collection,
-                    user=get_user_model().objects.get(id=viewer),
-                    permission='VIEW'
-                )
-            for editor in data.get('editors', []):
-                CollectionPermission.objects.create(
-                    collection=collection,
-                    user=get_user_model().objects.get(id=editor),
-                    permission='EDIT'
-                )
-            for admin in data.get('admins', []):
-                CollectionPermission.objects.create(
-                    collection=collection,
-                    user=get_user_model().objects.get(id=admin),
-                    permission='MANAGE'
-                )
+                # Add new permissions
+                for viewer in data.get('viewers', []):
+                    # Skip if this is the owner - owner's permission must stay as MANAGE
+                    if owner and owner.id == viewer:
+                        continue
+                        
+                    CollectionPermission.objects.create(
+                        collection=collection,
+                        user=get_user_model().objects.get(id=viewer),
+                        permission='VIEW'
+                    )
+                for editor in data.get('editors', []):
+                    # Skip if this is the owner
+                    if owner and owner.id == editor:
+                        continue
+                        
+                    CollectionPermission.objects.create(
+                        collection=collection,
+                        user=get_user_model().objects.get(id=editor),
+                        permission='EDIT'
+                    )
+                for admin in data.get('admins', []):
+                    # Skip if this is the owner (avoid duplicate)
+                    if owner and owner.id == admin:
+                        continue
+                        
+                    CollectionPermission.objects.create(
+                        collection=collection,
+                        user=get_user_model().objects.get(id=admin),
+                        permission='MANAGE'
+                    )
 
-        return JsonResponse({'status': 'success'})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
 
 # @require_http_methods(['GET'])
 # @login_required
@@ -513,7 +582,12 @@ def collection(request, col_id):
     try:
         collection = get_object_or_404(Collection, pk=col_id)
         if not collection.user_can_view(request.user):
-            return JsonResponse({'error': 'Permission denied'}, status=403)
+            # Check if there's a permission from a parent collection for better error message
+            source_collection, permission = collection.get_user_permission_source(request.user)
+            if source_collection:
+                return JsonResponse({'error': f'Permission denied. You have {permission} permission on parent collection "{source_collection.name}" but need direct permission on this collection.'}, status=403)
+            else:
+                return JsonResponse({'error': 'Permission denied. You need at least VIEW permission on this collection or one of its parents.'}, status=403)
         
         # Return JSON if requested
         if 'application/json' in request.headers.get('Accept', ''):
@@ -538,6 +612,15 @@ def collection(request, col_id):
                     'created_at': child.created_at.isoformat() if hasattr(child, 'created_at') and child.created_at else None,
                 } for child in collection.children.all()]
 
+                # Get permission source for UI feedback
+                source_collection, permission_level = collection.get_user_permission_source(request.user)
+                permission_source = {
+                    'direct': source_collection.id == collection.id if source_collection else False,
+                    'source_collection_id': source_collection.id if source_collection else None,
+                    'source_collection_name': source_collection.name if source_collection else None,
+                    'permission_level': permission_level
+                }
+                
                 response_data = {
                     'collection': {
                         'id': collection.id,
@@ -551,6 +634,7 @@ def collection(request, col_id):
                     'children': children,
                     'can_edit': collection.user_can_edit(request.user),
                     'can_manage': collection.user_can_manage(request.user),
+                    'permission_source': permission_source
                 }
                 return JsonResponse(response_data)
             except Exception as e:
@@ -686,3 +770,33 @@ if DEBUG:
 @require_http_methods(['GET'])
 def pdf_ingestion_monitor(request, doc_id):
     return render(request, 'aquillm/pdf_ingestion_monitor.html', {'doc_id': doc_id})
+
+@require_http_methods(['GET'])
+@login_required
+def search_users(request):
+    """
+    API endpoint to search for users by username.
+    Used for finding users to share collections with.
+    """
+    query = request.GET.get('query', '')
+    exclude_current = request.GET.get('exclude_current', 'false').lower() == 'true'
+    
+    users = get_user_model().objects.filter(username__icontains=query)
+    
+    if exclude_current:
+        users = users.exclude(id=request.user.id)
+    
+    # Limit results to 10 for performance
+    users = users[:10]
+    
+    return JsonResponse({
+        'users': [
+            {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'full_name': f"{user.first_name} {user.last_name}".strip()
+            }
+            for user in users
+        ]
+    })
