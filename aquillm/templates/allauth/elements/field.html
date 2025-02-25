@@ -1,34 +1,31 @@
 {% load allauth %}
 {% if attrs.type == "checkbox" or attrs.type == "radio" %}
-    <div class="form-check mb-3">
+    <div class="form-check mb-[20px] ml-[32px] flex items-center">
         <input {% if attrs.required %}required{% endif %}
-               name="{{ attrs.name }}"
-               class="form-check-input"
-               id="{{ attrs.id }}"
-               {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %}
-               {% if attrs.disabled %}disabled{% endif %}
-               type="{{ attrs.type }}">
-        <label class="form-check-label" for="{{ attrs.id }}">
+            name="{{ attrs.name }}"
+            class="form-check-input appearance-none w-[16px] h-[16px] border border-gray-shade_7 rounded-[4px] bg-gray-shade_5 checked:bg-accent checked:border-blue-500 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            id="{{ attrs.id }}"
+            {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %}
+            {% if attrs.disabled %}disabled{% endif %}
+            type="{{ attrs.type }}">
+        <label class="form-check-label text-[12px] ml-2 cursor-pointer" for="{{ attrs.id }}">
             {% slot label %}
             {% endslot %}
         </label>
         {% if slots.help_text %}
-            <div class="form-text">
+            <div class="form-text text-gray-500 text-xs">
                 {% slot help_text %}
                 {% endslot %}
             </div>
         {% endif %}
     </div>
+
 {% elif attrs.type == "text" %}
-<div class="p-2">
-    <label for="{{ attrs.id }}">
-        {% slot label %}
-        {% endslot %}
-    </label>
+<div class="mb-[20px] mx-[32px] USERNAME">
     <input {% if attrs.required %}required{% endif %}
                name="{{ attrs.name }}"
                {% if attrs.placeholder %}placeholder="{{ attrs.placeholder }}" {% elif attrs.unlabeled %}placeholder="{% slot label %}{% endslot %}"{% endif %}
-               class="{% if attrs.errors %}is-invalid{% endif %} rounded p-1"
+               class="{% if attrs.errors %}is-invalid{% endif %} rounded-[8px] px-2 py-1 w-full h-[40px] bg-gray-shade_5 placeholder:text-gray-shade_a border border-gray-shade_7"
                id="{{ attrs.id }}"
                {% if attrs.readonly %}readonly{% endif %}
                {% if attrs.disabled %}disabled{% endif %}
@@ -39,15 +36,11 @@
                type="{{ attrs.type }}">
 </div>
 {% elif attrs.type == "password" %}
-<div class="p-2">
-    <label for="{{ attrs.id }}">
-        {% slot label %}
-        {% endslot %}
-    </label>
+<div class="mb-[20px] mx-[32px] PASSWORD">
     <input {% if attrs.required %}required{% endif %}
                name="{{ attrs.name }}"
                {% if attrs.placeholder %}placeholder="{{ attrs.placeholder }}" {% elif attrs.unlabeled %}placeholder="{% slot label %}{% endslot %}"{% endif %}
-               class="{% if attrs.errors %}is-invalid{% endif %} rounded p-1"
+               class="{% if attrs.errors %}is-invalid{% endif %} rounded-[8px] px-2 py-1 w-full h-[40px] bg-gray-shade_5 placeholder:text-gray-shade_a border border-gray-shade_7"
                id="{{ attrs.id }}"
                {% if attrs.readonly %}readonly{% endif %}
                {% if attrs.disabled %}disabled{% endif %}

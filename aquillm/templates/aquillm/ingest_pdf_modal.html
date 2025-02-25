@@ -12,7 +12,7 @@
     </div>
 {% endif %}
 
-<form action="{% url 'ingest_pdf' %}" method="post" enctype="multipart/form-data" class="flex flex-col justify-center p-[32px] text-gray-shade_e font-sans">
+<form action="{% url 'ingest_pdf' %}" method="post" enctype="multipart/form-data" class="flex flex-col justify-center p-[32px] text-gray-shade_e font-sans h-full">
 
     {% csrf_token %}
     <div class="form-group w-full">
@@ -22,7 +22,7 @@
         {% endif %}
     </div>
 
-    <div class="flex-grow border-t border-gray-shade_a my-[32px]"></div>
+    <div class="flex-grow border-t h-[0px] border-gray-shade_a my-[32px]"></div>
 
     <div class="form-group w-full flex flex-col items-center justify-center">
         <span style="transform: translateY(-4px)" class="text-xl">
@@ -50,7 +50,7 @@
 
     </div>
 
-    <div class="flex-grow border-t border-gray-shade_a my-[32px]"></div>
+    <div class="flex-grow border-t h-[0px] border-gray-shade_a my-[32px]"></div>
 
     <div class="form-group">
         <label class="block font-medium">Collection</label>
