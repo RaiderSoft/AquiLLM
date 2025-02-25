@@ -321,7 +321,7 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
                   <CollectionSettingsMenu
                     collection={folder}
                     onMove={handleMoveClick}
-                    onDelete={(folder) => console.log('Delete folder:', folder)}
+                    onDelete={handleDeleteCollection}
                     onManageCollaborators={handleManageCollaborators}
                   />
                 </div>

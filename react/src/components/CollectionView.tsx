@@ -164,12 +164,49 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   };
 
   const handleDelete = () => {
-    // TODO: Implement delete functionality
+    if (window.confirm(`Are you sure you want to delete "${collection?.name}"?`)) {
+      fetch(`/api/collections/delete/${collection?.id}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        credentials: 'include'
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to delete collection');
+          // After successful deletion, navigate back
+          if (onBack) {
+            onBack();
+          }
+        })
+        .catch((err) => {
+          console.error('Error:', err);
+          alert('Failed to delete collection. Please try again.');
+        });
+    }
   };
 
   const handleRemoveItem = (item: FileSystemItem) => {
-    console.log('Removing item:', item);
-    // TODO: Implement removal (delete API call, confirmation, etc.)
+    if (window.confirm(`Are you sure you want to remove "${item.name}"?`)) {
+      // Different endpoints for collections vs documents
+      const endpoint = item.type === 'collection' 
+        ? `/api/collections/delete/${item.id}/` 
+        : `/api/documents/delete/${item.id}/`;
+      
+      fetch(endpoint, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        credentials: 'include'
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`Failed to remove ${item.type}`);
+          
+          // Remove the item from the content list
+          setContents(prevContents => prevContents.filter(contentItem => contentItem.id !== item.id));
+        })
+        .catch((err) => {
+          console.error('Error:', err);
+          alert(`Failed to remove ${item.type}. Please try again.`);
+        });
+    }
   };
 
   const handleOpenItem = (item: FileSystemItem) => {

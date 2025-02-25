@@ -7,7 +7,7 @@ from xml.dom import minidom
 
 from django.core.files.base import ContentFile
 
-from .models import PDFDocument, TeXDocument, Collection, CollectionPermission
+from .models import PDFDocument, TeXDocument, Collection, CollectionPermission, DESCENDED_FROM_DOCUMENT
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
@@ -144,3 +144,61 @@ def ingest_pdf(request):
         logger.error(f"Database error: {e}")
         return JsonResponse({'error': 'Database error occurred while saving PDFDocument'}, status=500)
     return JsonResponse({'status_message': 'Success'})
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_collection(request, collection_id):
+    user = request.user
+    collection = get_object_or_404(Collection, id=collection_id)
+    
+    # Check if user has MANAGE permission for this collection
+    if not collection.user_can_manage(user):
+        return JsonResponse({'error': 'You do not have permission to delete this collection'}, status=403)
+    
+    # Get children before deletion for notification purposes
+    children_count = collection.children.count()
+    documents_count = sum(len(x.objects.filter(collection=collection)) for x in DESCENDED_FROM_DOCUMENT)
+    
+    try:
+        # Django will cascade delete children collections and documents
+        collection.delete()
+        return JsonResponse({
+            'success': True,
+            'message': f'Collection deleted successfully along with {children_count} subcollections and {documents_count} documents'
+        })
+    except Exception as e:
+        logger.error(f"Error deleting collection {collection_id}: {e}")
+        return JsonResponse({'error': f'Failed to delete collection: {str(e)}'}, status=500)
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_document(request, doc_id):
+    user = request.user
+    
+    # Try to find the document among all document types
+    document = None
+    doc_type = None
+    for model in DESCENDED_FROM_DOCUMENT:
+        try:
+            document = model.objects.get(id=doc_id)
+            doc_type = model.__name__
+            break
+        except model.DoesNotExist:
+            continue
+    
+    if not document:
+        return JsonResponse({'error': 'Document not found'}, status=404)
+    
+    # Check if user has EDIT permission for the document's collection
+    if not document.collection.user_can_edit(user):
+        return JsonResponse({'error': 'You do not have permission to delete this document'}, status=403)
+    
+    try:
+        document.delete()
+        return JsonResponse({
+            'success': True,
+            'message': f'{doc_type} deleted successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error deleting document {doc_id}: {e}")
+        return JsonResponse({'error': f'Failed to delete document: {str(e)}'}, status=500)
