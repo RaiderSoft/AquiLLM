@@ -4,9 +4,11 @@ import TestComponent from './components/TestComponent';
 import PDFIngestionMonitor from './components/PDFIngestionMonitor';
 import CollectionsPage from './components/CollectionsPage';
 import CollectionView from './components/CollectionView';
-import IngestRowContainer from './components/IngestRow';
 import SearchPage from './components/SearchPage';
 
+import IngestionDashboard from './components/IngestionDashboard';
+import IngestionDashboardLauncher from './components/IngestionDashboardLauncher';
+import IngestRowContainer from './components/IngestRow';
 // Type for the components mapping
 type ComponentsMap = {
   [key: string]: React.ComponentType<any>;
@@ -31,8 +33,10 @@ window.mountReactComponent = (
     PDFIngestionMonitor: PDFIngestionMonitor,
     CollectionsPage: CollectionsPage,
     CollectionView: CollectionView,
-    IngestRowContainer: IngestRowContainer,
     SearchPage: SearchPage,
+    IngestionDashboard: IngestionDashboard,
+    IngestionDashboardLauncher: IngestionDashboardLauncher,
+    IngestRowContainer: IngestRowContainer,
     // Add other components here
   };
   

@@ -8,6 +8,7 @@ import io
 import gzip
 import tarfile
 from xml.dom import minidom
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
@@ -21,7 +22,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import requires_csrf_token
 
 from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
-from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, Document, RawTextDocument, DESCENDED_FROM_DOCUMENT
+from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, WSConversation, DESCENDED_FROM_DOCUMENT
 from . import vtt
 from .settings import DEBUG
 
@@ -115,7 +116,7 @@ def get_doc(request, doc_id):
     if not doc:
         raise Http404("Requested document does not exist")
     if not doc.collection.user_can_view(request.user):
-        raise HttpResponseForbidden("You don't have access to the collection containing this document")
+        raise PermissionDenied("You don't have access to the collection containing this document")
     return doc
 
 @require_http_methods(['GET'])
@@ -151,13 +152,13 @@ def insert_one_from_arxiv(arxiv_id, collection, user):
         status_message += error_str
     else:
         xmldoc = minidom.parseString(metadata_req.content)
-        title = ' '.join(xmldoc.getElementsByTagName('entry')[0].getElementsByTagName('title')[0].firstChild.data.split())
+        title = ' '.join(xmldoc.getElementsByTagName('entry')[0].getElementsByTagName('title')[0].firstChild.data.split()) # type: ignore
         if tex_req.status_code == 200:
             status_message += f"Got LaTeX source for {arxiv_id}\n"
             tgz_io = io.BytesIO(tex_req.content)
             tex_str = ""
             with gzip.open(tgz_io, 'rb') as gz:
-                with tarfile.open(fileobj=gz) as tar:
+                with tarfile.open(fileobj=gz) as tar: # type: ignore
                     for member in tar.getmembers():
                         if member.isfile() and member.name.endswith('.tex'):
                             f = tar.extractfile(member)
@@ -212,60 +213,6 @@ def insert_arxiv(request):
     return render(request, 'aquillm/insert_arxiv.html', context)
 
 
-@require_http_methods(['GET'])
-@login_required
-def raw_convo(request, convo_id):
-    convo = get_object_or_404(LLMConversation, pk=convo_id)
-    if convo.owner != request.user:
-        return HttpResponseForbidden("User does not own this conversation")
-    context = {'conversation': convo}
-    return render(request, 'aquillm/raw_convo.html', context)
-
-@require_http_methods(['GET'])
-@login_required
-def convo(request, convo_id):
-    convo = get_object_or_404(LLMConversation, pk=convo_id)
-    if convo.owner != request.user:
-        return HttpResponseForbidden("User does not own this conversation")
-   
-    return render(request, 'aquillm/convo.html', {'conversation': convo,
-                                                  'convo_id' : convo_id,
-                                                  'form' : SearchForm(request.user)})
-
-@require_http_methods(['POST'])
-@login_required
-def send_message(request, convo_id):
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        convo = get_object_or_404(LLMConversation, pk=convo_id)
-        if convo.owner != request.user:
-            return HttpResponseForbidden("User does not own this conversation")
-        form = SearchForm(request.user, request.POST)
-        if form.is_valid():
-            collections = form.cleaned_data['collections']
-            content = form.cleaned_data['query']
-            top_k = form.cleaned_data['top_k']
-            docs = Collection.get_user_accessible_documents(request.user, collections)
-            convo = convo.send_message(content, top_k, docs)
-            return JsonResponse({'success': True})
-        else:
-            return JsonResponse({'success': False, 'error': form.errors})
-    logger.error(f"Wrong x-requested-with: {request.headers.get('x-requested-with')}")
-    return JsonResponse({'success': False, 'error': 'Invalid Request'})
-
-
-@require_http_methods(['GET'])
-@login_required
-def user_conversations(request):
-    conversations = LLMConversation.objects.filter(owner=request.user).order_by('-updated_at')
-    return render(request, 'aquillm/user_conversations.html', {'conversations': conversations})
-
-@login_required
-def new_convo(request):
-    convo = LLMConversation(owner=request.user) # TODO: let user set system prompt
-    convo.save()
-    return redirect('convo', convo_id=convo.id)
-
-
 #TODO: make this much nicer
 @require_http_methods(['GET', 'POST'])
 @login_required
@@ -288,10 +235,11 @@ def user_collections(request):
                 for user in viewers:
                     CollectionPermission.objects.create(user=user, collection=col, permission='VIEW')
         else:
+            colperms = CollectionPermission.objects.filter(user=request.user)
             status_message = "Invalid Form Input"
             return render(request, "aquillm/user_collections.html", {'col_perms': colperms, 'form': form, 'status_message': status_message}) 
 
-        return redirect('collection', col_id=col.id)
+        return redirect('collection', col_id=col.pk)
     else:
         colperms = CollectionPermission.objects.filter(user=request.user)
         form = NewCollectionForm(user=request.user)
@@ -413,7 +361,7 @@ def move_collection(request, collection_id):
     })
 
 def get_document_by_id(doc_id):
-    for model in [PDFDocument, TeXDocument, RawTextDocument, VTTDocument]:
+    for model in DESCENDED_FROM_DOCUMENT:
         try:
             return model.objects.get(id=doc_id)
         except model.DoesNotExist:
@@ -677,7 +625,21 @@ if DEBUG:
         breakpoint()
         return HttpResponse(status=200)
 
+@login_required
+@require_http_methods(['GET'])
+def ingestion_monitor(request):
+    in_progress = PDFDocument.objects.filter(ingestion_complete=False, ingested_by=request.user)
+    protocol = 'wss://' if request.is_secure() else 'ws://'
+    host = request.get_host()
+    return JsonResponse([{"documentName": doc.title,
+                          "documentId": doc.id,
+                          "websocketUrl": protocol + host + "/ingest/monitor/" + doc.id + "/"}
+                          for doc in in_progress])
 
+@login_required
+@require_http_methods(['GET'])
+def ingestion_dashboard(request):
+    return render(request, 'aquillm/ingestion_dashboard.html')
 
 
 @login_required

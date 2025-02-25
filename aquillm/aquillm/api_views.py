@@ -3,6 +3,7 @@ import logging
 import gzip
 import tarfile
 import io
+import chardet
 from xml.dom import minidom
 
 from django.core.files.base import ContentFile
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 # helper func, not a view
 def insert_one_from_arxiv(arxiv_id, collection, user):
 
-    def save_pdf(content, title):
+    def save_pdf_doc(content, title):
         doc = PDFDocument(
             collection=collection,
             title=title,
@@ -54,7 +55,7 @@ def insert_one_from_arxiv(arxiv_id, collection, user):
         title = ' '.join(
             xmldoc.getElementsByTagName('entry')[0]
                  .getElementsByTagName('title')[0]
-                 .firstChild.data.split()
+                 .firstChild.data.split() # type: ignore
         )
         
         # Process the /src/ endpoint if it returned 200.
@@ -62,19 +63,23 @@ def insert_one_from_arxiv(arxiv_id, collection, user):
             # Check if the content appears to be a PDF.
             if tex_req.content.startswith(b'%PDF'):
                 status["message"] += f"Got PDF for {arxiv_id}\n"
-                save_pdf(tex_req.content, title)
+                save_pdf_doc(tex_req.content, title)
             else:
                 status["message"] += f"Got LaTeX source for {arxiv_id}\n"
                 tgz_io = io.BytesIO(tex_req.content)
                 tex_str = ""
                 # Extract the tar.gz archive containing the LaTeX source.
                 with gzip.open(tgz_io, 'rb') as gz:
-                    with tarfile.open(fileobj=gz) as tar:
+                    with tarfile.open(fileobj=gz) as tar: # type: ignore
                         for member in tar.getmembers():
                             if member.isfile() and member.name.endswith('.tex'):
                                 f = tar.extractfile(member)
                                 if f:
-                                    content = f.read().decode('utf-8')
+                                    tex_bytes = f.read()
+                                    encoding = chardet.detect(tex_bytes)['encoding']
+                                    if not encoding:
+                                        raise ValueError("Could not detect encoding of LaTeX source")
+                                    content = tex_bytes.decode(encoding)
                                     tex_str += content + '\n\n'
                 doc = TeXDocument(
                     collection=collection,
@@ -90,7 +95,7 @@ def insert_one_from_arxiv(arxiv_id, collection, user):
         # If the /src/ endpoint didn't work but the PDF endpoint did, use that.
         elif pdf_req.status_code == 200:
             status["message"] += f"Got PDF for {arxiv_id}\n"
-            save_pdf(pdf_req.content, title)
+            save_pdf_doc(pdf_req.content, title)
             
     return status
 

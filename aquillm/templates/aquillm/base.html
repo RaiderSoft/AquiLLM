@@ -200,6 +200,7 @@
                                     </div>
                                 {% endif %}
                             {% endfor %}
+                            <div id="ingestion-monitor"></div>
                         {% endif %}
                     </div>
                 </div>
@@ -566,6 +567,11 @@
         }
     });
 
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ingest/dashboard/`;
+    mountReactComponent('ingestion-monitor', 'IngestionDashboardLauncher', {
+        wsUrl: wsUrl});
+});
 </script>
     </script>
     {% block scripts %}{% endblock %}
