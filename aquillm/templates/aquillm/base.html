@@ -34,7 +34,7 @@
             
             <button id="modal-close" class="absolute top-[20px] right-[20px] h-[40px] w-[40px] rounded-[20px] text-xl text-gray-shade_e bg-gray-shade_5 hover:bg-gray-shade_3 transition-colors">&times;</button>
 
-            <div id="modal-body"></div>
+            <div id="modal-body" class="flex flex-col h-full"></div>
         </div>
     </div>
 
@@ -349,8 +349,22 @@
         // Listen for clicks on elements with class 'open-modal'
         document.querySelectorAll('.open-modal').forEach(link => {
             link.addEventListener('click', function (e) {
+            
             e.preventDefault();
             const url = this.getAttribute('data-url');
+
+            console.log(url);
+
+            if (url === "/insert_arxiv/"){
+                console.log("here");
+                document.getElementById('modal-content').classList.remove("h-[80%]");
+                document.getElementById('modal-content').classList.add("h-[60%]");
+            }
+            else {
+                document.getElementById('modal-content').classList.remove("h-[60%]");
+                document.getElementById('modal-content').classList.add("h-[80%]");
+            }
+
             fetch(url, {
                 headers: {
                 'X-Requested-With': 'XMLHttpRequest' // Tell Django this is an AJAX request so the page doesnt reload upon form submission
@@ -517,7 +531,6 @@
 
     // Opens the deletion confirmation modal
     function openDeleteConfirm(convoId) {
-        console.log("we are here");
         pendingDeletionId = convoId;
         const confirmModal = document.getElementById("delete-confirm-modal");
         confirmModal.classList.toggle("hidden");
