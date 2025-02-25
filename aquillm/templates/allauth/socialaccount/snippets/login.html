@@ -2,12 +2,6 @@
 {% load socialaccount %}
 {% get_providers as socialaccount_providers %}
 {% if socialaccount_providers %}
-    
-
-    {% element h2 %}
-        Login Providers
-    {% endelement %}
     {% include "socialaccount/snippets/provider_list.html" with process="login" %}
     {% include "socialaccount/snippets/login_extra.html" %}
-    At present, only users at the domains sou.edu and g.ucla.edu can use AquiLLM. Inquire for your own deployment.
 {% endif %}

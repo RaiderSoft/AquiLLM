@@ -8,10 +8,12 @@
 {% if attrs.value %}value="{{ attrs.value }}"{% endif %}
 class="{% block class %}
     btn
+    h-[40px]
+    rounded-[20px]
     {% if "link" in attrs.tags %}btn-link
     {% else %}
       {% if "prominent" in attrs.tags %}btn-lg{% elif "minor" in attrs.tags %}btn-sm{% endif %}
-      btn-{% if 'outline' in attrs.tags %}outline-{% endif %}{% if "danger" in attrs.tags %}danger{% elif "secondary" in attrs.tags %}secondary{% elif "warning" in attrs.tags %}warning{% else %}primary{% endif %}
+      bg-{% if 'outline' in attrs.tags %}outline-{% endif %}{% if "danger" in attrs.tags %}danger{% elif "secondary" in attrs.tags %}secondary{% elif "warning" in attrs.tags %}warning{% else %}accent{% endif %}
     {% endif %}{% endblock %}">
     {% if "tool" in attrs.tags %}
     {% if "delete" in attrs.tags %}

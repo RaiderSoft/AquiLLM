@@ -3,11 +3,11 @@
 <form class="{% block form_class %}{% if not attrs.no_visible_fields %}bg-white shadow-md rounded{% endif %}{% endblock %}"
       method="{{ attrs.method }}"
       action="{{ attrs.action }}">
-    {% if not attrs.no_visible_fields %}<div class="p-4">{% endif %}
+    {% if not attrs.no_visible_fields %}<div class="">{% endif %}
         {% slot body %}
         {% endslot %}
         {% if not attrs.no_visible_fields %}</div>{% endif %}
-    {% if not attrs.no_visible_fields %}<div class="p-4 bg-lightest-primary">{% endif %}
+    {% if not attrs.no_visible_fields %}<div class="mx-[32px]">{% endif %}
         {% slot actions %}
         {% endslot %}
         {% if not attrs.no_visible_fields %}</div>{% endif %}
