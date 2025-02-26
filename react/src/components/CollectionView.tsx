@@ -141,7 +141,11 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
           name: col.name,
           parent: col.parent, // either null or parent ID
           document_count: col.document_count,
-          // Add other fields as needed.
+          path: col.path, // Include path for breadcrumb navigation
+          children: [],
+          children_count: 0,
+          created_at: '',
+          updated_at: ''
         }));
         setAllCollections(parsed);
       })
@@ -429,6 +433,72 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   if (error) return <div>Error: {error}</div>;
   if (!collection) return <div>Collection not found</div>;
 
+  // Parse the collection path into breadcrumb segments
+  const parseBreadcrumbs = () => {
+    if (!collection || !collection.path) return [];
+    
+    // Split the path into segments
+    const segments = collection.path.split('/').filter(segment => segment.trim() !== '');
+    const breadcrumbs = [];
+    
+    // Add "Root" as the first breadcrumb
+    breadcrumbs.push({
+      name: 'Root',
+      id: null, // No ID for root
+      path: '',
+      fullPath: ''
+    });
+    
+    // Build the breadcrumb links with proper IDs
+    let currentFullPath = '';
+    const pathToCollectionMap = new Map();
+    
+    // First, build a map of paths to collection IDs
+    allCollections.forEach(col => {
+      if (col.path) {
+        pathToCollectionMap.set(col.path, col.id);
+      }
+    });
+    
+    // Now build the breadcrumbs
+    for (let i = 0; i < segments.length; i++) {
+      const segmentName = segments[i];
+      currentFullPath = currentFullPath ? `${currentFullPath}/${segmentName}` : segmentName;
+      
+      // First try to get the collection ID from our path map
+      const collectionId = pathToCollectionMap.get(currentFullPath);
+      
+      // If we couldn't find an exact path match, try to find a collection with matching name and path ending
+      let matchingCollection = null;
+      if (!collectionId) {
+        matchingCollection = allCollections.find(col => 
+          col.name === segmentName && col.path && col.path.endsWith(currentFullPath)
+        );
+      }
+      
+      if (collectionId || matchingCollection) {
+        breadcrumbs.push({
+          name: segmentName,
+          id: collectionId || (matchingCollection ? matchingCollection.id : null),
+          path: segmentName,
+          fullPath: currentFullPath
+        });
+      } else {
+        // If we still can't find a match, add the segment without an ID
+        breadcrumbs.push({
+          name: segmentName,
+          id: null,
+          path: segmentName,
+          fullPath: currentFullPath
+        });
+      }
+    }
+    
+    return breadcrumbs;
+  };
+  
+  const breadcrumbs = parseBreadcrumbs();
+
   return (
     <div style={{ padding: '2rem' }} className='font-sans'>
       {/* Header */}
@@ -465,6 +535,41 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
             setIsMoveModalOpen(true);
           }}
         />
+      </div>
+
+      {/* Breadcrumb Navigation */}
+      <div className="mb-4 px-[40px]">
+        <nav className="flex" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1 md:space-x-3">
+            {breadcrumbs.map((crumb, index) => (
+              <li key={`${crumb.name}-${index}`} className="inline-flex items-center">
+                {index > 0 && (
+                  <svg className="w-3 h-3 mx-1 text-gray-shade_7" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4"/>
+                  </svg>
+                )}
+                
+                {crumb.id !== null ? (
+                  <a 
+                    href={`/collection/${crumb.id}/`}
+                    className={`ml-1 text-sm ${index === breadcrumbs.length - 1 
+                      ? 'text-blue-500 font-medium' 
+                      : 'text-gray-shade_b hover:text-blue-400'}`}
+                  >
+                    {crumb.name}
+                  </a>
+                ) : (
+                  <a 
+                    href="/user_collections/"
+                    className="ml-1 text-sm text-gray-shade_b hover:text-blue-400"
+                  >
+                    {crumb.name}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
       </div>
 
       {/* Permission Source Indicator */}
