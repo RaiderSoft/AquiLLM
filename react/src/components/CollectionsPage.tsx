@@ -339,8 +339,7 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
           folder={folderToMove}
           collections={allCollections.filter(c => c.id !== folderToMove.id)}
           onSubmit={(folderId, newParentId) => {
-            console.log(`Move folder ${folderId} to parent ${newParentId}`);
-            handleCloseModal();
+            handleMoveCollection(folderId, newParentId);
           }}
         />
       )}

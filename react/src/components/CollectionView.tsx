@@ -30,6 +30,8 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   const [movingItem, setMovingItem] = useState<FileSystemItem | null>(null);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
+  const [batchMovingItems, setBatchMovingItems] = useState<FileSystemItem[]>([]);
+  const [isBatchMoveModalOpen, setIsBatchMoveModalOpen] = useState(false);
   const [permissionSource, setPermissionSource] = useState<{
     direct: boolean;
     source_collection_id: number | null;
@@ -276,6 +278,95 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
     }
   };
 
+  // Handler for batch move
+  const handleBatchMove = (items: FileSystemItem[]) => {
+    setBatchMovingItems(items);
+    setIsBatchMoveModalOpen(true);
+  };
+
+  // Submit handler for batch move
+  const handleBatchMoveSubmit = (newParentId: number | null) => {
+    // Process documents and collections separately
+    const documents = batchMovingItems.filter(item => item.type !== 'collection');
+    const collections = batchMovingItems.filter(item => item.type === 'collection');
+    const totalCount = batchMovingItems.length;
+    let processedCount = 0;
+    let errorCount = 0;
+
+    // Move collections
+    collections.forEach(collection => {
+      fetch(`/collection/move/${collection.id}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ new_parent_id: newParentId }),
+        credentials: 'include',
+      })
+        .then(res => res.ok ? res.json() : res.json().then(data => { throw new Error(data.error || 'Failed to move collection'); }))
+        .then(() => {
+          processedCount++;
+          checkIfComplete();
+        })
+        .catch(err => {
+          console.error(`Error moving collection ${collection.id}:`, err);
+          errorCount++;
+          processedCount++;
+          checkIfComplete();
+        });
+    });
+
+    // Move documents
+    documents.forEach(document => {
+      fetch(`/document/move/${document.id}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ new_collection_id: newParentId }),
+        credentials: 'include',
+      })
+        .then(res => res.ok ? res.json() : res.json().then(data => { throw new Error(data.error || 'Failed to move document'); }))
+        .then(() => {
+          processedCount++;
+          checkIfComplete();
+        })
+        .catch(err => {
+          console.error(`Error moving document ${document.id}:`, err);
+          errorCount++;
+          processedCount++;
+          checkIfComplete();
+        });
+    });
+
+    // Function to check if all operations are complete
+    function checkIfComplete() {
+      if (processedCount === totalCount) {
+        setIsBatchMoveModalOpen(false);
+        setBatchMovingItems([]);
+        
+        // Reload the page to show updated content
+        window.location.reload();
+        
+        if (errorCount > 0) {
+          alert(`Move completed with ${errorCount} errors. Please refresh the page.`);
+        }
+      }
+    }
+  };
+
+  // Handler for batch remove
+  const handleBatchRemoveItems = (items: FileSystemItem[]) => {
+    if (!window.confirm(`Are you sure you want to delete ${items.length} selected items?`)) {
+      return;
+    }
+    
+    // Process each item for deletion
+    items.forEach(item => handleRemoveItem(item));
+  };
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
   if (!collection) return <div>Collection not found</div>;
@@ -338,8 +429,8 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
       </div>
 
       <IngestRowContainer
-        ingestArxivUrl='api/ingest_arxiv/'
-        ingestPdfUrl='api/ingest_pdf/'
+        ingestArxivUrl='/api/ingest_arxiv/'
+        ingestPdfUrl='/api/ingest_pdf/'
         collectionId={collectionId}
       />
 
@@ -357,6 +448,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         onRemoveItem={handleRemoveItem}
         onMove={handleContextMove}
         onContextMenuRename={handleRenameItem}
+        onBatchMove={handleBatchMove}
       />
 
       {/* Move Modal for moving the current collection */}
@@ -367,6 +459,31 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         onClose={() => { setIsMoveModalOpen(false); setMovingItem(null); }}
         onSubmit={handleMoveSubmit} // your move handler that calls the API
       />
+
+      {/* Batch Move Modal */}
+      {batchMovingItems.length > 0 && (
+        <MoveCollectionModal
+          folder={{ 
+            id: -1, // dummy id
+            name: `${batchMovingItems.length} selected item${batchMovingItems.length > 1 ? 's' : ''}`,
+            parent: null,
+            collection: collection.id,
+            path: '',
+            children: [],
+            document_count: 0,
+            children_count: 0,
+            created_at: '',
+            updated_at: ''
+          }}
+          collections={allCollections}
+          isOpen={isBatchMoveModalOpen}
+          onClose={() => { 
+            setIsBatchMoveModalOpen(false);
+            setBatchMovingItems([]);
+          }}
+          onSubmit={(_, newParentId) => handleBatchMoveSubmit(newParentId)}
+        />
+      )}
     </div>
   );
 };
