@@ -2,6 +2,7 @@ from django import forms
 from .models import Collection, CollectionPermission, PDFDocument
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
+from .models import HandwrittenNotesDocument, Collection
 
 User = get_user_model()
 
@@ -126,6 +127,26 @@ class VTTDocumentForm(forms.Form):
     vtt_file = forms.FileField(label=".vtt Transcript File")
     
 
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        collections_attrs = {
+           'class': 'rounded-md bg-lightest-primary',
+        }
+        self.fields['collection'] = UserCollectionSingleChoiceField(
+            user=user,
+            widget=forms.RadioSelect(attrs=collections_attrs),
+            queryset=Collection.objects.none(), # this is weird but necessary
+            required=True,
+        )
+
+class HandwrittenNotesForm(forms.Form):
+    title = forms.CharField(label="Handwritten Notes Title")
+    image_file = forms.ImageField(label=".png Handwritten Notes File")
+
+    class Meta:
+        model = HandwrittenNotesDocument
+        fields = ['title', 'image_file', 'collection']
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)

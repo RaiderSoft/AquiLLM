@@ -36,3 +36,5 @@ celery[redis]
 #google-genai
 #groq
 #instructor
+
+Pillow

@@ -14,12 +14,13 @@ from django.shortcuts import get_object_or_404
 from pgvector.django import L2Distance
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.files.storage import default_storage
 
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import requires_csrf_token
 
-from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm
-from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, DESCENDED_FROM_DOCUMENT
+from .forms import SearchForm, ArXiVForm, PDFDocumentForm, VTTDocumentForm, NewCollectionForm, HandwrittenNotesForm
+from .models import TextChunk, TeXDocument, PDFDocument, VTTDocument, Collection, CollectionPermission, LLMConversation, WSConversation, DESCENDED_FROM_DOCUMENT, HandwrittenNotesDocument
 from . import vtt
 from .settings import DEBUG
 
@@ -27,6 +28,14 @@ import requests
 from django.http import JsonResponse
 from django.forms.models import model_to_dict
 import json
+import anthropic
+import os
+import base64
+
+from .forms import HandwrittenNotesForm
+from .models import HandwrittenNotesDocument
+from .ocr_utils import extract_text_from_image
+
 logger = logging.getLogger(__name__)
 
 
@@ -402,6 +411,133 @@ def ingest_vtt(request):
     }
     
     return render(request, 'aquillm/ingest_vtt.html', context)
+
+
+###
+###
+###*********************************************###
+#Ingest Notes Function
+@require_http_methods(['GET', 'POST'])
+@login_required
+def ingest_handwritten_notes(request):
+    status_message = None
+    if request.method == 'POST':
+        form = HandwrittenNotesForm(request.user, request.POST, request.FILES)
+        if form.is_valid():
+            image_file = form.cleaned_data['image_file']
+            title = form.cleaned_data['title'].strip()
+            collection = form.cleaned_data['collection']
+
+            # Save the image and related metadata
+            try:
+                # Save the image file to the default storage
+                image_path = default_storage.save(image_file.name, ContentFile(image_file.read()))
+
+                # Open the saved image file and extract text
+                with default_storage.open(image_path, 'rb') as img_file:
+                    result = extract_text_from_image(img_file)
+                    full_text = result.get('extracted_text', '')
+
+                # Save the document with the extracted text
+                HandwrittenNotesDocument(
+                    title=title,
+                    image_file=image_path,
+                    full_text=full_text,
+                    collection=collection,
+                    ingested_by=request.user
+                ).save()
+                status_message = 'Success'
+            except Exception as e:
+                logger.error(f"Error saving the image: {e}")
+                status_message = f'Error saving the image: {e}'
+        else:
+            status_message = 'Invalid Form Input'
+    else:
+        form = HandwrittenNotesForm(request.user)
+
+    context = {
+        'status_message': status_message,
+        'form': form
+    }
+
+    return render(request, 'aquillm/ingest_handwritten_notes.html', context)
+
+
+
+def success(request):
+    return render(request, 'aquillm/success.html')
+
+'''
+def ingest_handwritten_notes(request):
+    # Initialize Claude using the API key from the .env file
+    client = anthropic.Anthropic(
+    # defaults to os.environ.get("ANTHROPIC_API_KEY")
+    api_key="ANTHROPIC_API_KEY",
+)
+
+
+    
+
+    status_message = None
+    if request.method == 'POST':
+        form = HandwrittenNotesForm(request.POST, request.FILES)
+        if form.is_valid():
+            image_file = form.cleaned_data['image_file']
+            title = form.cleaned_data['title'].strip()
+            collection = form.cleaned_data['collection']
+
+            try:
+                with open(image_file.path, 'rb') as img:
+                    image_data = base64.standard_b64encode(img.read()).decode('utf-8')
+                
+                message = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1024,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": "image/png",
+                                        "data": image_data,
+                                    },
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "Extract the handwritten text from this image."
+                                }
+                            ],
+                        }
+                    ],
+                )
+                handwritten_text = message['content'][0]['text']
+
+                # Save the extracted handwritten text
+                HandwrittenNotesDocument(
+                    title=title,
+                    image_file=image_file,
+                    full_text=handwritten_text,
+                    collection=collection,
+                    ingested_by=request.user
+                ).save()
+                status_message = 'Success'
+            except Exception as e:
+                status_message = f'Error extracting handwritten text: {e}'
+        else:
+            status_message = 'Invalid Form Input'
+    else:
+        form = HandwrittenNotesForm(request.user)
+
+    context = {
+        'status_message': status_message,
+        'form': form
+    }
+
+    return render(request, 'aquillm/ingest_handwritten_notes.html', context)
+'''
 
 
 @require_http_methods(['DELETE'])

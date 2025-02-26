@@ -43,6 +43,7 @@ urlpatterns = [
     path("collection/<int:col_id>/permissions/", views.update_collection_permissions, name="update_collection_permissions"),
     path("ingest_pdf/", views.ingest_pdf, name="ingest_pdf"),
     path("ingest_vtt/", views.ingest_vtt, name="ingest_vtt"),
+    path("ingest_handwritten_notes/", views.ingest_handwritten_notes, name="ingest_handwritten_notes"),
     path("delete_document/<uuid:doc_id>", views.delete_document, name="delete_document"),
     path("ws_convo/<int:convo_id>/", views.ws_convo, name="ws_convo"),
     path("user_ws_convos/", views.user_ws_convos, name="user_ws_convos"),
@@ -54,6 +55,8 @@ urlpatterns = [
     path("ready", views.health_check),
     path("react_test", views.react_test, name="react_test"),
     path("pdf_ingestion_monitor/<int:doc_id>/", views.pdf_ingestion_monitor, name="pdf_ingestion_monitor"),
+    path('upload/', views.ingest_handwritten_notes, name='ingest_handwritten_notes'),
+    path('success/', views.success, name='success')
 ] + debug_toolbar_urls()
 
 if DEBUG:

@@ -47,6 +47,10 @@ from pydantic_core import to_jsonable_python
 from .celery import app
 from celery.states import state, RECEIVED, FAILURE
 
+from .ocr_utils import extract_text_from_image
+
+from django.core.files.storage import default_storage
+
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW'):
         perm_options = []
@@ -279,6 +283,24 @@ def validate_pdf_extension(value):
     if not value.name.endswith('.pdf'):
         raise ValidationError('File must be a PDF')
     
+
+
+#Currently Working On
+class HandwrittenNotesDocument(Document):
+    title = models.CharField(max_length=255)
+    image_file = models.ImageField(upload_to='handwritten_notes/', validators=[FileExtensionValidator(['png', 'jpg', 'jpeg'])])
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.extract_text()
+        self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
+        
+
+    def extract_text(self):
+        with default_storage.open(self.image_file.name, 'rb') as image_file:
+            result = extract_text_from_image(image_file)
+        self.full_text = result.get('extracted_text', '')
     
 
 class PDFDocument(Document):

@@ -7,6 +7,7 @@ def nav_links(request):
             {"url": "user_collections", "text": "Collections"},
             {"url": "insert_arxiv", "text": "Ingest from arXiv"},
             {"url": "ingest_pdf", "text": "Ingest PDF"},
-            {"url": "ingest_vtt", "text": "Ingest Transcript"}
+            {"url": "ingest_vtt", "text": "Ingest Transcript"},
+            {"url": "ingest_handwritten_notes", "text": "Ingest Handwritten Notes"}
         ]
     }
