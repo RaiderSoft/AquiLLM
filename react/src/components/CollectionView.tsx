@@ -32,6 +32,8 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
   const [batchMovingItems, setBatchMovingItems] = useState<FileSystemItem[]>([]);
   const [isBatchMoveModalOpen, setIsBatchMoveModalOpen] = useState(false);
+  const [isBatchOperationLoading, setIsBatchOperationLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [permissionSource, setPermissionSource] = useState<{
     direct: boolean;
     source_collection_id: number | null;
@@ -293,6 +295,9 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
     let processedCount = 0;
     let errorCount = 0;
 
+    // Show loading state
+    setIsBatchOperationLoading(true);
+
     // Move collections
     collections.forEach(collection => {
       fetch(`/collection/move/${collection.id}/`, {
@@ -344,15 +349,20 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
     // Function to check if all operations are complete
     function checkIfComplete() {
       if (processedCount === totalCount) {
+        setIsBatchOperationLoading(false);
         setIsBatchMoveModalOpen(false);
         setBatchMovingItems([]);
         
-        // Reload the page to show updated content
-        window.location.reload();
-        
         if (errorCount > 0) {
-          alert(`Move completed with ${errorCount} errors. Please refresh the page.`);
+          setSuccessMessage(`Move completed with ${errorCount} errors. The page will refresh.`);
+        } else {
+          setSuccessMessage(`Successfully moved ${totalCount} item${totalCount !== 1 ? 's' : ''}. The page will refresh.`);
         }
+        
+        // Set a timeout to reload the page after showing the message
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       }
     }
   };
@@ -363,8 +373,56 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
       return;
     }
     
+    setIsBatchOperationLoading(true);
+    let processedCount = 0;
+    let errorCount = 0;
+    const totalCount = items.length;
+    
     // Process each item for deletion
-    items.forEach(item => handleRemoveItem(item));
+    items.forEach(item => {
+      // Using a modified version of handleRemoveItem that tracks completion
+      const url = item.type === 'collection' 
+        ? `/api/collections/delete/${item.id}/` 
+        : `/api/documents/delete/${item.id}/`;
+      
+      fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        credentials: 'include',
+      })
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`Failed to delete ${item.type} ${item.id}`);
+          }
+          processedCount++;
+          checkIfComplete();
+        })
+        .catch(err => {
+          console.error(`Error deleting ${item.type} ${item.id}:`, err);
+          errorCount++;
+          processedCount++;
+          checkIfComplete();
+        });
+    });
+    
+    function checkIfComplete() {
+      if (processedCount === totalCount) {
+        setIsBatchOperationLoading(false);
+        
+        if (errorCount > 0) {
+          setSuccessMessage(`Deletion completed with ${errorCount} errors. The page will refresh.`);
+        } else {
+          setSuccessMessage(`Successfully deleted ${totalCount} item${totalCount !== 1 ? 's' : ''}. The page will refresh.`);
+        }
+        
+        // Set a timeout to reload the page after showing the message
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
+    }
   };
 
   if (loading) return <div>Loading...</div>;
@@ -449,6 +507,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         onMove={handleContextMove}
         onContextMenuRename={handleRenameItem}
         onBatchMove={handleBatchMove}
+        onRemoveBatch={handleBatchRemoveItems}
       />
 
       {/* Move Modal for moving the current collection */}
@@ -483,6 +542,23 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
           }}
           onSubmit={(_, newParentId) => handleBatchMoveSubmit(newParentId)}
         />
+      )}
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 animate-fade-in">
+          {successMessage}
+        </div>
+      )}
+
+      {/* Loading Indicator for Batch Operations */}
+      {isBatchOperationLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-shade_3 p-6 rounded-lg shadow-xl flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-white text-lg">Processing items...</p>
+          </div>
+        </div>
       )}
     </div>
   );

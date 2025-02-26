@@ -16,6 +16,7 @@ interface FileSystemViewerProps {
   onMove?: (item: FileSystemItem) => void; // Callback for moving a collection (in browse mode)
   onContextMenuRename?: (item: FileSystemItem) => void; // Callback for renaming a collection (in browse mode)
   onBatchMove?: (items: FileSystemItem[]) => void; // Callback for moving multiple items at once
+  onRemoveBatch?: (items: FileSystemItem[]) => void; // Callback for removing multiple items at once
 }
 
 const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
@@ -28,6 +29,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
   onMove,
   onContextMenuRename,
   onBatchMove,
+  onRemoveBatch,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -134,19 +136,6 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
   };
 
   // Handle batch operations
-  const handleBatchRemove = () => {
-    const selectedItems = items.filter(i => selectedIds.has(i.id));
-    if (selectedItems.length === 0) {
-      alert('No items selected');
-      return;
-    }
-    
-    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} selected item(s)?`)) {
-      selectedItems.forEach(item => onRemoveItem?.(item));
-      setSelectedIds(new Set());
-    }
-  };
-
   const handleBatchMove = () => {
     const selectedItems = items.filter(i => selectedIds.has(i.id));
     if (selectedItems.length === 0) {
@@ -155,6 +144,28 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
     }
     
     onBatchMove?.(selectedItems);
+  };
+
+  // Add batch remove handler
+  const handleBatchRemove = () => {
+    const selectedItems = items.filter(i => selectedIds.has(i.id));
+    if (selectedItems.length === 0) {
+      alert('No items selected');
+      return;
+    }
+    
+    // Call the parent component's handler if provided
+    // This would typically be the handleBatchRemoveItems in CollectionView
+    if (typeof onRemoveBatch === 'function') {
+      onRemoveBatch(selectedItems);
+    } else {
+      // Fallback: remove items one by one using the onRemoveItem callback
+      if (window.confirm(`Are you sure you want to delete ${selectedItems.length} selected items?`)) {
+        selectedItems.forEach(item => onRemoveItem?.(item));
+        // Clear selection after deletion
+        setSelectedIds(new Set());
+      }
+    }
   };
 
   // Render "Manage" column content depending on mode/item type
@@ -305,6 +316,47 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Batch Actions Bar - only show when items are selected */}
+      {selectedIds.size > 0 && mode === 'browse' && (
+        <div className="flex items-center justify-between bg-gray-shade_3 p-3 mb-2 rounded-md border border-gray-shade_6 transition-all duration-300 ease-in-out">
+          <div className="flex items-center">
+            <span className="text-gray-shade_d mr-4">
+              <strong>{selectedIds.size}</strong> {selectedIds.size === 1 ? 'item' : 'items'} selected
+            </span>
+            
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 mr-2 rounded flex items-center transition-colors duration-200"
+              onClick={() => onBatchMove?.(selectedItems)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m-8 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              Move
+            </button>
+            
+            <button
+              className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded flex items-center transition-colors duration-200"
+              onClick={handleBatchRemove}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
+            </button>
+          </div>
+          
+          <button
+            className="text-gray-shade_b hover:text-gray-shade_d transition-colors duration-200"
+            onClick={() => setSelectedIds(new Set())}
+            title="Clear selection"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div style={{ overflow: 'auto' }}>
