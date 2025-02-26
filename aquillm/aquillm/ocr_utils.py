@@ -1,73 +1,14 @@
 import base64
-import json
 import os
-import configparser
+from pathlib import Path
+from typing import Optional
 from anthropic import Anthropic
-from typing import Dict, Any, Optional, List
-import logging
-###added
 from PIL import Image
+import io
+import logging
 
 logger = logging.getLogger(__name__)
 
-def extract_text_from_image(image_file) -> Dict[str, Any]:
-    """
-    Extract text from an image using Claude 3.5 Sonnet API.
-
-    Args:
-        image_path (str): Path to the image file.
-
-    Returns:
-        Dict[str, Any]: JSON response containing extracted text and metadata.
-    """
-    # Read API key from config file
-    api_key = os.getenv('ANTHROPIC_API_KEY')
-
-    anthropic = Anthropic(api_key=api_key)
-
-    encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
-
-    response = anthropic.messages.create(
-        model="claude-3-5-sonnet-20240620",
-        max_tokens=1000,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": encoded_image
-                        }
-                    },
-                    {
-                        "type": "text",
-                        "text": "This image is handwritten notes. Extract notes in JSON format."
-                    }
-                ]
-            }
-        ]
-    )
-
-    # Log the response content for debugging
-    logger.debug(f"OCR API response: {response.content}")
-
-    # Parse and return the JSON response
-    try:
-        # Check if the response content is a list and has at least one element
-        if isinstance(response.content, list) and len(response.content) > 0:
-            extracted_text = json.loads(response.content[0].text)
-            return extracted_text
-        else:
-            logger.error("Unexpected response format from OCR API")
-            raise ValueError("Unexpected response format from OCR API")
-    except (json.JSONDecodeError, IndexError) as e:
-        logger.error("Invalid response from OCR API", exc_info=True)
-        raise ValueError("Invalid response from OCR API") from e
-        
-'''
 def validate_and_preprocess_image(image_path: str) -> Optional[str]:
     """
     Validate and preprocess the image before OCR.
@@ -97,17 +38,20 @@ def validate_and_preprocess_image(image_path: str) -> Optional[str]:
             return base64.b64encode(image_data).decode('utf-8')
     
     except Exception as e:
-        print(f"Image preprocessing error: {e}")
+        logger.error(f"Image preprocessing error: {e}")
         return None
 
-def extract_text_from_image(api_key: str, image_path: str) -> Optional[str]:
+def extract_text_from_image(api_key: str, image_path: str, output_path: Optional[str] = None) -> Optional[str]:
     """
-    Extract text from an image using Claude 3.5 Sonnet.
+    Extract text from an image using Claude 3.5 Sonnet and save to a text file.
     
     :param api_key: Anthropic API key
     :param image_path: Path to the image file
+    :param output_path: Optional path to save the text file
     :return: Extracted text or None if extraction fails
     """
+    logger.debug(f"Extracting text from image: {image_path}")
+    
     # Initialize the Anthropic client
     client = Anthropic(api_key=api_key)
     
@@ -115,7 +59,7 @@ def extract_text_from_image(api_key: str, image_path: str) -> Optional[str]:
     base64_image = validate_and_preprocess_image(image_path)
     
     if not base64_image:
-        print("Image preprocessing failed.")
+        logger.error("Image preprocessing failed.")
         return None
     
     try:
@@ -152,28 +96,17 @@ def extract_text_from_image(api_key: str, image_path: str) -> Optional[str]:
             ]
         )
         
-        # Return the extracted text
-        return response.content[0].text
+        # Extracted text
+        extracted_text = response.content[0].text
+        
+        # Save the extracted text to a file if output_path is provided
+        if output_path:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(extracted_text)
+            logger.debug(f"Text saved to {output_path}")
+        
+        return extracted_text
     
     except Exception as e:
-        print(f"Text extraction error: {e}")
+        logger.error(f"Text extraction error: {e}")
         return None
-
-def save_extracted_text(text: str, output_path: Optional[str] = None) -> None:
-    """
-    Save extracted text to a file or print to console.
-    
-    :param text: Extracted text
-    :param output_path: Optional path to save the text file
-    """
-    if output_path:
-        try:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(text)
-            print(f"Text saved to {output_path}")
-        except Exception as e:
-            print(f"Error saving text file: {e}")
-    else:
-        print("Extracted Text:\n", text)
-
-        '''

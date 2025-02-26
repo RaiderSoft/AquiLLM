@@ -50,6 +50,7 @@ from celery.states import state, RECEIVED, FAILURE
 from .ocr_utils import extract_text_from_image
 
 from django.core.files.storage import default_storage
+import os
 
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW'):
@@ -295,13 +296,19 @@ class HandwrittenNotesDocument(Document):
         super().save(*args, **kwargs)
         self.extract_text()
         self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
-        
 
     def extract_text(self):
-        with default_storage.open(self.image_file.name, 'rb') as image_file:
-            result = extract_text_from_image(image_file)
-        self.full_text = result.get('extracted_text', '')
-    
+        api_key = os.getenv('ANTHROPIC_API_KEY')
+        if not api_key:
+            logger.error("API key for Anthropic is not set.")
+            raise ValueError("API key for Anthropic is not set.")
+        
+        # Access the image path
+        image_path = self.image_file.path
+        logger.debug(f"Image path: {image_path}")
+        
+        output_path = os.path.join(default_storage.location, f"{self.id}.txt")
+        self.full_text = extract_text_from_image(api_key, image_path, output_path)
 
 class PDFDocument(Document):
     pdf_file = models.FileField(upload_to= 'pdfs/', max_length=500, validators=[FileExtensionValidator(['pdf'])])
