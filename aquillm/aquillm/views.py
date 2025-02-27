@@ -420,6 +420,7 @@ def ingest_vtt(request):
 @require_http_methods(['GET', 'POST'])
 @login_required
 def ingest_handwritten_notes(request):
+    api_key = os.getenv('ANTHROPIC_API_KEY')
     status_message = None
     if request.method == 'POST':
         form = HandwrittenNotesForm(request.user, request.POST, request.FILES)
@@ -435,7 +436,7 @@ def ingest_handwritten_notes(request):
 
                 # Open the saved image file and extract text
                 with default_storage.open(image_path, 'rb') as img_file:
-                    result = extract_text_from_image(img_file)
+                    result = extract_text_from_image(api_key, img_file)
                     full_text = result.get('extracted_text', '')
 
                 # Save the document with the extracted text
