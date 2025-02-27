@@ -44,7 +44,7 @@ def extract_text_from_image(image_file) -> Dict[str, Any]:
                     },
                     {
                         "type": "text",
-                        "text": "This image is handwritten notes. Extract notes in JSON format."
+                        "text": "This image is handwritten notes. Just extract what is written on the page, no extra comments please."
                     }
                 ]
             }
