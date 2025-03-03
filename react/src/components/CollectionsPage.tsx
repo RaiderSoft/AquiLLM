@@ -4,14 +4,10 @@ import MoveCollectionModal from '../components/MoveCollectionModal';
 import CreateCollectionModal from '../components/CreateCollectionModal';
 import CollectionSettingsMenu from '../components/CollectionSettingsMenu';
 import { getCookie } from '../utils/csrf';
-
+import formatUrl from '../utils/formatUrl';
 // Define the prop types
-interface CollectionsPageProps {
-  apiUrl: string;       // URL to fetch collections (e.g. '/api/collections/')
-  detailUrlBase?: string; // Base URL for navigating to a specific collection (e.g. '/collections')
-}
 
-const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase }) => {
+const CollectionsPage: React.FC = () => {
   // Remove react-router since we’ll handle navigation via props or window.location
   const [collections, setCollectionsToView] = useState<Folder[]>([]);
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
@@ -20,7 +16,8 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
   const [folderToMove, setFolderToMove] = useState<Folder | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-
+  const apiUrl = window.apiUrls.api_collections;
+  const detailUrlBase = window.pageUrls.collection
   // Fetch collections on mount using the provided API URL
   useEffect(() => {
     fetch(apiUrl, {
@@ -130,7 +127,7 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
 
   const handleDeleteCollection = (collection: Folder) => {
     if (window.confirm(`Are you sure you want to delete "${collection.name}"?`)) {
-      fetch(`/api/collections/delete/${collection.id}/`, {
+      fetch(formatUrl(window.apiUrls.api_collections_delete, { collection_id: collection.id }), {
         method: 'DELETE',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
@@ -154,12 +151,12 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
   // Instead of useNavigate, we use the provided detailUrlBase (if any) to redirect
   const handleCollectionClick = (collection: Folder) => {
     if (detailUrlBase) {
-      window.location.href = `${detailUrlBase}/${collection.id}/`;
+      window.location.href = formatUrl(detailUrlBase, { col_id: collection.id });
     }
   };
 
   const handleMoveCollection = (folderId: number, newParentId: number | null) => {
-    fetch(`/collection/move/${folderId}/`, {
+    fetch(formatUrl(window.apiUrls.api_move_collection, { collection_id: folderId}), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

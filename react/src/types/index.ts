@@ -29,5 +29,11 @@ declare global {
       componentName: string,
       props?: Record<string, unknown>
     ) => void;
+    apiUrls: {
+      [key: string]: string;
+    }
+    pageUrls: {
+      [key: string]: string;
+    }
   }
 }

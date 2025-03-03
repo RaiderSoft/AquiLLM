@@ -99,9 +99,11 @@ const PDFForm: React.FC<PDFFormProps> = ({
       <div className="flex gap-4">
         <label
           htmlFor="file-upload"
-          className="cursor-pointer flex items-center justify-center border border-gray-shade_6 p-2 rounded-lg hover:bg-gray-shade_3 transition-colors flex-grow h-[40px]"
+          className={`cursor-pointer flex items-center justify-center border border-gray-shade_6 p-2 rounded-lg transition-colors flex-grow h-[40px] ${
+            pdfFile ? "bg-green-dark" : "hover:bg-gray-shade_3"
+          }`}
         >
-          {pdfFile ? pdfFile.name : "Select PDF File"}
+          {pdfFile ? "File Selected" : "Select PDF File"}
         </label>
         <input
           id="file-upload"

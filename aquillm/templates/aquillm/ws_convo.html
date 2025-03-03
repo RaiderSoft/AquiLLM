@@ -624,7 +624,7 @@
     
     async function fetchCollections() {
         try {
-            const response = await fetch("{% url 'get_collections_json' %}");
+            const response = await fetch("{% url 'api_collections' %}");
             if (!response.ok) {
                 throw new Error(`Http error: ${response.status}`);
             }

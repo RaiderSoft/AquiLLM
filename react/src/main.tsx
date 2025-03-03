@@ -9,6 +9,7 @@ import SearchPage from './components/SearchPage';
 import IngestionDashboard from './components/IngestionDashboard';
 import IngestionDashboardLauncher from './components/IngestionDashboardLauncher';
 import IngestRowContainer from './components/IngestRow';
+import WhitelistEmails from './components/WhitelistEmails';
 // Type for the components mapping
 type ComponentsMap = {
   [key: string]: React.ComponentType<any>;
@@ -37,6 +38,7 @@ window.mountReactComponent = (
     IngestionDashboard: IngestionDashboard,
     IngestionDashboardLauncher: IngestionDashboardLauncher,
     IngestRowContainer: IngestRowContainer,
+    WhitelistEmails: WhitelistEmails,
     // Add other components here
   };
   

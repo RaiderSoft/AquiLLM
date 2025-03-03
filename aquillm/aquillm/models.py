@@ -180,8 +180,8 @@ class CollectionPermission(models.Model):
             super().save(*args, **kwargs)
             
 @app.task(serializer='pickle', bind=True, track_started=True)
-def create_chunks(self, doc_id:str, channel_layer): #naive method, just number of characters
-
+def create_chunks(self, doc_id:str): #naive method, just number of characters
+    channel_layer = get_channel_layer()
     doc = Document.get_by_id(uuid.UUID(doc_id))
     if not doc:
         raise ObjectDoesNotExist(f"No document with id {doc_id}")
@@ -228,7 +228,8 @@ def create_chunks(self, doc_id:str, channel_layer): #naive method, just number o
     except Exception as e:
         logger.error(f"Error creating chunks for document {doc.id}: {str(e)}")
         self.update_state(state=FAILURE)
-        doc.delete()    
+        doc.delete()
+        raise e    
 
 
 class Document(models.Model):
@@ -282,8 +283,9 @@ class Document(models.Model):
         super().save(*args, **kwargs)
         if is_new:
             self.ingestion_complete = False
-            result = create_chunks.delay(str(self.id), channel_layer) # type: ignore
+            result = None
             try:
+                result = create_chunks.delay(str(self.id)) # type: ignore
                 for _ in range(4):
                     if state(result.status) == state(FAILURE):
                         raise Exception(f"Task failed")
@@ -293,7 +295,8 @@ class Document(models.Model):
                 raise Exception("Task was not received in time")
             except Exception as e:
                 logger.error(f"Error creating chunks for document {self.id}: {str(e)}")
-                result.revoke()
+                if result:
+                    result.revoke()
                 self.delete()
 
     def move_to(self, new_collection):
@@ -441,12 +444,6 @@ class TextChunk(models.Model):
     def document(self, doc):
         self.doc_id = doc.id
 
-    keywords = ArrayField(
-        models.CharField(max_length=100),
-        size=10,
-        blank=True,
-        null=True
-    )
 
     objects = TextChunkQuerySet.as_manager()
 
@@ -570,3 +567,10 @@ class WSConversation(models.Model):
         message = anthropic_client.messages.create(**claude_args)
         self.name = message.content[0].text
         self.save()
+
+
+class EmailWhitelist(models.Model):
+    email = models.EmailField(unique=True)
+
+    def __str__(self):
+        return self.email
