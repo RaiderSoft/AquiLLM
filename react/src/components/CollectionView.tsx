@@ -28,7 +28,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [movingItem, setMovingItem] = useState<FileSystemItem | null>(null);
+  const [movingItem, setMovingItem] = useState<FileSystemItem | Folder | null>(null);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
 
