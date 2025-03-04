@@ -8,4 +8,4 @@ class NoDefaultAccounts(DefaultAccountAdapter):
 class RestrictDomains(DefaultSocialAccountAdapter):
     def is_open_for_signup(self, request, sociallogin):
         user = sociallogin.user
-        return user.email.split('@')[1] in getenv("ALLOWED_EMAIL_DOMAINS").split(',')
+        return user.email.split('@')[1] in getenv("ALLOWED_EMAIL_DOMAINS").split(',') or user.email in getenv("ALLOWED_EMAIL_ADDRESSES").split(',')

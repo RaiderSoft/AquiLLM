@@ -108,11 +108,27 @@ class ArXiVForm(forms.Form):
         })
     )
 
-    collection = forms.ChoiceField(widget=forms.RadioSelect)
+    # collections_attrs = {
+    #     'class': 'rounded-md bg-lightest-primary max-h-[200px] overflow-y-auto bg-gray-shade_3 border-gray-shade_7',
+    # }
+
+    # collection = forms.ChoiceField(widget=forms.RadioSelect(attrs=collections_attrs))
+
+    # def __init__(self, user, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     self.fields['collection'].choices = [(col.id, col.name) for col in Collection.objects.filter_by_user_perm(user, perm="EDIT")]
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['collection'].choices = [(col.id, col.name) for col in Collection.objects.filter_by_user_perm(user, perm="EDIT")]
+        collections_attrs = {
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
+        }
+        self.fields['collection'] = UserCollectionSingleChoiceField(
+            user=user,
+            widget=forms.RadioSelect(attrs=collections_attrs),
+            queryset=Collection.objects.none(), # this is weird but necessary
+            required=True,
+        )
 
 
 class PDFDocumentForm(forms.Form):
@@ -136,7 +152,7 @@ class PDFDocumentForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         collections_attrs = {
-           'class': 'rounded-md bg-lightest-primary',
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
         }
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,
@@ -174,7 +190,7 @@ class VTTDocumentForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         collections_attrs = {
-           'class': 'rounded-md bg-lightest-primary',
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
         }
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,

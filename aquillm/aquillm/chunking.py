@@ -1,10 +1,14 @@
-from openai import OpenAI
+from google import genai
+from google.genai import types as genai_types
 from json import dumps, loads
 from pypdf import PdfReader
 from pprint import pp
 from pydantic import BaseModel, TypeAdapter
 from typing import Optional
-
+from os import getenv
+from pdf2image import convert_from_path
+from functools import reduce
+import re
 class Chunk(BaseModel):
     text: str
     footnotes: list[str]
@@ -14,149 +18,92 @@ class ChunkingResponse(BaseModel):
     new_chunks: list[Chunk]
 
 
-client = OpenAI()
+client = genai.Client(api_key=getenv('GEMINI_API_KEY'))
 
-def do_page(page: str, last_chunk: Optional[Chunk]) -> ChunkingResponse:
-    system = """
-    You are being tasked with chunking a document for ingestion into a database.
-    You will receive a page from a PDF document, and optionally the final text chunk from the previous page as `last_chunk`.
-
-    Your task is to:
-    1. Divide the body text from thepage into consecutive chunks between 250-1000 words each
-    2. Place chunk boundaries at natural semantic breaks (e.g., between sections, paragraphs, or complete ideas)
-    3. If the start of the current page continues a thought from `last_chunk`, combine them into `expanded_chunk`, and do not include it in `new_chunks`
-
-    Requirements:
-    - Include every word from the document body (no gaps between chunks)
-    - Use only verbatim text (no paraphrasing or editorial additions)
-    - Exclude author lists and bibliography sections
-    - Do not add titles or word counts to chunks
-    - Include the text of footnotes in the chunk where they are referenced. Include the text of the footnote, not the number.
-    - Do not include citations as footnotes. 
-    - Do not include line from the end of regular lines. Include linebreaks where they represent a paragraph break.
-    Return a JSON object with this structure:
-    {
-        "expanded_chunk": {
-            "text": "Text combining last_chunk with the start of current page",
-            "footnotes": ["Text of footnote 1", "Text of footnote 2", ...]
-        } or null,
-        "new_chunks": [
-            {
-                "text": "First complete chunk of text",
-                "footnotes": ["Text of footnote 3", "Text of footnote 4", ...]
-            },
-            {
-                "text": "Second chunk of text",
-                "footnotes": []
-            },
-            ...
-        ]
-    }
-
-    Return only the JSON object, with no additional explanation or commentary.
-    """
-    response = client.beta.chat.completions.parse(
-        model="gpt-4o",
-        messages=[
-            {"role": "developer", "content": system},
-            {"role": "user", "content": dumps({"page": page, "last_chunk": last_chunk})}
-        ],
-        response_format=ChunkingResponse
-    )
+def do_page_with_llm(page, last_chunk: Optional[Chunk]) -> ChunkingResponse:
     
-    return response.choices[0].message.parsed
+    def clean_line_breaks(text: str) -> str:
+        patterns = [(r'-\n(?!\n)', ''),
+                    (r'(?<!\n)\n(?!\n)', ' ')]
+        ret = reduce(lambda t, pattern: re.sub(pattern[0], pattern[1], t), patterns, text)
+        return ret
+    system = """
+You are tasked with chunking a PDF page's body text for database ingestion. Follow these guidelines:
+
+1. **Chunking:**  
+   - Divide the body text into consecutive chunks of 250–1000 words each.  
+   - Ensure every word is included (no gaps between chunks).  
+   - Break chunks at natural semantic boundaries (e.g., between paragraphs or sections).
+
+2. **Handling Continuations:**  
+   - If the current page begins with text that continues from the provided `last_chunk`, merge this text with `last_chunk` into an `expanded_chunk`.  
+   - Do not include the merged text again in `new_chunks`.
+
+3. **Text Integrity:**  
+   - Use only the verbatim text (no paraphrasing or editorial additions).  
+   - Exclude any author lists and bibliography sections.  
+   - Do not add titles or word counts to any chunk.
+
+4. **Footnotes:**  
+   - Include the full text of any footnotes in the chunk where they are referenced (use the footnote text, not the number).  
+   - Do not include citations as footnotes.
+
+5. **Formatting:**  
+   - Use line breaks to represent paragraph breaks. REMOVE LINE BREAKS WHERE THEY RESULT FROM TEXT WRAPPING WITHIN A BLOCK OF TEXT.
+   - Always represent paragraph breaks with double line breaks.
+   - Where words are hyphenated at line wraps, join the words without a hyphen.
+   - Use markdown to represent headings, using only the `#` character for headings of any level.
+   - Use markdown to represent italics, boldface, lists, and bullet points. 
+   - Use HTML tags for tables.
+
+Return the output as a JSON object with the following structure:
+
+{
+    "expanded_chunk": {
+        "text": "Text combining last_chunk with the start of the current page",
+        "footnotes": ["Text of footnote 1", "Text of footnote 2", ...]
+    } or null,
+    "new_chunks": [
+        {
+            "text": "First complete chunk of text",
+            "footnotes": ["Text of footnote 3", "Text of footnote 4", ...]
+        },
+        {
+            "text": "Second chunk of text",
+            "footnotes": []
+        },
+        ...
+    ]
+}
+
+    """
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents = [page] +  [last_chunk.model_dump_json()] if last_chunk else [],
+        config=genai_types.GenerateContentConfig(
+            system_instruction=system,
+            response_mime_type='application/json',
+            response_schema=ChunkingResponse
+        )
+    )
+    assert isinstance(response.parsed, ChunkingResponse) 
+    ret: ChunkingResponse = response.parsed
+    ret.new_chunks = list([Chunk(text=clean_line_breaks(chunk.text), footnotes = chunk.footnotes) for chunk in ret.new_chunks])
+    if ret.expanded_chunk:
+        ret.expanded_chunk = Chunk(text=clean_line_breaks(ret.expanded_chunk.text), footnotes = ret.expanded_chunk.footnotes)
+    return ret
 
 
-reader = PdfReader("/home/chandler/software1-3.pdf")
+images = convert_from_path("/home/chandler/software1-3.pdf")
+
 ret: list[Chunk] = []
-for page in reader.pages:
+for page in images:
     print("doing page")
-    response = do_page(page.extract_text(), ret[-1].model_dump() if ret else None)
+    response = do_page_with_llm(page, ret[-1] if ret else None)
     if response.expanded_chunk and ret:
         ret[-1] = response.expanded_chunk
     ret += response.new_chunks
    
-breakpoint()
 with open("/home/chandler/chunked.json", "w") as f:
     f.write(dumps([chunk.model_dump() for chunk in ret]))
-
-# class ChunkingResponse(BaseModel):
-#     expanded_chunk: Optional[Chunk]
-#     new_chunks: list[Chunk]
-
-# client = genai.Client(api_key="AIzaSyDXj_leg746kNrJIxtnBA_1uL4N-lDKNIM")
-# def do_page(page: str, last_chunk: Optional[Chunk]) -> ChunkingResponse:
-#     system = """
-#     You are being tasked with chunking a document for ingestion into a database.
-#     You will receive a page from a PDF document, and optionally the final text chunk from the previous page as `last_chunk`.
-
-#     Your task is to:
-#     1. Divide the page's text into consecutive chunks between 250-1000 words each
-#     2. Place chunk boundaries at natural semantic breaks (e.g., between sections, paragraphs, or complete ideas)
-#     3. If the start of the current page continues a thought from `last_chunk`, combine them into `expanded_chunk`
-
-#     Requirements:
-#     - Include every word from the document body (no gaps between chunks)
-#     - Use only verbatim text (no paraphrasing or editorial additions)
-#     - Exclude author lists and bibliography sections
-#     - Do not add titles or word counts to chunks
-#     - Include footnotes in the chunk where they are referenced
-#     - Do not include line breaks
-#     Return a JSON object with this structure:
-#     ```json
-#     {
-#         "expanded_chunk": {
-#             "text": "Text combining last_chunk with the start of current page",
-#             "footnotes": ["Footnote 1", "Footnote 2", ...]
-#         } or null,
-#         "new_chunks": [
-#             {
-#                 "text": "First complete chunk of text",
-#                 "footnotes": ["Footnote 3", "Footnote 4", ...]
-#             },
-#             {
-#                 "text": "Second chunk of text",
-#                 "footnotes": []
-#             },
-#             ...
-#         ]
-#     }
-#     ```
-
-#     Return only the JSON object, with no additional explanation or commentary.
-#     """
-#     response = client.models.generate_content(
-#         model="gemini-2.0-flash",  # Replace with your desired model
-#         config=genai_types.GenerateContentConfig(
-#             system_instruction=system,
-#             response_mime_type='application/json',
-#             response_schema={'type:': 'OBJECT',
-#                              'properties': {
-#                                  'expanded_chunk': {'type': 'OBJECT',
-#                                                     'nullable': True,
-#                                                     'properties': {
-#                                                         'text': {'type': 'STRING'},
-#                                                         'footnotes': {'type': 'ARRAY', 'items': {'type': 'STRING'}}
-#                                                     },
-#                                                     'required': ['text', 'footnotes']
-#                                                     },
-#                                  'new_chunks': {'type': 'ARRAY',
-#                                                 'items': {'type': 'OBJECT',
-#                                                           'properties': {
-#                                                               'text': {'type': 'STRING'},
-#                                                               'footnotes': {'type': 'ARRAY', 'items': {'type': 'STRING'}}
-#                                                             },
-#                                                             'required': ['text', 'footnotes']
-#                                                             },
-
-#                              },
-#                              'required': ['new_chunks', 'expanded_chunk']
-#                              }}
-#         ),
-#         contents= [dumps({"page": page, "last_chunk": last_chunk})]
-#     )
-    
-#     # The response object contains a list of choices. Each choice has a message.
-#     # Here we parse the content of the first choice.
-#     return ChunkingResponse.model_validate_json(response.text)
 
