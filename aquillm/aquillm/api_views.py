@@ -139,7 +139,7 @@ def ingest_pdf(request):
         return JsonResponse({'error': 'Invalid file extension. Only PDF files are allowed.'}, status=400)
     doc = PDFDocument(
         collection = collection,
-        title = pdf_file.name,
+        title = title,
         ingested_by = user
     )
     doc.pdf_file = pdf_file
@@ -147,8 +147,11 @@ def ingest_pdf(request):
         doc.save()
     except DatabaseError as e:
         logger.error(f"Database error: {e}")
+        if "pdfdocument_document_collection_unique" in str(e):
+            return JsonResponse({'error': 'This document appears to be a duplicate of one already in this collection'}, status=400)
         return JsonResponse({'error': 'Database error occurred while saving PDFDocument'}, status=500)
-    return JsonResponse({'status_message': 'Success'})
+    
+    return JsonResponse({'success': True, 'document_id': str(doc.id)})
 
 @login_required
 @require_http_methods(["DELETE"])
