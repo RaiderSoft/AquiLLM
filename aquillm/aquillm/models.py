@@ -147,6 +147,9 @@ class Document(models.Model):
     full_text_hash = models.CharField(max_length=64, db_index=True)
     ingested_by = models.ForeignKey(User, on_delete=models.RESTRICT)
     ingestion_date = models.DateTimeField(auto_now_add=True)
+    # Flag to bypass minimum text length validation
+    bypass_min_length = False
+    
     class Meta:
         abstract = True
         constraints = [
@@ -162,7 +165,8 @@ class Document(models.Model):
         return TextChunk.objects.filter(doc_id=self.id)
 
     def save(self, *args, **kwargs):
-        if len(self.full_text) < 100:
+        # Check text length, respecting the bypass flag
+        if not self.bypass_min_length and len(self.full_text) < 100:
             raise ValidationError("The full text of a document must be at least 100 characters long.")
         self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
       
@@ -290,12 +294,17 @@ class HandwrittenNotesDocument(Document):
     title = models.CharField(max_length=255)
     image_file = models.ImageField(upload_to='handwritten_notes/', validators=[FileExtensionValidator(['png', 'jpg', 'jpeg'])])
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Allow handwritten notes to have less than 100 characters
+        self.bypass_min_length = True
 
     def save(self, *args, **kwargs):
+        if not self.pk:  # Only extract text on first save
+            self.extract_text()
+            self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
         super().save(*args, **kwargs)
-        self.extract_text()
-        self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
-        
 
     def extract_text(self):
         with default_storage.open(self.image_file.name, 'rb') as image_file:

@@ -428,24 +428,16 @@ def ingest_handwritten_notes(request):
             title = form.cleaned_data['title'].strip()
             collection = form.cleaned_data['collection']
 
-            # Save the image and related metadata
+            # Save the document with the image file
             try:
-                # Save the image file to the default storage
-                image_path = default_storage.save(image_file.name, ContentFile(image_file.read()))
-
-                # Open the saved image file and extract text
-                with default_storage.open(image_path, 'rb') as img_file:
-                    result = extract_text_from_image(img_file)
-                    full_text = result.get('extracted_text', '')
-
-                # Save the document with the extracted text
-                HandwrittenNotesDocument(
+                # Create and save the document
+                document = HandwrittenNotesDocument(
                     title=title,
                     image_file=image_file,
-                    full_text=full_text,
                     collection=collection,
                     ingested_by=request.user
-                ).save()
+                )
+                document.save()
                 status_message = 'Success'
             except Exception as e:
                 logger.error(f"Error saving the image: {e}")
