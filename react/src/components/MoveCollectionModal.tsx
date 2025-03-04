@@ -62,6 +62,16 @@ const modalStyles = {
     color: 'eeeeee',
     border: 'none',
   },
+  moveToRootButton: {
+    padding: '0.5rem 1rem',
+    borderRadius: '20px',
+    fontSize: '0.875rem',
+    backgroundColor: '#2d3748',
+    color: '#eeeeee',
+    border: 'none',
+    cursor: 'pointer',
+    marginBottom: '1rem',
+  }
 };
 
 const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
@@ -72,7 +82,7 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
   onSubmit,
 }) => {
   // currentParentId represents the folder whose children we're browsing.
-  // null means we’re at the root level.
+  // null means we're at the root level.
   const [currentParentId, setCurrentParentId] = useState<number | null>(null);
 
   // Compute the list of collections that have currentParentId as their parent.
@@ -104,6 +114,11 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
   // "Select This Folder" button will select the current folder (i.e. currentParentId)
   const handleSelectCurrent = () => {
     onSubmit(folder!.id, currentParentId);
+  };
+
+  // "Move to Root" button handler
+  const handleMoveToRoot = () => {
+    onSubmit(folder!.id, null);
   };
 
   // Back button to go up one level.
@@ -141,6 +156,18 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
             )}
           </div>
         </div>
+
+        {/* Move to Root button */}
+        {folder.parent !== null && (
+          <button
+            type="button"
+            onClick={handleMoveToRoot}
+            style={modalStyles.moveToRootButton}
+            className='bg-gray-shade_4 hover:bg-gray-shade_6 transition-all w-full'
+          >
+            Move to Root Level
+          </button>
+        )}
 
         <div className='w-full flex justify-left'>
           <button onClick={handleGoBack} style={{ marginRight: '32px' }} className='text-gray-shade_a hover:bg-gray-shade_6 transition-all rounded-[8px] p-[4px] mb-[8px]'>
