@@ -301,7 +301,7 @@ const CollectionsPage: React.FC<CollectionsPageProps> = ({ apiUrl, detailUrlBase
             {collections.map((folder) => (
               <div
                 key={folder.id}
-                className='bg-gray-shade_3 hover:bg-opacity-100 rounded-lg p-4 cursor-pointer transition duration-200 relative'
+                className='bg-gray-shade_3 hover:bg-opacity-100 rounded-lg p-4 cursor-pointer transition duration-200 relative font-sans'
                 onClick={() => {
                   if (detailUrlBase) {
                     window.location.href = `${detailUrlBase}/${folder.id}/`;
