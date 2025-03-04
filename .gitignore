@@ -166,5 +166,7 @@ aquillm/pdfs/
 pdfs/
 
 aquillm/prod_static
+aquillm/staticfiles
 aquillm/aquillm/static/js/dist
 aquillm/aquillm/static/index.css 
+react/node_modules/

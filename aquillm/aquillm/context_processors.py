@@ -1,3 +1,5 @@
+from .models import WSConversation
+
 def nav_links(request):
     return {
         'nav_links': [
@@ -10,3 +12,9 @@ def nav_links(request):
             {"url": "ingest_vtt", "text": "Ingest Transcript"}
         ]
     }
+
+def user_conversations(request):
+    if request.user.is_authenticated:
+        convos = WSConversation.objects.filter(owner=request.user).order_by('-updated_at')
+        return {'conversations': convos}
+    return {}

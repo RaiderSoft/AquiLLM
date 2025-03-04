@@ -30,9 +30,9 @@ websockets
 debugpy
 channels-redis
 #djangorestframework
-
+django-stubs
 celery[redis]
+pdf2image
 #chunking experiments
-#google-genai
-#groq
-#instructor
+google-genai
+chardet

@@ -74,8 +74,9 @@ class NewCollectionForm(forms.Form):
 class SearchForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         collections_attrs = {
-            'class': 'rounded-md bg-lightest-primary',
+            'class': 'rounded-lg bg-gray-shade_3 mb-4 max-h-[300px] overflow-y-auto px-4 py-2 border border-gray-shade_7',
         }
         self.fields['collections'] = UserCollectionMultipleChoiceField(
             user=user,
@@ -85,33 +86,73 @@ class SearchForm(forms.Form):
         )
 
     query_attrs = {
-        'class': 'w-full h-full resize-none p-3 mb-3 rounded-md bg-lightest-primary text-wrap',
+        'class': 'w-full h-full resize-none p-3 mb-4 rounded-md bg-gray-shade_3 placeholder:text-gray-shade_a text-wrap text-gray-shade_e',
         'rows': 4,
         'placeholder': 'Send a message'}
-    query = forms.CharField(label="", widget=forms.Textarea(attrs=query_attrs), max_length=10000)
+    
+    query = forms.CharField(label="Query", widget=forms.Textarea(attrs=query_attrs), max_length=10000)
+
     top_k_attrs = {
-        'class': 'w-full m-2 p-2 rounded-md bg-lightest-primary'
+        'class': 'w-full p-2 rounded-md bg-gray-shade_3 placeholder:text-gray-shade_9 text-gray-shade_e mb-4',
     }
+
     top_k = forms.IntegerField(widget=forms.NumberInput(attrs=top_k_attrs), min_value=1, max_value=200, initial=5)
 
 
 class ArXiVForm(forms.Form):
-    collection = forms.ChoiceField(widget=forms.RadioSelect)
-    arxiv_id = forms.CharField(label="Article arXiv Identifier", max_length=100)
+    arxiv_id = forms.CharField(
+        label="Article arXiv Identifier",  
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Article arXiv Identifier:', 
+            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+        })
+    )
+
+    # collections_attrs = {
+    #     'class': 'rounded-md bg-lightest-primary max-h-[200px] overflow-y-auto bg-gray-shade_3 border-gray-shade_7',
+    # }
+
+    # collection = forms.ChoiceField(widget=forms.RadioSelect(attrs=collections_attrs))
+
+    # def __init__(self, user, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     self.fields['collection'].choices = [(col.id, col.name) for col in Collection.objects.filter_by_user_perm(user, perm="EDIT")]
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['collection'].choices = [(col.id, col.name) for col in Collection.objects.filter_by_user_perm(user, perm="EDIT")]
+        collections_attrs = {
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
+        }
+        self.fields['collection'] = UserCollectionSingleChoiceField(
+            user=user,
+            widget=forms.RadioSelect(attrs=collections_attrs),
+            queryset=Collection.objects.none(), # this is weird but necessary
+            required=True,
+        )
 
 
 class PDFDocumentForm(forms.Form):
-    title = forms.CharField(label="Article Title")
-    pdf_file = forms.FileField(label="PDF File")
+    title = forms.CharField(
+        label="Article Title",  
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Article Title:', 
+            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+        })
+    )
+
+    pdf_file = forms.FileField(
+        label="PDF File",
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'hidden',  # hide the default file input
+            'id': 'pdf-file-input'  # assign an ID for linking the custom label
+        })
+    )
+
     # TODO: make function sig not weird
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         collections_attrs = {
-           'class': 'rounded-md bg-lightest-primary',
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
         }
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,
@@ -121,16 +162,35 @@ class PDFDocumentForm(forms.Form):
         )
     
 class VTTDocumentForm(forms.Form):
-    title = forms.CharField(label="Transcript Title")
-    audio_file = forms.FileField(label="Audio File (optional)", required=False)
-    vtt_file = forms.FileField(label=".vtt Transcript File")
-    
+    title = forms.CharField(
+        label="Transcript Title",  
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Transcript Title:', 
+            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+        })
+    )
 
+    vtt_file = forms.FileField(
+        label="Audio File (optional)",
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'hidden',
+            'id': 'audio-file-input'
+        })
+    )
+
+    vtt_file = forms.FileField(
+        label=".vtt Transcript File",
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'hidden',
+            'id': 'vtt-file-input'
+        })
+    )
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         collections_attrs = {
-           'class': 'rounded-md bg-lightest-primary',
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
         }
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,
