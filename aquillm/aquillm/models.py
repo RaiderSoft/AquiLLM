@@ -44,6 +44,8 @@ logger = logging.getLogger(__name__)
 
 from pydantic_core import to_jsonable_python
 
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from .celery import app
 from celery.states import state, RECEIVED, STARTED, SUCCESS, FAILURE
 
@@ -55,7 +57,6 @@ assert (channel_layer is not None and
     hasattr(channel_layer, 'group_send')) # keeps type checker happy
 
 type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument
-
 
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW') -> 'CollectionQuerySet':
@@ -273,6 +274,36 @@ def create_chunks(self, doc_id:str, channel_layer): #naive method, just number o
         doc.delete()    
 
 
+@receiver(post_save, sender=CollectionPermission)
+def propagate_collection_permission(sender, instance, created, **kwargs):
+    """
+    Signal handler to propagate permission changes from a parent collection to its nested child collections.
+
+    When a CollectionPermission is saved (either a new creation or update) for a specific user and parent collection,
+    this handler retrieves all child collections (recursively) of the parent collection and ensures that the same permission
+    is set for this user on each child collection.
+
+    This implementation always propagates the parent's permission to the child collections.
+    If we want to avoid overriding an explicit child permission, we can add extra logic to check for an 'inherited' flag or similar.
+    """
+    # Retrieve the parent collection from the permission instance.
+    parent_collection = instance.collection
+
+    # Use the helper method to get all direct and nested children.
+    child_collections = parent_collection.get_all_children()
+
+    for child in child_collections:
+        # For each child, get or create the CollectionPermission for the same user.
+        child_perm, perm_created = CollectionPermission.objects.get_or_create(
+            user=instance.user,
+            collection=child,
+            defaults={'permission': instance.permission}
+        )
+        # If the permission exists but is different, update it.
+        if not perm_created and child_perm.permission != instance.permission:
+            child_perm.permission = instance.permission
+            child_perm.save()
+
 class Document(models.Model):
     pkid = models.BigAutoField(primary_key=True, editable=False)
     id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
@@ -349,8 +380,6 @@ class Document(models.Model):
         TextChunk.objects.filter(doc_id=self.id).delete()
         return super().delete(*args, **kwargs)
 
-
-    
 
     def __str__(self):
         return f'{ContentType.objects.get_for_model(self)} -- {self.title} in {self.collection.name}'
