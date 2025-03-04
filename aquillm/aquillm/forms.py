@@ -1,8 +1,7 @@
 from django import forms
-from .models import Collection, CollectionPermission, PDFDocument
+from .models import Collection, CollectionPermission, PDFDocument, HandwrittenNotesDocument
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
-from .models import HandwrittenNotesDocument, Collection
 
 User = get_user_model()
 
@@ -140,7 +139,7 @@ class VTTDocumentForm(forms.Form):
             required=True,
         )
 
-class HandwrittenNotesForm(forms.Form):
+class HandwrittenNotesForm(forms.ModelForm):
     title = forms.CharField(label="Handwritten Notes Title")
     image_file = forms.ImageField(label=".png Handwritten Notes File")
 

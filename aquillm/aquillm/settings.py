@@ -243,27 +243,42 @@ CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO',  # Change this to 'DEBUG' for more detailed output
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',  # Change this to 'DEBUG' for more detailed output
             'propagate': True,
         },
         'aquillm': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
-            'propagate': True,
+            'propagate': False,
         },
     },
 }
+
+# Temporary image path for OCR utility
+TEMP_IMAGE_PATH = os.path.join(BASE_DIR, 'tmp', 'temp_image.jpg')

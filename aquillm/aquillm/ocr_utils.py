@@ -2,68 +2,61 @@ import base64
 import json
 import os
 import configparser
-from anthropic import Anthropic
 from typing import Dict, Any, Optional, List
 import logging
 ###added
-from PIL import Image
+from dotenv import load_dotenv
+import google.generativeai as genai
+from django.conf import settings  # Import Django settings
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 def extract_text_from_image(image_file) -> Dict[str, Any]:
     """
-    Extract text from an image using Claude 3.5 Sonnet API.
+    Extract text from an image using Gemini API.
 
     Args:
-        image_path (str): Path to the image file.
+        image_file (file): Image file object.
 
     Returns:
         Dict[str, Any]: JSON response containing extracted text and metadata.
     """
-    # Read API key from config file
-    api_key = os.getenv('ANTHROPIC_API_KEY')
+    # Get the API key from environment variables
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in environment variables")
 
-    anthropic = Anthropic(api_key=api_key)
+    # Configure the generative AI with the API key
+    genai.configure(api_key=api_key)
 
-    encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+   # Get the temporary image path from Django settings or use a default
+    temp_image_path = getattr(settings, 'TEMP_IMAGE_PATH', os.path.join(settings.BASE_DIR, 'tmp', 'temp_image.jpg'))
+    
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(temp_image_path), exist_ok=True)
+    
+    with open(temp_image_path, "wb") as temp_image_file:
+        temp_image_file.write(image_file.read())
+    # Upload the file to Gemini
+    sample_file = genai.upload_file(path=temp_image_path, display_name="Uploaded Image")
+    logger.debug(f"Uploaded file '{sample_file.display_name}' as: {sample_file.uri}")
 
-    response = anthropic.messages.create(
-        model="claude-3-5-sonnet-20240620",
-        max_tokens=1000,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": encoded_image
-                        }
-                    },
-                    {
-                        "type": "text",
-                        "text": "This image is handwritten notes. Just extract what is written on the page, no extra comments please."
-                    }
-                ]
-            }
-        ]
-    )
+    # Choose a Gemini model
+    model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+
+    # Prompt the model with text and the previously uploaded image
+    prompt = "Extract the exact text from the image, nothing else"
+    response = model.generate_content([sample_file.uri, prompt])
 
     # Log the response content for debugging
-    logger.debug(f"OCR API response: {response.content}")
+    logger.debug(f"OCR API response: {response.text}")
 
     # Parse and return the JSON response
     try:
-        # Check if the response content is a list and has at least one element
-        if isinstance(response.content, list) and len(response.content) > 0:
-            extracted_text = json.loads(response.content[0].text)
-            return extracted_text
-        else:
-            logger.error("Unexpected response format from OCR API")
-            raise ValueError("Unexpected response format from OCR API")
-    except (json.JSONDecodeError, IndexError) as e:
+        extracted_text = json.loads(response.text)
+        return extracted_text
+    except json.JSONDecodeError as e:
         logger.error("Invalid response from OCR API", exc_info=True)
         raise ValueError("Invalid response from OCR API") from e
-        

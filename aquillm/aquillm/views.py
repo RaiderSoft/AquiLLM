@@ -15,6 +15,7 @@ from pgvector.django import L2Distance
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.files.storage import default_storage
+from django.conf import settings
 
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import requires_csrf_token
@@ -420,48 +421,25 @@ def ingest_vtt(request):
 @require_http_methods(['GET', 'POST'])
 @login_required
 def ingest_handwritten_notes(request):
-    status_message = None
     if request.method == 'POST':
         form = HandwrittenNotesForm(request.user, request.POST, request.FILES)
         if form.is_valid():
-            image_file = form.cleaned_data['image_file']
-            title = form.cleaned_data['title'].strip()
-            collection = form.cleaned_data['collection']
-
-            # Save the image and related metadata
-            try:
-                # Save the image file to the default storage
-                image_path = default_storage.save(image_file.name, ContentFile(image_file.read()))
-
-                # Open the saved image file and extract text
-                with default_storage.open(image_path, 'rb') as img_file:
-                    result = extract_text_from_image(img_file)
-                    full_text = result.get('extracted_text', '')
-
-                # Save the document with the extracted text
-                HandwrittenNotesDocument(
-                    title=title,
-                    image_file=image_path,
-                    full_text=full_text,
-                    collection=collection,
-                    ingested_by=request.user
-                ).save()
-                status_message = 'Success'
-            except Exception as e:
-                logger.error(f"Error saving the image: {e}")
-                status_message = f'Error saving the image: {e}'
-        else:
-            status_message = 'Invalid Form Input'
+            handwritten_notes = form.save()
+            # Save the uploaded file to a temporary location
+            temp_image_path = os.path.join(settings.BASE_DIR, 'tmp', handwritten_notes.image_file.name)
+            os.makedirs(os.path.dirname(temp_image_path), exist_ok=True)
+            with open(temp_image_path, "wb") as temp_image_file:
+                for chunk in handwritten_notes.image_file.chunks():
+                    temp_image_file.write(chunk)
+            # Extract text from the image
+            with open(temp_image_path, "rb") as image_file:
+                extracted_text = extract_text_from_image(image_file)
+            # Do something with the extracted text (e.g., save to database, display to user)
+            # ...
+            return redirect('success')
     else:
         form = HandwrittenNotesForm(request.user)
-
-    context = {
-        'status_message': status_message,
-        'form': form
-    }
-
-    return render(request, 'aquillm/ingest_handwritten_notes.html', context)
-
+    return render(request, 'aquillm/ingest_handwritten_notes.html', {'form': form})
 
 
 def success(request):

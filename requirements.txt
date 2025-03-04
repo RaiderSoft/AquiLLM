@@ -38,3 +38,6 @@ celery[redis]
 #instructor
 
 Pillow
+
+google-generativeai
+dotenv

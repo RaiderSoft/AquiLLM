@@ -287,16 +287,12 @@ def validate_pdf_extension(value):
 
 #Currently Working On
 class HandwrittenNotesDocument(Document):
-    title = models.CharField(max_length=255)
     image_file = models.ImageField(upload_to='handwritten_notes/', validators=[FileExtensionValidator(['png', 'jpg', 'jpeg'])])
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
-
+    
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
         self.extract_text()
-        self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
+        super().save(*args, **kwargs)
         
-
     def extract_text(self):
         with default_storage.open(self.image_file.name, 'rb') as image_file:
             result = extract_text_from_image(image_file)
@@ -327,8 +323,8 @@ class TeXDocument(Document):
 class RawTextDocument(Document):
     pass
 
-DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, VTTDocument]
-type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument
+DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, VTTDocument, HandwrittenNotesDocument]
+type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument | HandwrittenNotesDocument
 
 class TextChunkQuerySet(models.QuerySet):
     def filter_by_documents(self, docs):

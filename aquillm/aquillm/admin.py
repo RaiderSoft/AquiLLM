@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import RawTextDocument, PDFDocument, VTTDocument, TeXDocument, TextChunk, Collection, CollectionPermission, LLMConversation, LLMConvoMessage, WSConversation
+from .models import RawTextDocument, HandwrittenNotesDocument, PDFDocument, VTTDocument, TeXDocument, TextChunk, Collection, CollectionPermission, LLMConversation, LLMConvoMessage, WSConversation
 
 # class TextChunkInline(GenericTabularInline):
 #     model = TextChunk
@@ -25,6 +25,7 @@ from .models import RawTextDocument, PDFDocument, VTTDocument, TeXDocument, Text
 @admin.register(VTTDocument)
 @admin.register(TeXDocument)
 @admin.register(PDFDocument)
+@admin.register(HandwrittenNotesDocument)
 @admin.register(RawTextDocument)
 class DocumentAdmin(admin.ModelAdmin):
     list_display = ('title', 'id')
