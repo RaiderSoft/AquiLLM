@@ -430,12 +430,16 @@ def ingest_handwritten_notes(request):
 
             # Save the document with the image file
             try:
+                # Check if LaTeX conversion is requested
+                convert_to_latex = form.cleaned_data.get('convert_to_latex', False)
+                
                 # Create and save the document
                 document = HandwrittenNotesDocument(
                     title=title,
                     image_file=image_file,
                     collection=collection,
-                    ingested_by=request.user
+                    ingested_by=request.user,
+                    convert_to_latex=convert_to_latex
                 )
                 document.save()
                 status_message = 'Success'

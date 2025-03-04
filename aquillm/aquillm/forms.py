@@ -142,11 +142,16 @@ class VTTDocumentForm(forms.Form):
 
 class HandwrittenNotesForm(forms.Form):
     title = forms.CharField(label="Handwritten Notes Title")
-    image_file = forms.ImageField(label=".png Handwritten Notes File")
+    image_file = forms.ImageField(label="Handwritten Notes File")
+    convert_to_latex = forms.BooleanField(
+        label="Convert to LaTeX",
+        required=False, 
+        help_text="Convert mathematical expressions to LaTeX format"
+    )
 
     class Meta:
         model = HandwrittenNotesDocument
-        fields = ['title', 'image_file', 'collection']
+        fields = ['title', 'image_file', 'collection', 'convert_to_latex']
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -294,8 +294,12 @@ class HandwrittenNotesDocument(Document):
     title = models.CharField(max_length=255)
     image_file = models.ImageField(upload_to='handwritten_notes/', validators=[FileExtensionValidator(['png', 'jpg', 'jpeg'])])
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    # Temporary variables needed during processing - not stored in database
+    convert_to_latex = False
     
     def __init__(self, *args, **kwargs):
+        # Extract convert_to_latex from kwargs before sending to parent class
+        self.convert_to_latex = kwargs.pop('convert_to_latex', False) if 'convert_to_latex' in kwargs else False
         super().__init__(*args, **kwargs)
         # Allow handwritten notes to have less than 100 characters
         self.bypass_min_length = True
@@ -308,8 +312,33 @@ class HandwrittenNotesDocument(Document):
 
     def extract_text(self):
         with default_storage.open(self.image_file.name, 'rb') as image_file:
-            result = extract_text_from_image(image_file)
+            result = extract_text_from_image(image_file, convert_to_latex=self.convert_to_latex)
+        
         self.full_text = result.get('extracted_text', '')
+        # We store the LaTeX content in the full_text field for now
+        # with a special prefix that we can identify later
+        if self.convert_to_latex and 'latex_text' in result:
+            latex = result.get('latex_text', '')
+            # Add the LaTeX content to the end of full_text with a separator
+            if latex:
+                self.full_text += "\n\n==== LATEX VERSION ====\n\n" + latex
+            
+    # Extract LaTeX content from full_text if it exists
+    @property
+    def latex_content(self):
+        if "==== LATEX VERSION ====" in self.full_text:
+            parts = self.full_text.split("==== LATEX VERSION ====", 1)
+            if len(parts) > 1:
+                # Process the LaTeX content to ensure proper rendering
+                latex_text = parts[1].strip()
+                # Ensure inline math is properly wrapped
+                return latex_text
+        return ""
+            
+    # Property to check if LaTeX content exists
+    @property
+    def has_latex(self):
+        return "==== LATEX VERSION ====" in self.full_text
     
 
 class PDFDocument(Document):

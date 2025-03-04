@@ -19,6 +19,44 @@
 {% else %}
 <h1 class ="text-xl w-full">Full Text:</h1>
 <div>{{ document.full_text|linebreaks }}</div>
+
+{% if document.has_latex %}
+<h1 class="text-xl w-full mt-6">LaTeX Version:</h1>
+
+<!-- Rendered LaTeX -->
+<div class="bg-white p-4 rounded-lg mb-4 latex-render">
+    {{ document.latex_content|linebreaks|safe }}
+</div>
+
+<!-- Include KaTeX for guaranteed rendering -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+
+<!-- Raw LaTeX code (collapsible) -->
+<details class="mt-2">
+    <summary class="cursor-pointer text-blue-600 hover:text-blue-800">View Raw LaTeX Code</summary>
+    <div class="bg-gray-100 p-4 rounded-lg mt-2">
+        <pre class="whitespace-pre-wrap">{{ document.latex_content }}</pre>
+    </div>
+</details>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        setTimeout(function() {
+            renderMathInElement(document.querySelector('.latex-render'), {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            });
+        }, 500);
+    });
+</script>
+{% endif %}
 {% endif %}
 </div>
 {% endblock %}
