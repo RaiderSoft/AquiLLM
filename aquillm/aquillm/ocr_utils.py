@@ -54,16 +54,12 @@ def extract_text_from_image(image_file) -> Dict[str, Any]:
     # Log the response content for debugging
     logger.debug(f"OCR API response: {response.content}")
 
-    # Parse and return the JSON response
+    # Process the response
     try:
-        # Check if the response content is a list and has at least one element
-        if isinstance(response.content, list) and len(response.content) > 0:
-            extracted_text = json.loads(response.content[0].text)
-            return extracted_text
-        else:
-            logger.error("Unexpected response format from OCR API")
-            raise ValueError("Unexpected response format from OCR API")
-    except (json.JSONDecodeError, IndexError) as e:
-        logger.error("Invalid response from OCR API", exc_info=True)
-        raise ValueError("Invalid response from OCR API") from e
+        # Claude returns plain text, not JSON
+        extracted_text = response.content[0].text if response.content else ""
+        return {"extracted_text": extracted_text}
+    except Exception as e:
+        logger.error("Error processing OCR API response", exc_info=True)
+        raise ValueError("Error processing OCR API response") from e
         

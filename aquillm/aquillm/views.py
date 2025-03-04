@@ -441,7 +441,7 @@ def ingest_handwritten_notes(request):
                 # Save the document with the extracted text
                 HandwrittenNotesDocument(
                     title=title,
-                    image_file=image_path,
+                    image_file=image_file,
                     full_text=full_text,
                     collection=collection,
                     ingested_by=request.user

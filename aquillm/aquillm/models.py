@@ -327,8 +327,8 @@ class TeXDocument(Document):
 class RawTextDocument(Document):
     pass
 
-DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, VTTDocument]
-type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument
+DESCENDED_FROM_DOCUMENT = [PDFDocument, TeXDocument, RawTextDocument, VTTDocument, HandwrittenNotesDocument]
+type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument | HandwrittenNotesDocument
 
 class TextChunkQuerySet(models.QuerySet):
     def filter_by_documents(self, docs):
