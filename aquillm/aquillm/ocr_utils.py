@@ -7,9 +7,18 @@ from typing import Dict, Any, Optional, List
 import logging
 ###added
 from PIL import Image
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+import anthropic.types
+import time
 
 logger = logging.getLogger(__name__)
 
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=60),
+    stop=stop_after_attempt(5),
+    retry=retry_if_exception_type((anthropic.RateLimitError, anthropic.APIStatusError)),
+    reraise=True
+)
 def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any]:
     """
     Extract text from an image using Claude 3.5 Sonnet API, with optional LaTeX conversion.
@@ -27,6 +36,10 @@ def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any
         Dict[str, Any]: Dictionary containing:
             - "extracted_text": The plain text extracted from the image
             - "latex_text": The LaTeX version (only if convert_to_latex=True)
+            
+    Note:
+        This function includes retry logic to handle rate limits and server overload errors
+        from the Claude API. It will retry up to 5 times with exponential backoff.
     """
     # Get API key from environment variable
     api_key = os.getenv('ANTHROPIC_API_KEY')
@@ -54,36 +67,36 @@ def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any
         # For plain text extraction, a simpler prompt is sufficient
         prompt = "This image is handwritten notes. Just extract what is written on the page, no extra comments please."
 
-    # Send the image to Claude for processing
-    response = anthropic.messages.create(
-        model="claude-3-5-sonnet-20240620",
-        max_tokens=1500,  
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": encoded_image
-                        }
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt
-                    }
-                ]
-            }
-        ]
-    )
-
-    # Log the response for debugging purposes
-    logger.debug(f"OCR API response: {response.content}")
-
-    # Process the API response
     try:
+        # Send the image to Claude for processing
+        response = anthropic.messages.create(
+            model="claude-3-5-sonnet-20240620",
+            max_tokens=1500,  
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": encoded_image
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        )
+
+        # Log the response for debugging purposes
+        logger.debug(f"OCR API response: {response.content}")
+
+        # Process the API response
         response_text = response.content[0].text if response.content else ""
         
         if convert_to_latex:
@@ -108,6 +121,16 @@ def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any
         else:
             # For plain text extraction, return the entire response
             return {"extracted_text": response_text}
+            
+    except anthropic.RateLimitError as e:
+        logger.warning(f"Rate limit exceeded from Claude API: {str(e)}")
+        raise  # Will be caught by retry decorator
+    except anthropic.APIStatusError as e:
+        if e.status_code == 529:  # Overloaded error
+            logger.warning(f"Claude API is overloaded: {str(e)}")
+        else:
+            logger.error(f"API error from Claude: {str(e)}")
+        raise  # Will be caught by retry decorator
     except Exception as e:
         # Detailed error logging to help diagnose issues
         logger.error("Error processing OCR API response", exc_info=True)
