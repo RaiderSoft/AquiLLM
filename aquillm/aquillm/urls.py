@@ -33,6 +33,8 @@ urlpatterns = [
     path("pdf/<uuid:doc_id>/", views.pdf, name="pdf"),
     path("api/ingest_arxiv", api_views.ingest_arxiv, name="api_ingest_arxiv"),
     path("api/ingest_pdf", api_views.ingest_pdf, name="api_ingest_pdf"),
+    path("api/collections/delete/<int:collection_id>/", api_views.delete_collection, name="api_delete_collection"),
+    path("api/documents/delete/<uuid:doc_id>/", api_views.delete_document, name="api_delete_document"),
     path("document/<uuid:doc_id>/", views.document, name="document"),
     path("document/move/<uuid:doc_id>/", views.move_document, name="move_document"),
     path("user_collections/", views.user_collections, name="user_collections"),
@@ -53,10 +55,14 @@ urlpatterns = [
     path("ready", views.health_check),
     path("react_test", views.react_test, name="react_test"),
     path("pdf_ingestion_monitor/<int:doc_id>/", views.pdf_ingestion_monitor, name="pdf_ingestion_monitor"),
+
+    path("search_users/", views.search_users, name="search_users"),
+
     path("ingestion_dashboard/", views.ingestion_dashboard, name="ingestion_dashboard"),
 
     path("api/ingest_arxiv", api_views.ingest_arxiv, name="api_ingest_arxiv"),
     path("api/ingest_pdf", api_views.ingest_pdf, name="api_ingest_pdf"),
+
 ] + debug_toolbar_urls()
 
 if DEBUG:

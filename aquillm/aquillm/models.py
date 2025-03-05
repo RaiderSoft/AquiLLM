@@ -104,11 +104,19 @@ class Collection(models.Model):
         return functools.reduce(lambda l, r: l + r, [list(x.objects.filter(collection=self)) for x in DESCENDED_FROM_DOCUMENT])
 
     def user_has_permission_in(self, user, permissions):
-        return CollectionPermission.objects.filter(
+        # First check permissions directly on this collection
+        if CollectionPermission.objects.filter(
             user=user,
             collection=self,
             permission__in=permissions
-        ).exists()
+        ).exists():
+            return True
+        
+        # If no direct permission, check parent collections recursively
+        if self.parent:
+            return self.parent.user_has_permission_in(user, permissions)
+        
+        return False
     
 
     def user_can_view(self, user):
@@ -149,6 +157,40 @@ class Collection(models.Model):
     def __str__(self):
         return f'{self.name}'
     
+    def is_owner(self, user):
+        """
+        Check if the user is the owner (creator) of this collection.
+        The owner is defined as the first user who was granted MANAGE permission.
+        """
+        # Get the earliest MANAGE permission for this collection
+        earliest_manage_perm = CollectionPermission.objects.filter(
+            collection=self,
+            permission='MANAGE'
+        ).order_by('id').first()
+        
+        if earliest_manage_perm:
+            return earliest_manage_perm.user == user
+        return False
+
+    def get_user_permission_source(self, user):
+        """
+        Returns the collection where the user's permission is coming from.
+        Useful for debugging permission issues with nested collections.
+        
+        Returns tuple: (source_collection, permission_level)
+        If no permission found, returns (None, None)
+        """
+        # Check direct permissions
+        permission = CollectionPermission.objects.filter(user=user, collection=self).first()
+        if permission:
+            return (self, permission.permission)
+        
+        # Check parent permissions
+        if self.parent:
+            return self.parent.get_user_permission_source(user)
+            
+        return (None, None)
+
 
 class CollectionPermission(models.Model):
     PERMISSION_CHOICES = [
