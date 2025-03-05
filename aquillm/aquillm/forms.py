@@ -141,26 +141,59 @@ class VTTDocumentForm(forms.Form):
         )
 
 class HandwrittenNotesForm(forms.Form):
-    title = forms.CharField(label="Handwritten Notes Title")
-    image_file = forms.ImageField(label="Handwritten Notes File")
+    """
+    Form for uploading handwritten notes with optional LaTeX conversion.
+    
+    This form allows users to:
+    1. Upload an image file containing handwritten notes
+    2. Specify a title for the document
+    3. Select a collection to store it in
+    4. Optionally request LaTeX conversion for mathematical expressions
+    """
+    
+    # Basic document metadata
+    title = forms.CharField(
+        label="Handwritten Notes Title",
+    )
+    
+    # The image file containing handwritten notes
+    image_file = forms.ImageField(
+        label="Handwritten Notes File",
+        help_text="Upload a PNG, JPG, or JPEG image of your handwritten notes"
+    )
+    
+    # Optional LaTeX conversion checkbox
     convert_to_latex = forms.BooleanField(
         label="Convert to LaTeX",
         required=False, 
-        help_text="Convert mathematical expressions to LaTeX format"
+        help_text="Convert mathematical expressions to properly rendered LaTeX format"
     )
 
     class Meta:
+        # Link to the model for form generation
         model = HandwrittenNotesDocument
         fields = ['title', 'image_file', 'collection', 'convert_to_latex']
 
     def __init__(self, user, *args, **kwargs):
+        """
+        Initialize the form with user-specific collections.
+        
+        Args:
+            user: The current authenticated user
+            *args, **kwargs: Standard form initialization arguments
+        """
         super().__init__(*args, **kwargs)
+        
+        # Style the collection selection widgets
         collections_attrs = {
            'class': 'rounded-md bg-lightest-primary',
         }
+        
+        # Add the collection field dynamically based on user
+        # This shows only collections the user has access to
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,
             widget=forms.RadioSelect(attrs=collections_attrs),
-            queryset=Collection.objects.none(), # this is weird but necessary
+            queryset=Collection.objects.none(),  # this is weird but necessary
             required=True,
         )

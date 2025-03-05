@@ -291,54 +291,120 @@ def validate_pdf_extension(value):
 
 #Currently Working On
 class HandwrittenNotesDocument(Document):
+    """
+    Model for storing handwritten notes as images with extracted text content.
+    
+    Features:
+    - Stores image files (.png, .jpg, .jpeg)
+    - Uses OCR to extract text from handwritten notes
+    - Optional LaTeX conversion for mathematical expressions
+    - Supports shorter text content than other document types
+    """
     title = models.CharField(max_length=255)
-    image_file = models.ImageField(upload_to='handwritten_notes/', validators=[FileExtensionValidator(['png', 'jpg', 'jpeg'])])
+    image_file = models.ImageField(
+        upload_to='handwritten_notes/', 
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg'])],
+        help_text="Upload an image of handwritten notes"
+    )
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
-    # Temporary variables needed during processing - not stored in database
-    convert_to_latex = False
+    
+    convert_to_latex = False  # Flag to request LaTeX conversion 
     
     def __init__(self, *args, **kwargs):
-        # Extract convert_to_latex from kwargs before sending to parent class
+        
+        # Flag to enable LaTeX conversion of mathematical expressions
         self.convert_to_latex = kwargs.pop('convert_to_latex', False) if 'convert_to_latex' in kwargs else False
+        
+        # Flag to bypass automatic text extraction during save 
+        self.bypass_extraction = kwargs.pop('bypass_extraction', False) if 'bypass_extraction' in kwargs else False
+        
         super().__init__(*args, **kwargs)
-        # Allow handwritten notes to have less than 100 characters
+        
+        # Override Document base class constraint - allow handwritten notes to have less than 100 characters
+        # This is needed since handwritten notes often contain fewer characters than other document types
         self.bypass_min_length = True
 
     def save(self, *args, **kwargs):
-        if not self.pk:  # Only extract text on first save
+        """
+        Save the HandwrittenNotesDocument, extracting text from the image.
+        
+        If this is a new document (not yet in database) and bypass_extraction is not set,
+        extract text from the image file and compute a hash of the text content.
+        """
+        if not self.pk and not self.bypass_extraction:  # Only extract text on first save, unless bypassed
             self.extract_text()
             self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
         super().save(*args, **kwargs)
 
     def extract_text(self):
-        with default_storage.open(self.image_file.name, 'rb') as image_file:
-            result = extract_text_from_image(image_file, convert_to_latex=self.convert_to_latex)
+        """
+        Extract text from the handwritten notes image.
         
-        self.full_text = result.get('extracted_text', '')
-        # We store the LaTeX content in the full_text field for now
-        # with a special prefix that we can identify later
-        if self.convert_to_latex and 'latex_text' in result:
-            latex = result.get('latex_text', '')
-            # Add the LaTeX content to the end of full_text with a separator
-            if latex:
-                self.full_text += "\n\n==== LATEX VERSION ====\n\n" + latex
+        If convert_to_latex is True, also convert mathematical expressions to LaTeX.
+        The LaTeX content is stored in the same full_text field after a separator marker.
+        """
+        try:
+            # Verify file exists in storage before attempting to open it
+            if not default_storage.exists(self.image_file.name):
+                raise FileNotFoundError(f"File does not exist: {self.image_file.name}")
+                
+            # Open the image file and extract text (with optional LaTeX conversion)
+            with default_storage.open(self.image_file.name, 'rb') as image_file:
+                result = extract_text_from_image(image_file, convert_to_latex=self.convert_to_latex)
             
-    # Extract LaTeX content from full_text if it exists
+            # Store the extracted plain text
+            self.full_text = result.get('extracted_text', '')
+            
+            # If LaTeX conversion was requested and succeeded, store it with a separator
+            if self.convert_to_latex and 'latex_text' in result:
+                latex = result.get('latex_text', '')
+                if latex:
+                    # The separator allows us to store both text versions in one field
+                    # and extract them separately when needed via properties
+                    self.full_text += "\n\n==== LATEX VERSION ====\n\n" + latex
+        except Exception as e:
+            # Set a default text if extraction fails
+            self.full_text = f"Image text extraction failed. Please try again."
+            logger.error(f"Error extracting text from image: {e}")
+            raise
+            
     @property
     def latex_content(self):
+        """
+        Property that extracts just the LaTeX portion of the full_text.
+        
+        Returns the portion after the separator, or empty string if no LaTeX content.
+        """
         if "==== LATEX VERSION ====" in self.full_text:
             parts = self.full_text.split("==== LATEX VERSION ====", 1)
             if len(parts) > 1:
-                # Process the LaTeX content to ensure proper rendering
+                # Get the content after the separator
                 latex_text = parts[1].strip()
-                # Ensure inline math is properly wrapped
+                # Remove any nested separator markers that might cause issues
+                latex_text = latex_text.replace("==== LATEX VERSION ====", "")
                 return latex_text
         return ""
             
-    # Property to check if LaTeX content exists
     @property
     def has_latex(self):
+        """
+        Check if this document has LaTeX content.
+        
+        Used in templates to conditionally show the LaTeX rendering section.
+        """
         return "==== LATEX VERSION ====" in self.full_text
+        
+    @property
+    def original_text(self):
+        """
+        Get only the original extracted text, without LaTeX content.
+        
+        Returns the portion before the separator, or the full text if no separator exists.
+        Used to display clean text without the internal separator marker.
+        """
+        if "==== LATEX VERSION ====" in self.full_text:
+            return self.full_text.split("==== LATEX VERSION ====", 1)[0].strip()
+        return self.full_text
     
 
 class PDFDocument(Document):

@@ -243,27 +243,61 @@ CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    # Define log formatters
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        # Custom filter to exclude file monitoring logs
+        'exclude_file_monitoring': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: not ('first seen with mtime' in record.getMessage() or 
+                                           'File ' in record.getMessage() and '.py' in record.getMessage())
+        },
+        # Custom filter to exclude migration-related file logs
+        'exclude_migrations': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: not ('migrations' in record.getMessage())
+        },
+    },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO',  # Changed from DEBUG to INFO
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'filters': ['exclude_file_monitoring', 'exclude_migrations'],
         },
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'formatter': 'verbose',
         },
     },
     'loggers': {
+        # Django's default logger - reduce verbosity
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': True,
+            'level': 'WARNING',  # Changed from DEBUG to WARNING
+            'propagate': False,
         },
+        # Django's file watcher logger - explicitly silence
+        'django.utils.autoreload': {
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        # Your application's logger - keep detailed
         'aquillm': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': True,
+            'level': 'INFO',  # Changed from DEBUG to INFO for console output
+            'propagate': False,
         },
     },
 }
