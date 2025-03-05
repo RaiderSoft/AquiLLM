@@ -21,7 +21,7 @@
         </div>
 
         {% if reranked_results or vector_results or trigram_result %}
-            <div class="max-h-[90%] overflow-y-auto bg-gray-shade_3 rounded-lg p-[16px] my-[64px]">     
+            <div class="max-h-[90%] overflow-y-auto bg-gray-shade_3 rounded-lg p-[16px] my-[64px] min-w-[580px]">     
                 <h1 style="text-align: center;" class="text-lg border-b border-gray-shade_7 pb-[16px] mb-[16px]"><strong>Search Results</strong></h1>
                 {% if reranked_results %}
                     <h2 class="text-accent-light"><strong>Reranked Search Results</strong></h2>

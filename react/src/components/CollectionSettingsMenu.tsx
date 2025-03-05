@@ -56,7 +56,9 @@ const CollectionSettingsMenu: React.FC<CollectionSettingsMenuProps> = ({
       </button>
 
       {isOpen && (
-        <div style={{
+        <div 
+        className='font-sans'
+        style={{
           position: 'absolute',
           right: 0,
           top: '100%',

@@ -120,7 +120,7 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
 
   return (
     <div style={modalStyles.overlay}>
-      <div style={modalStyles.content}>
+      <div style={modalStyles.content} className='font-sans'>
         <h3 style={modalStyles.title}>Create New Collection</h3>
         <form onSubmit={handleSubmit} style={modalStyles.form}>
           <div>

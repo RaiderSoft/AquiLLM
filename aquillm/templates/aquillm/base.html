@@ -248,6 +248,27 @@
         localStorage.setItem("sidebarClosed", sidebar.classList.contains("ml-[-260px]"));
     });
 
+    function calculateDropdownHeight() {
+        const computedStyle = window.getComputedStyle(conversationDropdown);
+        const isClosed = computedStyle.height === "0px";
+
+        let totalHeight = 0;
+        conversationDropdown.childNodes.forEach(child => {
+            if (child.nodeType === 1) { // Ensure it's an element node
+                totalHeight += child.offsetHeight;
+            }
+        });
+
+        // Add padding
+        const padding = parseFloat(computedStyle.paddingTop) + parseFloat(computedStyle.paddingBottom);
+        totalHeight += padding;
+
+        // Ensure it doesn't exceed the max height of 296px
+        const finalHeight = Math.min(totalHeight, 296);
+
+        return finalHeight;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // use localStorage to have the sidebar state persist.
         const sidebarClosed = localStorage.getItem("sidebarClosed");
@@ -274,7 +295,7 @@
             conversationDropdown.style.transition = "none";
             dropdownIndicator.style.transition = "none";
 
-            conversationDropdown.style.height = "296px";
+            conversationDropdown.style.height = `${calculateDropdownHeight()}px`;
             conversationDropdown.style.marginTop = "10px";
             conversationDropdownButton.classList.add("bg-gray-shade_5");
             dropdownIndicator.style.transform = "rotate(180deg)";
@@ -432,31 +453,31 @@
         });
     });
 
-    // Toggle the entire conversation dropdown
-    function toggleDropdown() {  
-        
+    // Toggle the conversation dropdown
+    function toggleDropdown() {
+        // Get computed styles and references
+        const computedStyle = window.getComputedStyle(conversationDropdown);
+        const isClosed = computedStyle.height === "0px";
 
-        if (conversationDropdown.style.height === "0px")
-        {
-            // This height is calculated via the base maximum height (240px)
-            // + height of search bar (28px) + half of height of one element in 
-            // the dropdown (20px) + dropdown padding (8px)
+        if (isClosed) {
+            // Apply styles
             conversationDropdownButton.classList.add("bg-gray-shade_5");
-            conversationDropdown.style.height = "296px";
+            conversationDropdown.style.height = `${calculateDropdownHeight()}px`;
             conversationDropdown.style.marginTop = "10px";
             dropdownIndicator.style.transform = "rotate(180deg)";
-        }
-        else
-        {
+        } else {
+            // Close dropdown
             conversationDropdownButton.classList.remove("bg-gray-shade_5");
             conversationDropdown.style.height = "0px";
             conversationDropdown.style.marginTop = "0px";
             dropdownIndicator.style.transform = "rotate(0deg)";
         }
 
+        // Save state to localStorage
         localStorage.setItem("conversationDropdownClosed", conversationDropdown.style.height === "0px");
         localStorage.setItem("conversationDropdownIndicatorRotated", dropdownIndicator.style.transform === "rotate(180deg)");
     }
+
 
     // Keep track of the currently open modal (if any)
     let activeModal = null;
