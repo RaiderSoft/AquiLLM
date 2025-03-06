@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Folder } from './CollectionsTree';
 import { getCookie } from '../utils/csrf';
-
+import formatUrl from '../utils/formatUrl';
 // Define the types for users and permissions
 interface User {
   id: number;
@@ -92,7 +92,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setError(null);
     
     try {
-      const response = await fetch(`/collection/${collection.id}/permissions/`, {
+      const response = await fetch(formatUrl(window.apiUrls.api_collection_permissions, { col_id: collection.id }), {
         headers: {
           'Accept': 'application/json',
           'X-CSRFToken': getCookie('csrftoken'),
@@ -137,7 +137,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const searchUsers = async (query: string) => {
     setIsSearching(true);
     try {
-      const response = await fetch(`/search_users/?query=${encodeURIComponent(query)}&exclude_current=true`, {
+      const response = await fetch(window.apiUrls.api_search_users + `?query=${encodeURIComponent(query)}&exclude_current=true`, {
         headers: {
           'Accept': 'application/json',
         },
@@ -166,7 +166,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(`/collection/${collection.id}/permissions/`, {
+      const response = await fetch(formatUrl(window.apiUrls.api_collection_permissions, { col_id: collection.id }), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

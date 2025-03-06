@@ -35,7 +35,7 @@ class DocumentAdmin(admin.ModelAdmin):
 
 @admin.register(TextChunk)
 class TextChunkAdmin(admin.ModelAdmin):
-    list_display = ('chunk_number', 'start_position', 'end_position', 'document', 'embedding')
+    list_display = ('chunk_number', 'start_position', 'end_position', 'document')
     search_fields = ('content',)
 
 @admin.register(Collection)

@@ -11,9 +11,11 @@ services:
     environment:
       - PORT=${PORT:-8080}
       - POSTGRES_HOST=db
-      - STORAGE_HOST=storage:4566
+      - STORAGE_HOST=storage:9000
       - DJANGO_DEBUG=1
       - C_FORCE_ROOT=1
+      - STORAGE_ACCESS_KEY=dev
+      - STORAGE_SECRET_KEY=rickbailey
     restart: on-failure
     depends_on:
       db:
@@ -22,6 +24,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      createbuckets:
+        condition: service_completed_successfully
     volumes:
       - .:/app
 
@@ -43,27 +47,39 @@ services:
 
 
   storage:
-    image: localstack/localstack:4.0.3
+    image: minio/minio
+    restart: unless-stopped
+    ports: 
+      - "9001:9001"
     env_file:
       - .env
+    environment:
+      - MINIO_ROOT_USER=dev
+      - MINIO_ROOT_PASSWORD=rickbailey
+      - MINIO_DEFAULT_BUCKETS=aquillm
     volumes:
-      - ./dev/create_buckets.sh:/etc/localstack/init/ready.d/create_buckets.sh
-      - localstack_data:/var/lib/localstack
+      - minio_data:/data
     healthcheck:
-      test:
-        - CMD
-        - bash
-        - -c
-        - awslocal dynamodb list-tables
-          && awslocal es list-domain-names
-          && awslocal s3 ls
-          && awslocal sqs list-queues
+      test: ['CMD', 'curl', '-f', '-I', 'localhost:9000/minio/health/live']
       interval: 5s
       timeout: 10s
-      start_period: 20s
+      start_period: 15s
+    command: minio server /data --console-address ":9001"
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      storage:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set aquillm http://storage:9000 dev rickbailey;
+      /usr/bin/mc mb aquillm/aquillm;
+      exit 0;"
 
   redis:
     image: redis:7.4-bookworm
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -72,6 +88,7 @@ services:
       start_period: 20s
 
 
+
 volumes:
   postgres_data:
-  localstack_data:
+  minio_data:

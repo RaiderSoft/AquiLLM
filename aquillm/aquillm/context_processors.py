@@ -1,5 +1,5 @@
 from .models import WSConversation
-
+from django.urls import get_resolver
 def nav_links(request):
     return {
         'nav_links': [
@@ -7,11 +7,18 @@ def nav_links(request):
             {"url": "user_ws_convos", "text": "Old Conversations"},
             {"url": "search", "text": "Search"},
             {"url": "user_collections", "text": "Collections"},
-            {"url": "insert_arxiv", "text": "Ingest from arXiv"},
-            {"url": "ingest_pdf", "text": "Ingest PDF"},
-            {"url": "ingest_vtt", "text": "Ingest Transcript"}
+
         ]
     }
+resolver=get_resolver()
+_api_url_dict = {key: "/" + url_pattern[0][0][0] for key, url_pattern in resolver.reverse_dict.items() if url_pattern[0][0][0].split('/')[0] == 'api' and isinstance(key, str)} # type: ignore
+_page_url_dict = {key: "/" + url_pattern[0][0][0] for key, url_pattern in resolver.reverse_dict.items() if url_pattern[0][0][0].split('/')[0] != 'api' and isinstance(key, str)} # type: ignore
+
+def api_urls(request):
+    return {'api_urls': _api_url_dict}
+
+def page_urls(request):
+    return {'page_urls': _page_url_dict}
 
 def user_conversations(request):
     if request.user.is_authenticated:

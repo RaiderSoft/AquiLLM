@@ -6,9 +6,9 @@ from functools import wraps, partial
 from abc import ABC, abstractmethod
 from pprint import pformat
 from copy import copy
-
 from concurrent.futures import ThreadPoolExecutor
 
+from anthropic._exceptions import OverloadedError
 from aquillm.settings import DEBUG
 from django.apps import apps
 
@@ -16,6 +16,8 @@ from asgiref.sync import sync_to_async
 
 from django.core import signing
 from json import loads
+
+from tiktoken import encoding_for_model
 
 import uuid
 if DEBUG:
@@ -176,6 +178,7 @@ class ToolMessage(__LLMMessage):
 
 class AssistantMessage(__LLMMessage):
     role: Literal['assistant'] = 'assistant'
+    model: Optional[str] = None
     stop_reason: str
     tool_call_id: Optional[str] = None
     tool_call_name: Optional[str] = None
@@ -259,6 +262,7 @@ class LLMResponse(BaseModel):
     stop_reason: str
     input_usage: int
     output_usage: int
+    model: Optional[str] = None
 
 class LLMInterface(ABC):
     tool_executor = ThreadPoolExecutor(max_workers=10)
@@ -269,9 +273,12 @@ class LLMInterface(ABC):
         pass
 
     @abstractmethod
-    async def get_message(self, *args, **kwargs):
+    async def get_message(self, *args, **kwargs) -> LLMResponse:
         pass
 
+    @abstractmethod
+    async def token_count(self, conversation: Conversation, new_message: Optional[str] = None) -> int:
+        pass
 
     # This shouldn't raise exceptions in cases where it was called correctly, ie the LLM really did attempt to call a tool. 
     # The results are going back to the LLM, so they need to just be strings. Tools themselves can raise, because the llm_tool wrapper
@@ -347,12 +354,15 @@ class LLMInterface(ABC):
                             tools=last_message.tools,
                             tool_choice=last_message.tool_choice,
                             usage = response.input_usage + response.output_usage,
+                            model=response.model,
                             **response.tool_call)
             if DEBUG:
                 print("Response from LLM:")
                 pp(new_msg.model_dump)
 
             return conversation + [new_msg], 'changed'
+
+
 
     async def spin(self, convo: Conversation, max_func_calls: int, send_func: Callable[[Conversation], Any], max_tokens: int) -> None:
         calls = 0
@@ -370,7 +380,7 @@ class LLMInterface(ABC):
 
 class ClaudeInterface(LLMInterface):
     
-    base_args: dict = {'model': 'claude-3-5-sonnet-20240620'}
+    base_args: dict = {'model': 'claude-3-7-sonnet-latest'}
 
     @override
     def __init__(self, anthropic_client):
@@ -401,7 +411,19 @@ class ClaudeInterface(LLMInterface):
                            tool_call=tool_call, 
                            stop_reason=response.stop_reason, 
                            input_usage=response.usage.input_tokens, 
-                           output_usage=response.usage.output_tokens)
+                           output_usage=response.usage.output_tokens,
+                           model=self.base_args['model'])
+
+    @override
+    async def token_count(self, conversation: Conversation, new_message: Optional[str] = None) -> int:
+        messages_for_bot = [message for message in conversation if not(isinstance(message, ToolMessage) and message.for_whom == 'user')]
+        new_user_message = UserMessage(content=new_message) if new_message else None
+        response = await self.client.messages.count_tokens(**(self.base_args | 
+                                                         {'system': conversation.system,
+                                                          'messages': [message.render(include={'role', 'content'}) for message in messages_for_bot + ([new_user_message] if new_user_message else [])]}))
+        return response.input_tokens
+
+gpt_enc = encoding_for_model('gpt-4o')
 
 class OpenAIInterface(LLMInterface):
 
@@ -449,7 +471,14 @@ class OpenAIInterface(LLMInterface):
                            output_usage=response.usage.completion_tokens
                            )
                         
-
+    @override 
+    async def token_count(self, conversation: Conversation, new_message: Optional[str] = None) -> int:
+        assistant_messages = [message for message in conversation if isinstance(message, AssistantMessage)]
+        if assistant_messages:
+            return assistant_messages[-1].usage + (len(gpt_enc.encode(new_message)) if new_message else 0)
+        return len(gpt_enc.encode(new_message)) if new_message else 0
+    
+    
 class GeminiInterface(LLMInterface):
     
     @override

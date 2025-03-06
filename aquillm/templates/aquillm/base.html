@@ -201,6 +201,11 @@
                                 {% endif %}
                             {% endfor %}
                             <div id="ingestion-monitor"></div>
+                            {% if user.is_staff %}
+                            <a href="{% url 'email_whitelist' %}" class="my-[5px] pl-[8px] py-[3px] font-sans text-lg w-full hover:bg-gray-shade_5 rounded-[12px] transition-all">
+                                Email Whitelist
+                            </a>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -608,6 +613,18 @@
 
 </script>
     </script>
+
+
+{% if user.is_authenticated%}
+    {{ api_urls|json_script:"api_urls" }}
+    {{ page_urls|json_script:"page_urls" }}
+    <script type="text/javascript">
+        window.apiUrls = JSON.parse(document.getElementById('api_urls').textContent);
+        window.pageUrls = JSON.parse(document.getElementById('page_urls').textContent);
+    </script>
+{% endif %}
+
+
     {% block scripts %}{% endblock %}
     {% block extra_js %}{% endblock %}
 </body>

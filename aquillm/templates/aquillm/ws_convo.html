@@ -65,6 +65,10 @@
 
         </div>
     </div>
+    <div id="usage-bar-container" class="w-[80%] mb-[16px]">
+
+        <div id="usage-text" class="text-center mt-1 text-sm text-gray-700">0 / 200,000</div>
+    </div>
 </div>
 {% endblock %}
 
@@ -237,6 +241,9 @@
         (lastMessage.role === 'tool' && lastMessage.for_whom === 'assistant')
         );
     }
+
+
+
     function createRatingButtons(message, index) {
         const emojis = ['😞', '😕', '😐', '🙂', '😊'];
         const rating = message.rating || 0;
@@ -451,11 +458,18 @@
             ]);
         })
         ];
-        
+
         if (shouldShowSpinner(data.messages)) {
             content.push(createSpinner());
         }
+
+        // Update usage bar based on the most recent assistant message
+        const lastAssistantMessage = data.messages.slice().reverse().find(msg => msg.role === 'assistant');
+        if (lastAssistantMessage && lastAssistantMessage.usage) {
+            updateUsageBar(lastAssistantMessage.usage);
+        }
         
+       // updateUsageBar(data.usage);
         return h('div', { 
             class: { 
                 'gap-[32px]': true,
@@ -624,7 +638,7 @@
     
     async function fetchCollections() {
         try {
-            const response = await fetch("{% url 'get_collections_json' %}");
+            const response = await fetch("{% url 'api_collections' %}");
             if (!response.ok) {
                 throw new Error(`Http error: ${response.status}`);
             }
@@ -691,6 +705,14 @@
         const searchTerm = event.target.value;
         renderCollections(searchTerm);
     });
+
+    function updateUsageBar(usage) {
+        const usageText = document.getElementById('usage-text');
+        const maxUsage = 200000;
+        const usagePercentage = (usage / maxUsage) * 100;
+
+        usageText.textContent = `${usage} / ${maxUsage}`;
+    }
     
     initWebSocket();
     

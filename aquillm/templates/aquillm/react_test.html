@@ -9,7 +9,9 @@
 
 {% block scripts %}
 <script>
-    mountReactComponent('react-test', 'IngestRowContainer', {
+    mountReactComponent('react-test', 'ChatComponent', {
+        convoId: 5,
+        collectionsUrl: window.apiUrls.api_collections,
 
     });
 </script>

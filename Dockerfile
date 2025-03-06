@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:0.6.4-python3.12-bookworm
 
 # Set environment variables
 
@@ -8,8 +8,8 @@ WORKDIR /app
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
-RUN pip install -r requirements.txt
-RUN apt update && apt install -y curl nodejs npm inotify-tools
+RUN uv pip install -r requirements.txt --system
+RUN apt update && apt install -y curl npm inotify-tools
 # Copy the rest of the application
 COPY . .
 

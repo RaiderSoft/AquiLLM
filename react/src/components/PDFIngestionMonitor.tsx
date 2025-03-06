@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Terminal, X } from 'lucide-react';
 import { PDFIngestionMonitorProps, IngestionMessage } from '../types';
-
+import formatUrl from '../utils/formatUrl';
 const PDFIngestionMonitor: React.FC<PDFIngestionMonitorProps> = ({ documentName, documentId }) => {
   const [progress, setProgress] = useState<number>(0);
   const [messages, setMessages] = useState<string[]>([]);
@@ -66,7 +66,7 @@ const PDFIngestionMonitor: React.FC<PDFIngestionMonitorProps> = ({ documentName,
       <div className="space-y-2">
         <a
           className="font-medium text-blue-600 underline"
-          href={`/document/${documentId}/`}
+          href={formatUrl(window.pageUrls.document, { doc_id: documentId })}
         >
           {documentName}
         </a>

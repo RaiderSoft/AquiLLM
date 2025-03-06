@@ -6,6 +6,7 @@ import MoveCollectionModal from '../components/MoveCollectionModal';
 import { FileSystemItem } from '../types/FileSystemItem';
 import { getCookie } from '../utils/csrf';
 import IngestRowContainer from '../components/IngestRow';
+import formatUrl from '../utils/formatUrl';
 
 interface CollectionContent {
   id: number;
@@ -27,7 +28,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [movingItem, setMovingItem] = useState<FileSystemItem | null>(null);
+  const [movingItem, setMovingItem] = useState<FileSystemItem | Folder | null>(null);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [allCollections, setAllCollections] = useState<Folder[]>([]);
   const [batchMovingItems, setBatchMovingItems] = useState<FileSystemItem[]>([]);
@@ -43,7 +44,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
   // Fetch current collection details (children and documents)
   useEffect(() => {
-    fetch(`/collection/${collectionId}/`, {
+    fetch(formatUrl(window.apiUrls.api_collection, { col_id: collectionId }), {
       headers: {
         'Accept': 'application/json'
       }
@@ -120,7 +121,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
   // Fetch all available collections (for moving purposes)
   useEffect(() => {
-    fetch('/get_collections_json/', {
+    fetch(window.apiUrls.api_collections, {
       headers: {
         'Accept': 'application/json'
       },
@@ -219,11 +220,9 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
   const handleOpenItem = (item: FileSystemItem) => {
     if (item.type === 'collection') {
-      window.location.href = `/collection/${item.id}/`;
-    } else if (item.type === 'pdf') {
-      window.open(`/pdf/${item.id}/`, '_blank');
+      window.location.href = formatUrl(window.pageUrls.collection, { col_id: item.id });
     } else {
-      window.location.href = `/document/${item.id}/`;
+      window.location.href = formatUrl(window.pageUrls.document, { doc_id: item.id });
     }
   };
 
@@ -239,7 +238,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
     if (!movingItem) return;
     if (movingItem.type === 'collection') {
       // Call collection move endpoint:
-      fetch(`/collection/move/${itemId}/`, {
+      fetch(formatUrl(window.apiUrls.api_move_collection, { collection_id: itemId }), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -261,7 +260,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         });
     } else {
       // Assume it's a document
-      fetch(`/document/move/${movingItem.id}/`, {
+      fetch(formatUrl(window.apiUrls.api_move_document, { doc_id: movingItem.id }), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -592,8 +591,8 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
       </div>
 
       <IngestRowContainer
-        ingestArxivUrl='/api/ingest_arxiv/'
-        ingestPdfUrl='/api/ingest_pdf/'
+        ingestArxivUrl={window.apiUrls.api_ingest_arxiv}
+        ingestPdfUrl={window.apiUrls.api_ingest_pdf}
         collectionId={collectionId}
       />
 

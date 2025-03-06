@@ -4,22 +4,29 @@ import gzip
 import tarfile
 import io
 import chardet
+import json
 from xml.dom import minidom
+from django.urls import path, include
 
 from django.core.files.base import ContentFile
 
-from .models import PDFDocument, TeXDocument, Collection, CollectionPermission, DESCENDED_FROM_DOCUMENT
+from .models import PDFDocument, TeXDocument, Collection, CollectionPermission, EmailWhitelist, DESCENDED_FROM_DOCUMENT
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
+
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 
 from django.shortcuts import get_object_or_404
 
 from django.core.files.base import ContentFile
-from django.core.validators import FileExtensionValidator
-from django.core.exceptions import ValidationError
-from django.db import DatabaseError
+from django.core.validators import FileExtensionValidator, validate_email
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.db import DatabaseError, transaction
+from django.db.models import Q
 logger = logging.getLogger(__name__)
+
+
 
 # helper func, not a view
 def insert_one_from_arxiv(arxiv_id, collection, user):
@@ -139,7 +146,7 @@ def ingest_pdf(request):
         return JsonResponse({'error': 'Invalid file extension. Only PDF files are allowed.'}, status=400)
     doc = PDFDocument(
         collection = collection,
-        title = pdf_file.name,
+        title = title,
         ingested_by = user
     )
     doc.pdf_file = pdf_file
@@ -148,7 +155,9 @@ def ingest_pdf(request):
     except DatabaseError as e:
         logger.error(f"Database error: {e}")
         return JsonResponse({'error': 'Database error occurred while saving PDFDocument'}, status=500)
+
     return JsonResponse({'status_message': 'Success'})
+
 
 @login_required
 @require_http_methods(["DELETE"])
@@ -207,3 +216,326 @@ def delete_document(request, doc_id):
     except Exception as e:
         logger.error(f"Error deleting document {doc_id}: {e}")
         return JsonResponse({'error': f'Failed to delete document: {str(e)}'}, status=500)
+
+
+@require_http_methods(['GET', 'POST'])
+@login_required
+def collections(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        name = data.get('name')
+        if not name:
+            return JsonResponse({'error': 'Name is required'}, status=400)
+
+        with transaction.atomic():
+            collection = Collection.objects.create(name=name)
+            CollectionPermission.objects.create(
+                collection=collection,
+                user=request.user,
+                permission='MANAGE'
+            )
+
+            # Handle additional permissions
+            for viewer in data.get('viewers', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=viewer),
+                    permission='VIEW'
+                )
+            for editor in data.get('editors', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=editor),
+                    permission='EDIT'
+                )
+            for admin in data.get('admins', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=admin),
+                    permission='MANAGE'
+                )
+
+            return JsonResponse({
+                'id': collection.id,
+                'name': collection.name,
+                'parent': collection.parent.id if collection.parent else None,
+                'path': collection.get_path(),
+                'document_count': len(collection.documents),
+                'children_count': collection.children.count(),
+                'permission': 'MANAGE'
+            })
+
+    # For GET requests, get all collections where the user has any permission
+    colperms = CollectionPermission.objects.filter(user=request.user)
+    collections = []
+    for colperm in colperms:
+        collections.append({
+            'id': colperm.collection.id,
+            'name': colperm.collection.name,
+            'parent': colperm.collection.parent.id if colperm.collection.parent else None,
+            'path': colperm.collection.get_path(),
+            'document_count': len(colperm.collection.documents),
+            'children_count': colperm.collection.children.count(),
+            'permission': colperm.permission
+        })
+    return JsonResponse({"collections": collections})
+
+
+@require_http_methods(["POST"])
+@login_required
+def move_collection(request, collection_id):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    new_parent_id = data.get("new_parent_id")  # Can be None
+
+    try:
+        collection = Collection.objects.get(id=collection_id)
+    except Collection.DoesNotExist:
+        return JsonResponse({"error": "Collection not found"}, status=404)
+
+    # Check that the user has permission to manage (move) this collection.
+    if not collection.user_can_manage(request.user):
+        return JsonResponse({"error": "You do not have permission to move this collection"}, status=403)
+
+    # If a new parent is provided, fetch it.
+    new_parent = None
+    if new_parent_id:
+        try:
+            new_parent = Collection.objects.get(id=new_parent_id)
+        except Collection.DoesNotExist:
+            return JsonResponse({"error": "Target parent collection not found"}, status=404)
+
+    try:
+        collection.move_to(new_parent=new_parent)
+    except ValidationError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({
+        "message": "Collection moved successfully",
+        "collection": {
+            "id": collection.id,
+            "name": collection.name,
+            "parent": collection.parent.id if collection.parent else None,
+            "path": collection.get_path(),
+        }
+    })
+
+def get_document_by_id(doc_id):
+    for model in DESCENDED_FROM_DOCUMENT:
+        try:
+            return model.objects.get(id=doc_id)
+        except model.DoesNotExist:
+            continue
+    raise ObjectDoesNotExist("Document not found")
+
+
+@require_http_methods(["POST"])
+@login_required
+def move_document(request, doc_id):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    new_collection_id = data.get("new_collection_id")
+    if new_collection_id is None:
+        return JsonResponse({"error": "new_collection_id is required"}, status=400)
+
+    try:
+        document = get_document_by_id(doc_id)
+    except ObjectDoesNotExist:
+        return JsonResponse({"error": "Document not found"}, status=404)
+
+    try:
+        new_collection = Collection.objects.get(id=new_collection_id)
+    except Collection.DoesNotExist:
+        return JsonResponse({"error": "Target collection not found"}, status=404)
+
+    try:
+        # Call the move_to method on the document
+        document.move_to(new_collection)
+    except ValidationError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({
+        "message": "Document moved successfully",
+        "document": {
+            "id": str(document.id),
+            "title": document.title,
+            "collection": new_collection.id,
+        }
+    })
+
+@require_http_methods(['POST', 'GET'])
+@login_required
+def collection_permissions(request, col_id):
+    collection = get_object_or_404(Collection, pk=col_id)
+    
+    if request.method == 'GET':
+        if not collection.user_can_manage(request.user):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        viewers = CollectionPermission.objects.filter(collection=collection, permission='VIEW').values('user__id', 'user__username', 'user__email')
+        editors = CollectionPermission.objects.filter(collection=collection, permission='EDIT').values('user__id', 'user__username', 'user__email')
+        admins = CollectionPermission.objects.filter(collection=collection, permission='MANAGE').values('user__id', 'user__username', 'user__email')
+        
+        return JsonResponse({
+            'viewers': list(viewers),
+            'editors': list(editors),
+            'admins': list(admins),
+        })
+
+    if not collection.user_can_manage(request.user):
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        with transaction.atomic():
+            # Remove all existing permissions except the owner's
+            CollectionPermission.objects.filter(collection=collection).exclude(user=request.user).delete()
+
+            # Add new permissions
+            for viewer in data.get('viewers', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=viewer),
+                    permission='VIEW'
+                )
+            for editor in data.get('editors', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=editor),
+                    permission='EDIT'
+                )
+            for admin in data.get('admins', []):
+                CollectionPermission.objects.create(
+                    collection=collection,
+                    user=get_user_model().objects.get(id=admin),
+                    permission='MANAGE'
+                )
+
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@login_required
+@require_http_methods(['GET'])
+def collection(request, col_id):
+    try:
+        collection = get_object_or_404(Collection, pk=col_id)
+        if not collection.user_can_view(request.user):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        # Get documents from all document types
+        documents = []
+        for model in DESCENDED_FROM_DOCUMENT:
+            docs = model.objects.filter(collection=collection)
+            for doc in docs:
+                documents.append({
+                    'id': str(doc.id),
+                    'title': getattr(doc, 'title', None) or getattr(doc, 'name', 'Untitled'),
+                    'type': doc.__class__.__name__,
+                    'created_at': doc.created_at.isoformat() if hasattr(doc, 'created_at') and doc.created_at else None,
+                })
+
+        # Get child collections
+        children = [{
+            'id': child.id,
+            'name': child.name,
+            'document_count': len([doc for doc in child.documents]) if hasattr(child, 'documents') else 0,
+            'created_at': child.created_at.isoformat() if hasattr(child, 'created_at') and child.created_at else None,
+        } for child in collection.children.all()]
+
+        response_data = {
+            'collection': {
+                'id': collection.id,
+                'name': collection.name,
+                'path': collection.get_path(),
+                'parent': collection.parent.id if collection.parent else None,
+                'created_at': collection.created_at.isoformat() if hasattr(collection, 'created_at') and collection.created_at else None,
+                'updated_at': collection.updated_at.isoformat() if hasattr(collection, 'updated_at') and collection.updated_at else None,
+            },
+            'documents': documents,
+            'children': children,
+            'can_edit': collection.user_can_edit(request.user),
+            'can_manage': collection.user_can_manage(request.user),
+        }
+        return JsonResponse(response_data)
+    except Exception as e:
+        logger.error(f"Error processing collection data: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(['GET'])
+def ingestion_monitor(request):
+    in_progress = PDFDocument.objects.filter(ingestion_complete=False, ingested_by=request.user)
+    protocol = 'wss://' if request.is_secure() else 'ws://'
+    host = request.get_host()
+    return JsonResponse([{"documentName": doc.title,
+                          "documentId": doc.id,
+                          "websocketUrl": protocol + host + "/ingest/monitor/" + doc.id + "/"}
+                          for doc in in_progress])
+
+@require_http_methods(['GET'])
+@login_required
+def search_users(request):
+    query = request.GET.get('query', '').strip()
+    exclude_current = request.GET.get('exclude_current', 'false').lower() == 'true'
+    
+    if not query:
+        return JsonResponse({'users': []})
+
+    User = get_user_model()
+    users = User.objects.filter(
+        Q(username__icontains=query) | Q(email__icontains=query) | Q(full_name__icontains=query)
+    )
+
+    if exclude_current:
+        users = users.exclude(id=request.user.id)
+
+    user_list = list(users.values('id', 'username', 'email', 'full_name'))
+    return JsonResponse({'users': user_list})
+
+@login_required
+@require_http_methods(['GET'])
+def whitelisted_emails(request):
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    return JsonResponse({'whitelisted': list(EmailWhitelist.objects.all().values_list('email', flat=True))})
+
+@login_required
+@require_http_methods(['POST', 'DELETE'])
+def whitelisted_email(request, email):
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    try:
+        validate_email(email)
+        if request.method == 'POST':
+            EmailWhitelist.objects.get_or_create(email=email)
+            return JsonResponse({'status': 'success'})
+        if request.method == 'DELETE':
+            EmailWhitelist.objects.filter(email=email).delete()
+            return JsonResponse({'status': 'success'})
+    except ValidationError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    # unreachable, just keeping the type checker happy
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+urlpatterns = [
+    path("collections/", collections, name="api_collections"),
+    path("collection/<int:col_id>/", collection, name="api_collection"),
+    path("collections/permissions/<int:col_id>/", collection_permissions, name="api_collection_permissions"),
+    path("collections/move/<int:collection_id>/", move_collection, name="api_move_collection"),
+    path("collections/delete/<int:collection_id>/", delete_collection, name="api_delete_collection"),
+    path("ingest_arxiv/", ingest_arxiv, name="api_ingest_arxiv"),
+    path("ingest_pdf/", ingest_pdf, name="api_ingest_pdf"),
+    path("ingestion/monitor/", ingestion_monitor, name="api_ingestion_monitor"),
+    path("documents/move/<uuid:doc_id>/", move_document, name="api_move_document"),
+    path("documents/delete/<uuid:doc_id>/", delete_document, name="api_delete_document"),
+    path("users/search/", search_users, name="api_search_users"),
+    path("whitelisted_email/<str:email>/", whitelisted_email, name="api_whitelist_email"),
+    path("whitelisted_emails/", whitelisted_emails, name="api_whitelist_emails"),
+]

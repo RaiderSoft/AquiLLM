@@ -85,7 +85,9 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "aquillm.context_processors.nav_links",
-                'aquillm.context_processors.user_conversations'
+                'aquillm.context_processors.user_conversations',
+                "aquillm.context_processors.api_urls",
+                "aquillm.context_processors.page_urls",
             ],
         },
     },
