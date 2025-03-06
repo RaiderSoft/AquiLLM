@@ -36,3 +36,4 @@ pdf2image
 #chunking experiments
 google-genai
 chardet
+tiktoken

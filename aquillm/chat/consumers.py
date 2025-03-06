@@ -18,7 +18,7 @@ from aquillm.settings import DEBUG
 
 from aquillm.models import TextChunk, Collection, CollectionPermission, WSConversation, Document, DocumentChild
 
-
+from anthropic._exceptions import OverloadedError
 
 
 # necessary so that when collections are set inside the consumer, it changes inside the vector_search closure as well. 
@@ -190,11 +190,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.convo.rebind_tools(self.tools)
             await self.llm_if.spin(self.convo, max_func_calls=5, max_tokens=2048, send_func=send_func)
             return 
+        except OverloadedError as e:
+            self.dead = True
+            await self.send('{"exception": "LLM provider is currently overloaded. Try again later."}')
+            return
         except Exception as e:
             if DEBUG:
                 raise e
             else:
+                
                 await self.send(text_data='{"exception": "A server error has occurred. Try reloading the page"}')
+                
                 return
 
 

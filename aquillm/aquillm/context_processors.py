@@ -7,9 +7,7 @@ def nav_links(request):
             {"url": "user_ws_convos", "text": "Old Conversations"},
             {"url": "search", "text": "Search"},
             {"url": "user_collections", "text": "Collections"},
-            {"url": "insert_arxiv", "text": "Ingest from arXiv"},
-            {"url": "ingest_pdf", "text": "Ingest PDF"},
-            {"url": "ingest_vtt", "text": "Ingest Transcript"}
+
         ]
     }
 resolver=get_resolver()

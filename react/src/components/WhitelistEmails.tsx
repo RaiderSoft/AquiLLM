@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import formatUrl from '../utils/formatUrl';
 import { getCsrfCookie } from '../main';
-interface EmailEntry {
-  email: string;
-}
 
 const WhitelistEmails: React.FC = () => {
-  const [emails, setEmails] = useState<EmailEntry[]>([]);
+  const [emails, setEmails] = useState<string[]>([]);
   const [newEmail, setNewEmail] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [inputError, setInputError] = useState<string | null>(null);
 
   // Fetch emails on component mount
   useEffect(() => {
@@ -21,7 +19,7 @@ const WhitelistEmails: React.FC = () => {
         if (!response.ok) {
           throw new Error('Failed to fetch emails');
         }
-        const data: EmailEntry[] = (await response.json()).whitelisted;
+        const data: string[] = (await response.json()).whitelisted;
         setEmails(data);
       } catch (err) {
         console.error(err);
@@ -34,9 +32,29 @@ const WhitelistEmails: React.FC = () => {
     fetchEmails();
   }, []);
 
+  // Reset input error when newEmail changes
+  useEffect(() => {
+    setInputError(null);
+  }, [newEmail]);
+
+  // Validate email format
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   // Add a new email
   const handleAddEmail = async () => {
     const trimmedEmail = newEmail.trim();
+    if (!isValidEmail(trimmedEmail)) {
+      setInputError('Invalid email address');
+      return;
+    }
+    if (emails.includes(trimmedEmail)) {
+      setInputError('Email already whitelisted');
+      return;
+    }
+    setInputError(null);
     if (trimmedEmail) {
       try {
         setLoading(true);
@@ -50,7 +68,7 @@ const WhitelistEmails: React.FC = () => {
         if (!response.ok) {
           throw new Error('Failed to add email');
         }
-        setEmails(prev => [...prev, { email: trimmedEmail }]);
+        setEmails(prev => [...prev, trimmedEmail]);
         setNewEmail('');
       } catch (err) {
         console.error(err);
@@ -74,7 +92,7 @@ const WhitelistEmails: React.FC = () => {
       if (!response.ok) {
         throw new Error('Failed to delete email');
       }
-      setEmails(prev => prev.filter(e => e.email !== email));
+      setEmails(prev => prev.filter(e => e !== email));
     } catch (err) {
       console.error(err);
       setError('Error deleting email');
@@ -95,16 +113,16 @@ const WhitelistEmails: React.FC = () => {
       {error && <div className="text-red-500 mb-4">{error}</div>}
       {loading && <div>Loading...</div>}
       <ul className="list-none p-0">
-        {emails.map(entry => (
+        {emails.map(email => (
           <li
-            key={entry.email}
+            key={email}
             className="flex items-center py-2 border-b border-gray-300"
           >
-            <span className="flex-grow">{entry.email}</span>
+            <span className="flex-grow">{email}</span>
             <button
-              onClick={() => handleDelete(entry.email)}
+              onClick={() => handleDelete(email)}
               className="bg-gray-shade_3 border-none cursor-pointer p-0"
-              aria-label={`Delete ${entry.email}`}
+              aria-label={`Delete ${email}`}
             >
               <Trash2 size={18} />
             </button>
@@ -123,10 +141,12 @@ const WhitelistEmails: React.FC = () => {
         <button
           onClick={handleAddEmail}
           className="ml-2 p-2 text-base cursor-pointer border border-gray-300 rounded bg-gray-shade_3"
+          disabled={!newEmail.trim() || inputError !== null}
         >
           Add
         </button>
       </div>
+      {inputError && <div className="text-red-500 mt-2">{inputError}</div>}
     </div>
   );
 };

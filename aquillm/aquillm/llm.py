@@ -6,9 +6,9 @@ from functools import wraps, partial
 from abc import ABC, abstractmethod
 from pprint import pformat
 from copy import copy
-
 from concurrent.futures import ThreadPoolExecutor
 
+from anthropic._exceptions import OverloadedError
 from aquillm.settings import DEBUG
 from django.apps import apps
 
@@ -16,6 +16,8 @@ from asgiref.sync import sync_to_async
 
 from django.core import signing
 from json import loads
+
+from tiktoken import encoding_for_model
 
 import uuid
 if DEBUG:
@@ -378,7 +380,7 @@ class LLMInterface(ABC):
 
 class ClaudeInterface(LLMInterface):
     
-    base_args: dict = {'model': 'claude-3-5-sonnet-20240620'}
+    base_args: dict = {'model': 'claude-3-7-sonnet-latest'}
 
     @override
     def __init__(self, anthropic_client):
@@ -420,6 +422,8 @@ class ClaudeInterface(LLMInterface):
                                                          {'system': conversation.system,
                                                           'messages': [message.render(include={'role', 'content'}) for message in messages_for_bot + ([new_user_message] if new_user_message else [])]}))
         return response.input_tokens
+
+gpt_enc = encoding_for_model('gpt-4o')
 
 class OpenAIInterface(LLMInterface):
 
@@ -467,7 +471,14 @@ class OpenAIInterface(LLMInterface):
                            output_usage=response.usage.completion_tokens
                            )
                         
-
+    @override 
+    async def token_count(self, conversation: Conversation, new_message: Optional[str] = None) -> int:
+        assistant_messages = [message for message in conversation if isinstance(message, AssistantMessage)]
+        if assistant_messages:
+            return assistant_messages[-1].usage + (len(gpt_enc.encode(new_message)) if new_message else 0)
+        return len(gpt_enc.encode(new_message)) if new_message else 0
+    
+    
 class GeminiInterface(LLMInterface):
     
     @override
