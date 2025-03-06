@@ -18,6 +18,8 @@ const CollectionsPage: React.FC = () => {
   const [folderToMove, setFolderToMove] = useState<Folder | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [selectedCollection, setSelectedCollection] = useState<Folder | null>(null);
+
   const apiUrl = window.apiUrls.api_collections;
   const detailUrlBase = window.pageUrls.collection
   // Fetch collections on mount using the provided API URL
@@ -299,7 +301,7 @@ const CollectionsPage: React.FC = () => {
                 className='bg-gray-shade_3 hover:bg-opacity-100 rounded-lg p-4 cursor-pointer transition duration-200 relative font-sans'
                 onClick={() => {
                   if (detailUrlBase) {
-                    window.location.href = `${detailUrlBase}/${folder.id}/`;
+                    window.location.href = formatUrl(detailUrlBase, { col_id: folder.id });
                   }
                 }}
               >

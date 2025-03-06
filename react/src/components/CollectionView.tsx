@@ -174,7 +174,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
   const handleDelete = () => {
     if (window.confirm(`Are you sure you want to delete "${collection?.name}"?`)) {
-      fetch(`/api/collections/delete/${collection?.id}/`, {
+      fetch(formatUrl(window.apiUrls.api_delete_collection, { collection_id: collection?.id }), {
         method: 'DELETE',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
@@ -197,8 +197,8 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
     if (window.confirm(`Are you sure you want to remove "${item.name}"?`)) {
       // Different endpoints for collections vs documents
       const endpoint = item.type === 'collection' 
-        ? `/api/collections/delete/${item.id}/` 
-        : `/api/documents/delete/${item.id}/`;
+        ? formatUrl(window.apiUrls.api_delete_collection, { collection_id: item.id })
+        : formatUrl(window.apiUrls.api_delete_document, { doc_id: item.id });
       
       fetch(endpoint, {
         method: 'DELETE',
@@ -303,7 +303,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
     // Move collections
     collections.forEach(collection => {
-      fetch(`/collection/move/${collection.id}/`, {
+      fetch(formatUrl(window.apiUrls.api_move_collection, { collection_id: collection.id }), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -327,7 +327,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
     // Move documents
     documents.forEach(document => {
-      fetch(`/document/move/${document.id}/`, {
+      fetch(formatUrl(window.apiUrls.api_move_document, { doc_id: document.id }), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -385,8 +385,8 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
     items.forEach(item => {
       // Using a modified version of handleRemoveItem that tracks completion
       const url = item.type === 'collection' 
-        ? `/api/collections/delete/${item.id}/` 
-        : `/api/documents/delete/${item.id}/`;
+        ? formatUrl(window.apiUrls.api_delete_collection, { collection_id: item.id })
+        : formatUrl(window.apiUrls.api_delete_document, { doc_id: item.id });
       
       fetch(url, {
         method: 'DELETE',
@@ -550,7 +550,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
                 
                 {crumb.id !== null ? (
                   <a 
-                    href={`/collection/${crumb.id}/`}
+                    href={formatUrl(window.pageUrls.collection, {col_id: crumb.id})}
                     className={`ml-1 text-sm ${index === breadcrumbs.length - 1 
                       ? 'text-blue-500 font-medium' 
                       : 'text-gray-shade_b hover:text-blue-400'}`}
@@ -559,7 +559,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
                   </a>
                 ) : (
                   <a 
-                    href="/user_collections/"
+                    href={window.pageUrls.user_collections}
                     className="ml-1 text-sm text-gray-shade_b hover:text-blue-400"
                   >
                     {crumb.name}
