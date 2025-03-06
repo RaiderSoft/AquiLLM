@@ -154,6 +154,7 @@ class HandwrittenNotesForm(forms.Form):
     # Basic document metadata
     title = forms.CharField(
         label="Handwritten Notes Title",
+        help_text="Give your notes a descriptive title"
     )
     
     # The image file containing handwritten notes
@@ -194,6 +195,6 @@ class HandwrittenNotesForm(forms.Form):
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,
             widget=forms.RadioSelect(attrs=collections_attrs),
-            queryset=Collection.objects.none(),  # this is weird but necessary
+            queryset=Collection.objects.none(),  # Will be set by the field's __init__
             required=True,
         )

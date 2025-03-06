@@ -56,7 +56,7 @@ def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any
         # 3. Format the response in a structured way
         prompt = (
             "This image contains handwritten notes with mathematical content. "
-            "First, extract the text content. Then, convert it to proper LaTeX format. "
+            "First, extract all the text content. Then, convert it to proper LaTeX format. "
             "Pay special attention to mathematical expressions, equations, and symbols. "
             "For mathematical expressions, use dollar signs like $y = mx + b$ for inline math. "
             "Return both versions in this format:\n\n"

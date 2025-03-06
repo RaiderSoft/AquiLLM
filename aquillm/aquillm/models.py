@@ -308,14 +308,16 @@ class HandwrittenNotesDocument(Document):
     )
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
     
+    # Runtime variables - not stored in database
     convert_to_latex = False  # Flag to request LaTeX conversion 
     
     def __init__(self, *args, **kwargs):
+        # Extract special flags from kwargs before sending to parent class
         
         # Flag to enable LaTeX conversion of mathematical expressions
         self.convert_to_latex = kwargs.pop('convert_to_latex', False) if 'convert_to_latex' in kwargs else False
         
-        # Flag to bypass automatic text extraction during save 
+        # Flag to bypass automatic text extraction during save (useful for two-phase save process)
         self.bypass_extraction = kwargs.pop('bypass_extraction', False) if 'bypass_extraction' in kwargs else False
         
         super().__init__(*args, **kwargs)
@@ -347,32 +349,11 @@ class HandwrittenNotesDocument(Document):
             # Verify file exists in storage before attempting to open it
             if not default_storage.exists(self.image_file.name):
                 raise FileNotFoundError(f"File does not exist: {self.image_file.name}")
-            
-            # Log that we've confirmed the file exists
-            logger.info(f"Confirmed file exists at: {self.image_file.name}")
                 
-            # Important: For each retry, we need to reopen the file as the file pointer
-            # gets consumed during each API call attempt
-            result = None
-            max_retries = 3
-            retry_count = 0
+            # Open the image file and extract text (with optional LaTeX conversion)
+            with default_storage.open(self.image_file.name, 'rb') as image_file:
+                result = extract_text_from_image(image_file, convert_to_latex=self.convert_to_latex)
             
-            while retry_count < max_retries:
-                try:
-                    # Open the image file and extract text (with optional LaTeX conversion)
-                    with default_storage.open(self.image_file.name, 'rb') as image_file:
-                        result = extract_text_from_image(image_file, convert_to_latex=self.convert_to_latex)
-                    # If successful, break out of the retry loop
-                    break
-                except Exception as retry_error:
-                    retry_count += 1
-                    logger.warning(f"Attempt {retry_count}/{max_retries} failed: {str(retry_error)}")
-                    if retry_count >= max_retries:
-                        raise
-            
-            if not result:
-                raise ValueError("Failed to extract text after multiple attempts")
-                
             # Store the extracted plain text
             self.full_text = result.get('extracted_text', '')
             
@@ -386,7 +367,7 @@ class HandwrittenNotesDocument(Document):
         except Exception as e:
             # Set a default text if extraction fails
             self.full_text = f"Image text extraction failed. Please try again."
-            logger.error(f"Error during text extraction: {e}")
+            logger.error(f"Error extracting text from image: {e}")
             raise
             
     @property

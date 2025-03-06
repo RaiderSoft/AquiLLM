@@ -436,6 +436,8 @@ def ingest_handwritten_notes(request):
     3. Create a document record with the image file
     4. Extract text from the image (with optional LaTeX conversion)
     5. Save the extracted text to the document
+    
+    Includes robust error handling at each step to ensure reliability.
     """
     status_message = None
     if request.method == 'POST':
@@ -480,9 +482,11 @@ def ingest_handwritten_notes(request):
                 )
                 
                 # Disable automatic text extraction during save for better control
+                # We'll extract text manually after confirming file exists
                 document.bypass_extraction = True
                 document.save()
-                
+            
+
                 # Double-check the file exists in storage before trying to read it
                 if default_storage.exists(document.image_file.name):
                     logger.info(f"Confirmed file exists at: {document.image_file.name}")
@@ -528,6 +532,77 @@ def ingest_handwritten_notes(request):
 def success(request):
     return render(request, 'aquillm/success.html')
 
+'''
+def ingest_handwritten_notes(request):
+    # Initialize Claude using the API key from the .env file
+    client = anthropic.Anthropic(
+    # defaults to os.environ.get("ANTHROPIC_API_KEY")
+    api_key="ANTHROPIC_API_KEY",
+)
+
+
+    
+
+    status_message = None
+    if request.method == 'POST':
+        form = HandwrittenNotesForm(request.POST, request.FILES)
+        if form.is_valid():
+            image_file = form.cleaned_data['image_file']
+            title = form.cleaned_data['title'].strip()
+            collection = form.cleaned_data['collection']
+
+            try:
+                with open(image_file.path, 'rb') as img:
+                    image_data = base64.standard_b64encode(img.read()).decode('utf-8')
+                
+                message = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1024,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": "image/png",
+                                        "data": image_data,
+                                    },
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "Extract the handwritten text from this image."
+                                }
+                            ],
+                        }
+                    ],
+                )
+                handwritten_text = message['content'][0]['text']
+
+                # Save the extracted handwritten text
+                HandwrittenNotesDocument(
+                    title=title,
+                    image_file=image_file,
+                    full_text=handwritten_text,
+                    collection=collection,
+                    ingested_by=request.user
+                ).save()
+                status_message = 'Success'
+            except Exception as e:
+                status_message = f'Error extracting handwritten text: {e}'
+        else:
+            status_message = 'Invalid Form Input'
+    else:
+        form = HandwrittenNotesForm(request.user)
+
+    context = {
+        'status_message': status_message,
+        'form': form
+    }
+
+    return render(request, 'aquillm/ingest_handwritten_notes.html', context)
+'''
 
 
 @require_http_methods(['DELETE'])
