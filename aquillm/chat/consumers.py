@@ -12,8 +12,8 @@ from django.apps import apps
 
 from pydantic import ValidationError
 from pydantic_core import to_jsonable_python
-from aquillm import llm
-from aquillm.llm import UserMessage, Conversation, LLMTool, test_function, ToolChoice, llm_tool, ToolResultDict
+import aquillm.llm
+from aquillm.llm import UserMessage, Conversation, LLMTool, LLMInterface, test_function, ToolChoice, llm_tool, ToolResultDict
 from aquillm.settings import DEBUG
 
 from aquillm.models import TextChunk, Collection, CollectionPermission, WSConversation, Document, DocumentChild
@@ -60,7 +60,7 @@ def get_document_ids_func(user: User, col_ref: CollectionsRef) -> LLMTool:
     )
     def document_ids() -> ToolResultDict:
         """
-        Get the names and IDs of all documents in the selected collections. When a user asks to see a document in full, use this to get its ID.
+        Get the names and IDs of all documents in the selected collections. When a user asks to see a document in full, or to search a single document, use this to get its ID.
         """
         docs = Collection.get_user_accessible_documents(user, Collection.objects.filter(id__in=col_ref.collections))
         if not docs:
@@ -91,6 +91,31 @@ def get_whole_document_func(user: User, chat_ref: ChatRef) -> LLMTool:
     
     return whole_document
 
+def get_search_single_document_func(user: User) -> LLMTool:
+    @llm_tool(
+        for_whom='assistant',
+        required=['doc_id', 'query'],
+        param_descs={'doc_id': 'UUID (as a string) of the document to search.',
+                     'search_string': 'String to search the contents of the document by.',
+                     'top_k': 'Number of search results to return.'}
+    )
+    def search_single_document(doc_id: str, search_string: str, top_k: int) -> ToolResultDict:
+        """
+        Use vector search to search the text of a single document.
+        """
+        doc_uuid = UUID(doc_id)
+        doc = Document.get_by_id(doc_uuid)
+        if doc is None:
+            return {"exception": f"Document {doc_id} does not exist!"}
+        if not doc.collection.user_can_view(user):
+            return {"exception": f"User cannot access document {doc_id}!"}
+        _,_,results = TextChunk.text_chunk_search(search_string, top_k, [doc])
+        ret = {"result": {f"[Result {i+1}] -- {chunk.document.title} chunk #: {chunk.chunk_number} chunk_id:{chunk.id}": chunk.content for i, chunk in enumerate(results)}}
+        return ret
+    
+    return search_single_document
+    
+    return search_single_document
 def get_more_context_func(user: User) -> LLMTool:
     @llm_tool(
             for_whom='assistant',
@@ -124,9 +149,8 @@ def get_more_context_func(user: User) -> LLMTool:
 
 
 
-
 class ChatConsumer(AsyncWebsocketConsumer):
-    llm_if: llm.LLMInterface = apps.get_app_config('aquillm').llm_interface
+    llm_if: LLMInterface = apps.get_app_config('aquillm').llm_interface
     db_convo: Optional[WSConversation] = None
     convo: Optional[Conversation] = None
     tools: list[LLMTool] = []
@@ -177,7 +201,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                       get_vector_search_func(self.user, self.col_ref),
                       get_more_context_func(self.user),
                       get_document_ids_func(self.user, self.col_ref),
-                      get_whole_document_func(self.user, ChatRef(self))]
+                      get_whole_document_func(self.user, ChatRef(self)),
+                      get_search_single_document_func(self.user)]
         convo_id = self.scope['url_route']['kwargs']['convo_id']
         self.db_convo = await self.__get_convo(convo_id, self.user)
         if self.db_convo is None:
