@@ -37,7 +37,8 @@ celery[redis]
 #groq
 #instructor
 
-Pillow
+pillow
 
 google-generativeai
 dotenv
+pytesseract

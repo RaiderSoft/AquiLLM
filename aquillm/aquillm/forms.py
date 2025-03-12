@@ -141,7 +141,13 @@ class VTTDocumentForm(forms.Form):
 
 class HandwrittenNotesForm(forms.ModelForm):
     title = forms.CharField(label="Handwritten Notes Title")
-    image_file = forms.ImageField(label=".png Handwritten Notes File")
+    image_file = forms.ImageField(label="Image File")
+    
+    # Optional LaTeX conversion checkbox
+    convert_to_latex = forms.BooleanField(
+        label="Convert to LaTeX",
+        required=False
+    )
 
     class Meta:
         model = HandwrittenNotesDocument
@@ -152,9 +158,10 @@ class HandwrittenNotesForm(forms.ModelForm):
         collections_attrs = {
            'class': 'rounded-md bg-lightest-primary',
         }
+        
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,
             widget=forms.RadioSelect(attrs=collections_attrs),
-            queryset=Collection.objects.none(), # this is weird but necessary
+            queryset=Collection.objects.none(),  # this is weird but necessary
             required=True,
         )

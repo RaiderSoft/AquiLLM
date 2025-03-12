@@ -32,10 +32,12 @@ import json
 import anthropic
 import os
 import base64
+import hashlib
+import uuid
 
 from .forms import HandwrittenNotesForm
 from .models import HandwrittenNotesDocument
-from .ocr_utils import extract_text_from_image
+from .ocr_utils import extract_text_from_image, get_gemini_cost_stats
 
 logger = logging.getLogger(__name__)
 
@@ -421,101 +423,104 @@ def ingest_vtt(request):
 @require_http_methods(['GET', 'POST'])
 @login_required
 def ingest_handwritten_notes(request):
+    """
+    View for handling the upload and processing of handwritten notes.
+    
+    This view performs the following:
+    1. Handles the form submission for handwritten notes
+    2. Validates and processes the uploaded image
+    3. Creates a HandwrittenNotesDocument with the extracted text
+    4. Handles LaTeX conversion if requested
+    """
+    status_message = None
     if request.method == 'POST':
         form = HandwrittenNotesForm(request.user, request.POST, request.FILES)
         if form.is_valid():
-            handwritten_notes = form.save()
-            # Save the uploaded file to a temporary location
-            temp_image_path = os.path.join(settings.BASE_DIR, 'tmp', handwritten_notes.image_file.name)
-            os.makedirs(os.path.dirname(temp_image_path), exist_ok=True)
-            with open(temp_image_path, "wb") as temp_image_file:
-                for chunk in handwritten_notes.image_file.chunks():
-                    temp_image_file.write(chunk)
-            # Extract text from the image
-            with open(temp_image_path, "rb") as image_file:
-                extracted_text = extract_text_from_image(image_file)
-            # Do something with the extracted text (e.g., save to database, display to user)
-            # ...
-            return redirect('success')
+            image_file = form.cleaned_data['image_file']
+            title = form.cleaned_data['title'].strip()
+            collection = form.cleaned_data['collection']
+            convert_to_latex = form.cleaned_data.get('convert_to_latex', False)
+
+            # Process the image file and create document
+            try:
+                # Verify the image file is valid
+                if not image_file or not hasattr(image_file, 'size') or image_file.size == 0:
+                    raise ValueError("Invalid or empty image file")
+                
+                logger.info(f"Processing file: {image_file.name}, size: {image_file.size} bytes, LaTeX: {convert_to_latex}")
+                
+                # Read the file content directly
+                image_file.seek(0)
+                file_content = image_file.read()
+                
+                # Create a temporary file for processing
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                    temp_file.write(file_content)
+                    temp_path = temp_file.name
+                
+                try:
+                    # Extract text using our improved OCR function
+                    logger.info(f"Extracting text from: {temp_path}")
+                    result = extract_text_from_image(temp_path, convert_to_latex=convert_to_latex)
+                    
+                    # Get the extracted text
+                    extracted_text = result.get('extracted_text', '')
+                    if not extracted_text:
+                        logger.warning("No text extracted from image")
+                        extracted_text = "No text could be extracted from this image."
+                    
+                    # Handle LaTeX if needed
+                    if convert_to_latex and 'latex_text' in result:
+                        latex_text = result.get('latex_text', '')
+                        if latex_text and latex_text != "NO MATH CONTENT":
+                            extracted_text += "\n\n==== LATEX VERSION ====\n\n" + latex_text
+                    
+                    # Reset file pointer for saving to database
+                    image_file.seek(0)
+                    
+                    # Create a document with the extracted text
+                    document = HandwrittenNotesDocument(
+                        title=title,
+                        image_file=image_file,
+                        collection=collection,
+                        ingested_by=request.user,
+                        full_text=extracted_text,
+                        bypass_extraction=True  # Skip extraction since we already did it
+                    )
+                    
+                    # Compute hash and save
+                    document.full_text_hash = hashlib.sha256(extracted_text.encode('utf-8')).hexdigest()
+                    document.save()
+                    
+                    status_message = 'Success'
+                    
+                finally:
+                    # Clean up temporary file
+                    try:
+                        os.unlink(temp_path)
+                    except Exception as cleanup_err:
+                        logger.warning(f"Failed to delete temporary file: {str(cleanup_err)}")
+                        
+            except Exception as e:
+                logger.error(f"Error processing handwritten notes: {str(e)}", exc_info=True)
+                status_message = f'Error: {str(e)}'
+        else:
+            status_message = 'Invalid Form Input'
     else:
         form = HandwrittenNotesForm(request.user)
-    return render(request, 'aquillm/ingest_handwritten_notes.html', {'form': form})
+    
+    context = {
+        'form': form,
+        'status_message': status_message
+    }
+    
+    return render(request, 'aquillm/ingest_handwritten_notes.html', context)
 
 
 def success(request):
     return render(request, 'aquillm/success.html')
 
-'''
-def ingest_handwritten_notes(request):
-    # Initialize Claude using the API key from the .env file
-    client = anthropic.Anthropic(
-    # defaults to os.environ.get("ANTHROPIC_API_KEY")
-    api_key="ANTHROPIC_API_KEY",
-)
-
-
-    
-
-    status_message = None
-    if request.method == 'POST':
-        form = HandwrittenNotesForm(request.POST, request.FILES)
-        if form.is_valid():
-            image_file = form.cleaned_data['image_file']
-            title = form.cleaned_data['title'].strip()
-            collection = form.cleaned_data['collection']
-
-            try:
-                with open(image_file.path, 'rb') as img:
-                    image_data = base64.standard_b64encode(img.read()).decode('utf-8')
-                
-                message = client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=1024,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": "image/png",
-                                        "data": image_data,
-                                    },
-                                },
-                                {
-                                    "type": "text",
-                                    "text": "Extract the handwritten text from this image."
-                                }
-                            ],
-                        }
-                    ],
-                )
-                handwritten_text = message['content'][0]['text']
-
-                # Save the extracted handwritten text
-                HandwrittenNotesDocument(
-                    title=title,
-                    image_file=image_file,
-                    full_text=handwritten_text,
-                    collection=collection,
-                    ingested_by=request.user
-                ).save()
-                status_message = 'Success'
-            except Exception as e:
-                status_message = f'Error extracting handwritten text: {e}'
-        else:
-            status_message = 'Invalid Form Input'
-    else:
-        form = HandwrittenNotesForm(request.user)
-
-    context = {
-        'status_message': status_message,
-        'form': form
-    }
-
-    return render(request, 'aquillm/ingest_handwritten_notes.html', context)
-'''
 
 
 @require_http_methods(['DELETE'])
@@ -569,3 +574,10 @@ if DEBUG:
 @require_http_methods(['GET'])
 def pdf_ingestion_monitor(request, doc_id):
     return render(request, 'aquillm/pdf_ingestion_monitor.html', {'doc_id': doc_id})
+
+@login_required
+@require_http_methods(['GET'])
+def gemini_cost_monitor(request):
+    """View to display the current Gemini API cost statistics"""
+    stats = get_gemini_cost_stats()
+    return render(request, 'aquillm/gemini_cost_monitor.html', {'stats': stats})

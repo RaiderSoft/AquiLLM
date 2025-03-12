@@ -13,6 +13,8 @@
 
     <link rel="stylesheet" href="https://lalten.github.io/lmweb/style/latinmodern-mono.css" type="text/css" charset="utf-8" />
     <link rel="stylesheet" href="{% static 'index.css' %}" type="text/css" charset="utf-8" />
+    
+    {% block head %}{% endblock %}
 </head>
 <body class="h-full overflow-hidden bg-lightest-primary font-serif">
     <div class="flex h-full" id="wrapper">

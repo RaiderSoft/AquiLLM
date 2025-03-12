@@ -162,8 +162,13 @@ class Document(models.Model):
         return TextChunk.objects.filter(doc_id=self.id)
 
     def save(self, *args, **kwargs):
-        if len(self.full_text) < 100:
+        # Check if this model allows bypassing the minimum text length requirement
+        # This is needed for models like HandwrittenNotesDocument that might have shorter content
+        bypass_min_length = getattr(self, 'bypass_min_length', False)
+        
+        if not bypass_min_length and len(self.full_text) < 100:
             raise ValidationError("The full text of a document must be at least 100 characters long.")
+            
         self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
       
         with transaction.atomic():
@@ -287,16 +292,107 @@ def validate_pdf_extension(value):
 
 #Currently Working On
 class HandwrittenNotesDocument(Document):
-    image_file = models.ImageField(upload_to='handwritten_notes/', validators=[FileExtensionValidator(['png', 'jpg', 'jpeg'])])
+    image_file = models.ImageField(
+        upload_to='handwritten_notes/', 
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg'])],
+        help_text="Upload an image of handwritten notes"
+    )
     
-    def save(self, *args, **kwargs):
-        self.extract_text()
-        super().save(*args, **kwargs)
+    convert_to_latex = False  
+    bypass_extraction = False  
+    bypass_min_length = True 
+    
+    class Meta:
+        verbose_name = "Handwritten Notes Document"
+        verbose_name_plural = "Handwritten Notes Documents"
+    
+    def __init__(self, *args, **kwargs):
         
+        self.convert_to_latex = kwargs.pop('convert_to_latex', False) if 'convert_to_latex' in kwargs else False
+
+        self.bypass_extraction = kwargs.pop('bypass_extraction', False) if 'bypass_extraction' in kwargs else False
+        
+        super().__init__(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.bypass_extraction:  # Only extract text on first save, unless bypassed
+            self.extract_text()
+            self.full_text_hash = hashlib.sha256(self.full_text.encode('utf-8')).hexdigest()
+        super().save(*args, **kwargs)
+
     def extract_text(self):
-        with default_storage.open(self.image_file.name, 'rb') as image_file:
-            result = extract_text_from_image(image_file)
-        self.full_text = result.get('extracted_text', '')
+        try:
+            logger.info(f"Attempting to extract text from image: {self.image_file.name}")
+
+            file_content = None
+            
+            if default_storage.exists(self.image_file.name):
+                logger.info(f"Reading image file from storage: {self.image_file.name}")
+                with default_storage.open(self.image_file.name, 'rb') as image_file:
+                    file_content = image_file.read()
+            elif hasattr(self.image_file, 'read'):
+                logger.info("Reading from original file object")
+                if hasattr(self.image_file, 'seek'):
+                    self.image_file.seek(0) 
+                file_content = self.image_file.read()
+                if hasattr(self.image_file, 'seek'):
+                    self.image_file.seek(0)
+
+            if not file_content:
+                raise FileNotFoundError(f"Cannot access image file: {self.image_file.name}")
+                
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_path = temp_file.name
+                
+            try:
+                logger.info(f"Processing image from temp file: {temp_path}")
+                result = extract_text_from_image(temp_path, convert_to_latex=self.convert_to_latex)
+                
+                self.full_text = result.get('extracted_text', '')
+                
+                if self.convert_to_latex and 'latex_text' in result:
+                    latex = result.get('latex_text', '')
+                    if latex and latex != "NO MATH CONTENT":
+                        self.full_text += "\n\n==== LATEX VERSION ====\n\n" + latex
+                
+                logger.info(f"Successfully extracted text from image, length: {len(self.full_text)}")
+                if not self.full_text or self.full_text == "NO READABLE TEXT":
+                    logger.warning("No text found in image or extraction failed")
+                    self.full_text = "No readable text could be extracted from this image."
+            finally:
+                try:
+                    os.unlink(temp_path)
+                except Exception as cleanup_err:
+                    logger.warning(f"Failed to delete temporary file: {str(cleanup_err)}")
+                
+        except Exception as e:
+            self.full_text = f"Image text extraction failed. Please try again."
+            logger.error(f"Error extracting text from image: {str(e)}", exc_info=True)
+            raise
+            
+    @property
+    def latex_content(self):
+        if "==== LATEX VERSION ====" in self.full_text:
+            parts = self.full_text.split("==== LATEX VERSION ====", 1)
+            if len(parts) > 1:
+                # Get the content after the separator
+                latex_text = parts[1].strip()
+                # Remove any nested separator markers that might cause issues
+                latex_text = latex_text.replace("==== LATEX VERSION ====", "")
+                return latex_text
+        return ""
+            
+    @property
+    def has_latex(self):
+        return "==== LATEX VERSION ====" in self.full_text
+        
+    @property
+    def original_text(self):
+        if "==== LATEX VERSION ====" in self.full_text:
+            return self.full_text.split("==== LATEX VERSION ====", 1)[0].strip()
+        return self.full_text
     
 
 class PDFDocument(Document):

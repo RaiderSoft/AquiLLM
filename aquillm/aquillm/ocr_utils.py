@@ -4,59 +4,228 @@ import os
 import configparser
 from typing import Dict, Any, Optional, List
 import logging
-###added
 from dotenv import load_dotenv
 import google.generativeai as genai
-from django.conf import settings  # Import Django settings
+from django.conf import settings
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+import uuid
+import threading
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-def extract_text_from_image(image_file) -> Dict[str, Any]:
-    """
-    Extract text from an image using Gemini API.
-
-    Args:
-        image_file (file): Image file object.
-
-    Returns:
-        Dict[str, Any]: JSON response containing extracted text and metadata.
-    """
-    # Get the API key from environment variables
-    api_key = os.getenv('GEMINI_API_KEY')
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in environment variables")
-
-    # Configure the generative AI with the API key
-    genai.configure(api_key=api_key)
-
-   # Get the temporary image path from Django settings or use a default
-    temp_image_path = getattr(settings, 'TEMP_IMAGE_PATH', os.path.join(settings.BASE_DIR, 'tmp', 'temp_image.jpg'))
+class GeminiCostTracker:
+    def __init__(self):
+        self.total_cost = 0.0
+        self.input_tokens = 0
+        self.output_tokens = 0
+        self.api_calls = 0
+        self.lock = threading.Lock()
+        
+        self.input_cost_per_1k = 0.0005
+        self.output_cost_per_1k = 0.0015
     
-    # Ensure the directory exists
-    os.makedirs(os.path.dirname(temp_image_path), exist_ok=True)
+    def add_usage(self, input_tokens, output_tokens):
+        with self.lock:
+            self.input_tokens += input_tokens
+            self.output_tokens += output_tokens
+            self.api_calls += 1
+            
+            input_cost = (input_tokens / 1000) * self.input_cost_per_1k
+            output_cost = (output_tokens / 1000) * self.output_cost_per_1k
+            call_cost = input_cost + output_cost
+            
+            self.total_cost += call_cost
+            
+            logger.info(f"Gemini API call: {input_tokens} input tokens, {output_tokens} output tokens")
+            logger.info(f"Cost for this call: ${call_cost:.6f}")
+            logger.info(f"Total cost so far: ${self.total_cost:.6f}")
+            
+            return call_cost
     
-    with open(temp_image_path, "wb") as temp_image_file:
-        temp_image_file.write(image_file.read())
-    # Upload the file to Gemini
-    sample_file = genai.upload_file(path=temp_image_path, display_name="Uploaded Image")
-    logger.debug(f"Uploaded file '{sample_file.display_name}' as: {sample_file.uri}")
+    def get_stats(self):
+        with self.lock:
+            return {
+                'total_cost_usd': self.total_cost,
+                'input_tokens': self.input_tokens,
+                'output_tokens': self.output_tokens,
+                'api_calls': self.api_calls
+            }
 
-    # Choose a Gemini model
-    model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+cost_tracker = GeminiCostTracker()
 
-    # Prompt the model with text and the previously uploaded image
-    prompt = "Extract the exact text from the image, nothing else"
-    response = model.generate_content([sample_file.uri, prompt])
-
-    # Log the response content for debugging
-    logger.debug(f"OCR API response: {response.text}")
-
-    # Parse and return the JSON response
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=60),
+    stop=stop_after_attempt(5),
+    retry=retry_if_exception_type((ResourceExhausted, ServiceUnavailable)),
+    reraise=True
+)
+def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any]:
+    result = {}
+    
     try:
-        extracted_text = json.loads(response.text)
-        return extracted_text
-    except json.JSONDecodeError as e:
-        logger.error("Invalid response from OCR API", exc_info=True)
-        raise ValueError("Invalid response from OCR API") from e
+        if isinstance(image_file, str) and os.path.exists(image_file):
+            with open(image_file, "rb") as f:
+                file_content = f.read()
+            file_name = os.path.basename(image_file)
+            
+        elif hasattr(image_file, 'read'):
+            if hasattr(image_file, 'tell'):
+                position = image_file.tell()
+            
+            file_content = image_file.read()
+            
+            if hasattr(image_file, 'seek') and hasattr(image_file, 'tell'):
+                image_file.seek(position)
+            
+            file_name = getattr(image_file, 'name', f"image_{uuid.uuid4().hex[:8]}")
+            
+        else:
+            raise ValueError(f"Unsupported image_file type: {type(image_file)}")
+        
+        encoded_image = base64.b64encode(file_content).decode('utf-8')
+        logger.info(f"Successfully read image content, size: {len(file_content)} bytes")
+        
+    except Exception as e:
+        logger.error(f"Error reading image file: {str(e)}", exc_info=True)
+        raise ValueError(f"Could not process image file: {str(e)}")
+    
+    try:
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not found in environment variables")
+        
+        genai.configure(api_key=api_key)
+        logger.info("Configured Gemini API")
+        
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-pro",
+            generation_config={
+                "temperature": 0.0,
+                "top_p": 0.5,
+                "top_k": 10,
+                "max_output_tokens": 2048
+            }
+        )
+        
+        text_prompt = """
+        This is a STRICT OCR task. Look at the image and ONLY transcribe what is written.
+        
+        CRITICAL:
+        - Focus on ONLY extracting text you can clearly see in the image
+        - NEVER invent or imagine text that isn't there
+        - If no text is visible, respond with "NO READABLE TEXT"
+        - DO NOT make guesses about unclear text
+        - DO NOT add any code snippets
+        - DO NOT generate anything beyond what is visibly written
+        
+        """
+        
+        content_parts = [
+            {
+                "text": text_prompt
+            },
+            {
+                "inline_data": {
+                    "mime_type": "image/jpeg",
+                    "data": encoded_image
+                }
+            }
+        ]
+        
+        logger.info("Sending OCR request to Gemini")
+        response = model.generate_content(content_parts)
+        
+        extracted_text = response.text.strip()
+        result["extracted_text"] = extracted_text
+        logger.info(f"Successfully extracted text, length: {len(extracted_text)} chars")
+        
+        if hasattr(response, 'usage'):
+            cost_tracker.add_usage(
+                input_tokens=response.usage.prompt_tokens,
+                output_tokens=response.usage.candidates_tokens
+            )
+        else:
+            estimated_input_tokens = len(json.dumps(content_parts)) // 4
+            estimated_output_tokens = len(extracted_text) // 4
+            cost_tracker.add_usage(
+                input_tokens=estimated_input_tokens,
+                output_tokens=estimated_output_tokens
+            )
+        
+        if convert_to_latex:
+            latex_prompt = """
+            Extract and convert the equations from this image, paying special attention to vector notation. In physics/math, vectors are often indicated with small bars over letters.
+            
+            CRITICAL VECTOR NOTATION REQUIREMENTS:
+            - In this physics/math notes image, vectors are indicated with small bars over letters
+            - USE ONLY \\bar{} NOTATION, NOT \\vec{} FOR VECTORS
+            - SPECIFICALLY: Convert ř to $\\bar{r}$ (not $\\vec{r}$)
+            - SPECIFICALLY: Convert F̄ to $\\bar{F}$ (not $\\vec{F}$)
+            - SPECIFICALLY: Convert dř to $d\\bar{r}$ (not $d\\vec{r}$)
+            - Every vector symbol must have a bar in the LaTeX (not an arrow)
+            
+            OTHER IMPORTANT INSTRUCTIONS:
+            - Extract BOTH text and mathematics exactly as shown in the image
+            - Maintain the same line breaks and paragraph structure as the original
+            - Only convert mathematical notation to LaTeX, leave regular text as plain text
+            - For integrals with limits, use \\int_{lower}^{upper} (not \\oint)
+            - For subscripts like v₂, use v_2 in LaTeX
+            - Use $ symbols to delimit math expressions
+            - For arrows between points (like 1→2), use $1 \\to 2$ or $W_{1\\to 2}$
+            - For Greek letters: Σ should be \\Sigma, etc.
+            
+            EXAMPLES FROM PHYSICS/MATH NOTATION:
+            - If you see "ř" in the notes, render it as $\\bar{r}$ (not $\\vec{r}$)
+            - If you see "dř" in the notes, render it as $d\\bar{r}$ (not $d\\vec{r}$)
+            - If you see "ΣF̄", render it as $\\Sigma\\bar{F}$ (not $\\Sigma\\vec{F}$)
+            - If you see "v₂" in the notes, render it as $v_2$ (not $v2$)
+            
+            Go through each equation character by character and ensure every vector has a bar (\\bar{}) notation.
+            """
+            
+            latex_content_parts = [
+                {
+                    "text": latex_prompt
+                },
+                {
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": encoded_image
+                    }
+                }
+            ]
+            
+            logger.info("Sending LaTeX conversion request to Gemini")
+            latex_response = model.generate_content(latex_content_parts)
+            
+            latex_text = latex_response.text.strip()
+            if latex_text and latex_text != "NO MATH CONTENT":
+                result["latex_text"] = latex_text
+                logger.info(f"Successfully extracted LaTeX, length: {len(latex_text)} chars")
+            else:
+                logger.info("No LaTeX content found")
+                
+            if hasattr(latex_response, 'usage'):
+                cost_tracker.add_usage(
+                    input_tokens=latex_response.usage.prompt_tokens,
+                    output_tokens=latex_response.usage.candidates_tokens
+                )
+            else:
+                estimated_input_tokens = len(json.dumps(latex_content_parts)) // 4
+                estimated_output_tokens = len(latex_text) // 4
+                cost_tracker.add_usage(
+                    input_tokens=estimated_input_tokens,
+                    output_tokens=estimated_output_tokens
+                )
+        
+        return result
+            
+    except Exception as e:
+        logger.error(f"Error with Gemini API: {str(e)}", exc_info=True)
+        raise ValueError(f"OCR processing failed: {str(e)}")
+        
+def get_gemini_cost_stats():
+    return cost_tracker.get_stats()
