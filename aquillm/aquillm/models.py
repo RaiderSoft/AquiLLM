@@ -382,8 +382,10 @@ def validate_pdf_extension(value):
 class PDFDocument(Document):
     pdf_file = models.FileField(upload_to= 'pdfs/', max_length=500, validators=[FileExtensionValidator(['pdf'])])
 
-    def save(self, *args, **kwargs):
-        self.extract_text()
+    def save(self, dont_rechunk=False, *args, **kwargs):
+        
+        if not dont_rechunk:
+            self.extract_text()
         super().save(*args, **kwargs)
 
     def extract_text(self):
