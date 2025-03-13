@@ -8,12 +8,6 @@ RUN pip install -r requirements.txt
 RUN apt update && apt install -y curl nodejs npm
 COPY . .
 
-WORKDIR /app/react 
-RUN npm ci
-RUN npm run build
-RUN npx tailwindcss -o /app/aquillm/aquillm/static/index.css
-RUN npx tailwindcss -o /app/aquillm/aquillm/static/index.css
-# No idea why this crappy tool only works when I run it twice
 
 WORKDIR /app/aquillm
 

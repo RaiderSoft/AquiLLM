@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build --emptyOutDir",
+    "build": "vite build --emptyOutDir",
     "watch": "vite build --watch --emptyOutDir",
     "typecheck": "tsc --noEmit"
   },
