@@ -86,7 +86,10 @@ def insert_one_from_arxiv(arxiv_id, collection, user):
                                     tex_bytes = f.read()
                                     encoding = chardet.detect(tex_bytes)['encoding']
                                     if not encoding:
-                                        raise ValueError("Could not detect encoding of LaTeX source")
+                                        if not any(x > 127 for x in tex_bytes):
+                                            encoding = 'ascii'
+                                        else:
+                                            raise ValueError("Could not detect encoding of LaTeX source")
                                     content = tex_bytes.decode(encoding)
                                     tex_str += content + '\n\n'
                 doc = TeXDocument(
