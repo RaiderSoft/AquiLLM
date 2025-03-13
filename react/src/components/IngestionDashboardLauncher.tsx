@@ -6,9 +6,10 @@ import { X } from 'lucide-react';
 interface IngestionDashboardModalProps {
   wsUrl: string;
   onClose: () => void;
+  onNewDocument: () => void;
 }
 
-const IngestionDashboardModal: React.FC<IngestionDashboardModalProps> = ({ wsUrl, onClose }) => {
+const IngestionDashboardModal: React.FC<IngestionDashboardModalProps> = ({ wsUrl, onClose, onNewDocument }) => {
   return (
     <div className="fixed bg-gray-shade_3 rounded-t-lg shadow-lg bottom-0 left-1/2 max-w-2xl right-0 z-50 flex items-end justify-center pointer-events-auto">
       {/* Modal container styled as a bottom sheet */}
@@ -25,7 +26,7 @@ const IngestionDashboardModal: React.FC<IngestionDashboardModalProps> = ({ wsUrl
         </div>
         {/* Content */}
         <div className="p-4 overflow-y-auto h-full">
-          <IngestionDashboard wsUrl={wsUrl} />
+          <IngestionDashboard wsUrl={wsUrl} onNewDocument={onNewDocument} />
         </div>
       </div>
     </div>
@@ -44,7 +45,7 @@ const IngestionDashboardLauncher: React.FC<IngestionDashboardLauncherProps> = ({
 
       {/* The modal is always in the DOM; its visibility is controlled by the 'hidden' class */}
       <div className={`${modalOpen ? '' : 'hidden'}`}>
-        <IngestionDashboardModal wsUrl={wsUrl} onClose={() => setModalOpen(false)} />
+        <IngestionDashboardModal wsUrl={wsUrl} onClose={() => setModalOpen(false)} onNewDocument={() => setModalOpen(true)} />
       </div>
     </>
   );

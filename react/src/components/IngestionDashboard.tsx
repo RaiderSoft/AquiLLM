@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { PDFIngestionMonitorProps, IngestionDashboardProps } from '../types';
 import PDFIngestionMonitor from './PDFIngestionMonitor';
 
-const IngestionDashboard: React.FC<IngestionDashboardProps> = ({ wsUrl }) => {
+
+
+const IngestionDashboard: React.FC<IngestionDashboardProps> = ({ wsUrl, onNewDocument }) => {
   const [monitors, setMonitors] = useState<PDFIngestionMonitorProps[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,7 @@ const IngestionDashboard: React.FC<IngestionDashboardProps> = ({ wsUrl }) => {
           const newMonitor: PDFIngestionMonitorProps = JSON.parse(event.data);
           setMonitors((prevMonitors) => [...prevMonitors, newMonitor]);
           setLoading(false);
+          onNewDocument(); // Notify the parent component
         }
       } catch (err: any) {
         setError(err.message || 'An error occurred while processing the message.');
@@ -42,7 +45,7 @@ const IngestionDashboard: React.FC<IngestionDashboardProps> = ({ wsUrl }) => {
       socket.removeEventListener('error', handleError);
       socket.close();
     };
-  }, [wsUrl]);
+  }, [wsUrl, onNewDocument]);
 
   if (loading) {
     return <div></div>;

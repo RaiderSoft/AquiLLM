@@ -15,6 +15,7 @@
   "dependencies": {
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
+    "react-circular-progressbar": "^2.2.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.0.1",
     "react-syntax-highlighter": "^15.6.1",

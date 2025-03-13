@@ -2,6 +2,17 @@
 server {
 	listen 80;
 	listen [::]:80;
+	listen 443 ssl;
+	listen [::]:443 ssl;
+	server_name _;
+	ssl_certificate /etc/letsencrypt/live/${HOST_NAME}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/${HOST_NAME}/privkey.pem;
+	return 444;
+}
+
+server {
+	listen 80;
+	listen [::]:80;
 	server_name ${HOST_NAME};
 	location /health {
 		resolver 127.0.0.11;

@@ -227,8 +227,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             message.rating = data['rating']
             await self.__save()
 
-        if DEBUG:
-            print(f"Recieved ws message:\n{text_data}")
         if not self.dead:
             try:
                 data = loads(text_data)

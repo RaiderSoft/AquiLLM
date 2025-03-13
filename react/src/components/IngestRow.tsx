@@ -1,15 +1,17 @@
 import React, { useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Headphones } from "lucide-react";
 import { getCsrfCookie } from "../main";
 
 export enum DocType {
   PDF = "pdf",
   ARXIV = "arxiv",
+  VTT = "vtt",
 }
 
 interface IngestRowsContainerProps {
   ingestArxivUrl: string;
   ingestPdfUrl: string;
+  ingestVttUrl: string; // New URL for VTT endpoint
   collectionId: string;
 }
 
@@ -21,6 +23,9 @@ interface IngestRowData {
   pdfFile: File | null;
   // For arXiv rows
   arxivId: string;
+  // For VTT rows
+  vttTitle: string;
+  vttFile: File | null;
 }
 
 const selectedClasses = "bg-accent text-gray-shade_e";
@@ -58,6 +63,16 @@ const DocTypeToggle: React.FC<DocTypeToggleProps> = ({
       >
         {arxivLogo}
       </button>
+
+      <button
+        onClick={() => setDocType(DocType.VTT)}
+        title="VTT"
+        className={`flex items-center h-[40px] w-[40px] justify-center px-2 py-1 rounded-lg transition-colors ${
+          docType === DocType.VTT ? selectedClasses : unselectedClasses
+        }`}
+      >
+        <Headphones size={18} />
+      </button>
     </div>
   );
 };
@@ -90,43 +105,89 @@ interface PDFFormProps {
 }
 
 const PDFForm: React.FC<PDFFormProps> = ({
-    pdfTitle,
-    pdfFile,
-    onTitleChange,
-    onFileChange,
-  }) => {
-    return (
-      <div className="flex gap-4">
-        <label
-          htmlFor="file-upload"
-          className={`cursor-pointer flex items-center justify-center border border-gray-shade_6 p-2 rounded-lg transition-colors flex-grow h-[40px] ${
-            pdfFile ? "bg-green-dark" : "hover:bg-gray-shade_3"
-          }`}
-        >
-          {pdfFile ? "File Selected" : "Select PDF File"}
-        </label>
-        <input
-          id="file-upload"
-          type="file"
-          accept="application/pdf"
-          onChange={(e) =>
-            onFileChange(
-              e.target.files && e.target.files.length ? e.target.files[0] : null
-            )
-          }
-          className="hidden"
-        />
-  
-        <input
-          type="text"
-          placeholder="Enter PDF title"
-          value={pdfTitle}
-          onChange={(e) => onTitleChange(e.target.value)}
-          className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a flex-grow"
-        />
-      </div>
-    );
-  };
+  pdfTitle,
+  pdfFile,
+  onTitleChange,
+  onFileChange,
+}) => {
+  return (
+    <div className="flex gap-4">
+      <label
+        htmlFor="pdf-file-upload"
+        className={`cursor-pointer flex items-center justify-center border border-gray-shade_6 p-2 rounded-lg transition-colors flex-grow h-[40px] ${
+          pdfFile ? "bg-green-dark" : "hover:bg-gray-shade_3"
+        }`}
+      >
+        {pdfFile ? "File Selected" : "Select PDF File"}
+      </label>
+      <input
+        id="pdf-file-upload"
+        type="file"
+        accept="application/pdf"
+        onChange={(e) =>
+          onFileChange(
+            e.target.files && e.target.files.length ? e.target.files[0] : null
+          )
+        }
+        className="hidden"
+      />
+
+      <input
+        type="text"
+        placeholder="Enter PDF title"
+        value={pdfTitle}
+        onChange={(e) => onTitleChange(e.target.value)}
+        className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a flex-grow"
+      />
+    </div>
+  );
+};
+
+interface VTTFormProps {
+  vttTitle: string;
+  vttFile: File | null;
+  onTitleChange: (value: string) => void;
+  onFileChange: (file: File | null) => void;
+}
+
+const VTTForm: React.FC<VTTFormProps> = ({
+  vttTitle,
+  vttFile,
+  onTitleChange,
+  onFileChange,
+}) => {
+  return (
+    <div className="flex gap-4">
+      <label
+        htmlFor="vtt-file-upload"
+        className={`cursor-pointer flex items-center justify-center border border-gray-shade_6 p-2 rounded-lg transition-colors flex-grow h-[40px] ${
+          vttFile ? "bg-green-dark" : "hover:bg-gray-shade_3"
+        }`}
+      >
+        {vttFile ? "File Selected" : "Select VTT File"}
+      </label>
+      <input
+        id="vtt-file-upload"
+        type="file"
+        accept=".vtt"
+        onChange={(e) =>
+          onFileChange(
+            e.target.files && e.target.files.length ? e.target.files[0] : null
+          )
+        }
+        className="hidden"
+      />
+
+      <input
+        type="text"
+        placeholder="Enter VTT title"
+        value={vttTitle}
+        onChange={(e) => onTitleChange(e.target.value)}
+        className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a flex-grow"
+      />
+    </div>
+  );
+};
 
 interface ArxivFormProps {
   value: string;
@@ -167,14 +228,20 @@ const IngestRow: React.FC<IngestRowProps> = ({ row, onDocTypeChange, onRowChange
             onTitleChange={(value) => onRowChange(row.id, { pdfTitle: value })}
             onFileChange={(file) => onRowChange(row.id, { pdfFile: file })}
           />
-        ) : (
+        ) : row.docType === DocType.ARXIV ? (
           <ArxivForm
             value={row.arxivId}
             onValueChange={(value) => onRowChange(row.id, { arxivId: value })}
           />
+        ) : (
+          <VTTForm
+            vttTitle={row.vttTitle}
+            vttFile={row.vttFile}
+            onTitleChange={(value) => onRowChange(row.id, { vttTitle: value })}
+            onFileChange={(file) => onRowChange(row.id, { vttFile: file })}
+          />
         )}
       </div>
-      
     </div>
   );
 };
@@ -182,10 +249,19 @@ const IngestRow: React.FC<IngestRowProps> = ({ row, onDocTypeChange, onRowChange
 const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
   ingestArxivUrl,
   ingestPdfUrl,
+  ingestVttUrl,
   collectionId,
 }) => {
   const [rows, setRows] = useState<IngestRowData[]>([
-    { id: 1, docType: DocType.PDF, pdfTitle: "", pdfFile: null, arxivId: "" },
+    { 
+      id: 1, 
+      docType: DocType.PDF, 
+      pdfTitle: "", 
+      pdfFile: null, 
+      arxivId: "",
+      vttTitle: "",
+      vttFile: null
+    },
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState("");
@@ -207,6 +283,8 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
           ? activeRow.pdfFile !== null && activeRow.pdfTitle.trim() !== ""
           : activeRow.docType === DocType.ARXIV
           ? activeRow.arxivId.trim() !== ""
+          : activeRow.docType === DocType.VTT
+          ? activeRow.vttFile !== null && activeRow.vttTitle.trim() !== ""
           : false;
       
       // Only add a new row if the active row is the one being updated and it's complete
@@ -218,6 +296,8 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
           pdfTitle: "",
           pdfFile: null,
           arxivId: "",
+          vttTitle: "",
+          vttFile: null
         });
       }
       
@@ -225,13 +305,20 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
     });
   };
   
-
   // When changing doc type, also clear the now-irrelevant fields.
   const updateRowDocType = (id: number, newDocType: DocType) => {
     setRows((prevRows) =>
       prevRows.map((row) =>
         row.id === id
-          ? { ...row, docType: newDocType, pdfTitle: "", pdfFile: null, arxivId: "" }
+          ? { 
+              ...row, 
+              docType: newDocType, 
+              pdfTitle: "", 
+              pdfFile: null, 
+              arxivId: "",
+              vttTitle: "",
+              vttFile: null
+            }
           : row
       )
     );
@@ -246,6 +333,8 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
         ? row.pdfFile !== null && row.pdfTitle.trim() !== ""
         : row.docType === DocType.ARXIV
         ? row.arxivId.trim() !== ""
+        : row.docType === DocType.VTT
+        ? row.vttFile !== null && row.vttTitle.trim() !== ""
         : false
     );
 
@@ -253,14 +342,15 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
       const promises = rowsToSubmit.map(async (row) => {
         const formData = new FormData();
         formData.append("collection", collectionId);
+        
         if (row.docType === DocType.ARXIV) {
           formData.append("arxiv_id", row.arxivId);
           const response = await fetch(ingestArxivUrl, {
             method: "POST",
             body: formData,
             credentials: "include",
-            headers : {
-                "X-CSRFToken": getCsrfCookie()
+            headers: {
+              "X-CSRFToken": getCsrfCookie()
             }
           });
           if (!response.ok) {
@@ -270,7 +360,7 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
             );
           }
           return response.json();
-        } else {
+        } else if (row.docType === DocType.PDF) {
           // PDF submission: include the file and title.
           if (row.pdfFile) {
             formData.append("pdf_file", row.pdfFile);
@@ -280,8 +370,8 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
             method: "POST",
             body: formData,
             credentials: "include",
-            headers : {
-                "X-CSRFToken": getCsrfCookie()
+            headers: {
+              "X-CSRFToken": getCsrfCookie()
             }
           });
           if (!response.ok) {
@@ -291,14 +381,43 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
             );
           }
           return response.json();
+        } else {
+          // VTT submission
+          if (row.vttFile) {
+            formData.append("vtt_file", row.vttFile);
+          }
+          formData.append("title", row.vttTitle);
+          const response = await fetch(ingestVttUrl, {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+            headers: {
+              "X-CSRFToken": getCsrfCookie()
+            }
+          });
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(
+              `VTT submission error for row ${row.id}: ${errorData.error}`
+            );
+          }
+          return response.json();
         }
       });
 
       const results = await Promise.all(promises);
       setSubmissionMessage("Submission successful!");
       console.log("Submission results:", results);
-      // Optionally, reset the rows to just an empty row.
-      setRows([{ id: 1, docType: DocType.PDF, pdfTitle: "", pdfFile: null, arxivId: "" }]);
+      // Reset the rows to just an empty row.
+      setRows([{ 
+        id: 1, 
+        docType: DocType.PDF, 
+        pdfTitle: "", 
+        pdfFile: null, 
+        arxivId: "",
+        vttTitle: "",
+        vttFile: null
+      }]);
     } catch (error: any) {
       setSubmissionMessage(error.message || "An error occurred during submission.");
       console.error("Submission error:", error);

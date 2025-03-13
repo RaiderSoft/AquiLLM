@@ -271,20 +271,6 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {/* Batch Operations */}
           <div className="relative">
-            <button
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: selectedIds.size > 0 ? '#3182ce' : '#555555', // Highlight if items selected
-                color: '#eeeeee',
-                borderRadius: '22px',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              onClick={() => setActionMenuOpen(!actionMenuOpen)}
-              disabled={selectedIds.size === 0}
-            >
-              {selectedIds.size > 0 ? `${selectedIds.size} Selected` : 'Select Items'}
-            </button>
             
             {/* Dropdown menu for batch actions */}
             {actionMenuOpen && selectedIds.size > 0 && (

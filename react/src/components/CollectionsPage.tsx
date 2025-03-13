@@ -19,6 +19,7 @@ const CollectionsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [selectedCollection, setSelectedCollection] = useState<Folder | null>(null);
+  const [isUserManagementModalOpen, setIsUserManagementModalOpen] = useState<boolean>(false);
 
   const apiUrl = window.apiUrls.api_collections;
   const detailUrlBase = window.pageUrls.collection
@@ -347,14 +348,14 @@ const CollectionsPage: React.FC = () => {
         onSubmit={handleSubmitCreate}
       />
 
-      {selectedCollection && (
+
         <UserManagementModal
           isOpen={isUserManagementModalOpen}
           onClose={handleCloseUserManagementModal}
           onSave={handleUserManagementSave}
           collection={selectedCollection}
         />
-      )}
+
     </div>
   );
 };

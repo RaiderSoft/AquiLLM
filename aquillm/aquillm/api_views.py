@@ -10,7 +10,8 @@ from django.urls import path, include
 
 from django.core.files.base import ContentFile
 
-from .models import PDFDocument, TeXDocument, Collection, CollectionPermission, EmailWhitelist, DESCENDED_FROM_DOCUMENT
+from .models import PDFDocument, TeXDocument, VTTDocument, Collection, CollectionPermission, EmailWhitelist, DESCENDED_FROM_DOCUMENT
+from .vtt import parse, to_text, coalesce_captions
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 
@@ -155,6 +156,42 @@ def ingest_pdf(request):
     except DatabaseError as e:
         logger.error(f"Database error: {e}")
         return JsonResponse({'error': 'Database error occurred while saving PDFDocument'}, status=500)
+
+    return JsonResponse({'status_message': 'Success'})
+
+@login_required
+@require_http_methods(["POST"])
+def ingest_vtt(request):
+    user = request.user
+    vtt_file = request.FILES.get('vtt_file')
+    audio_file = request.FILES.get('audio_file')
+    title = request.POST.get('title')
+    collection = Collection.objects.filter(pk=request.POST.get('collection')).first()
+    if not collection or not collection.user_can_edit(user):
+        return JsonResponse({'error': 'Collection does not exist, was not provided, or user does not have permission to edit this collection'}, status=403)
+    if not vtt_file:
+        return JsonResponse({'error': 'No VTT file provided'}, status=400)
+    if not title:
+        return JsonResponse({'error': 'No title provided'}, status=400)
+    try:
+        FileExtensionValidator(['vtt'])(vtt_file)
+    except ValidationError as e:
+        return JsonResponse({'error': 'Invalid file extension. Only VTT files are allowed.'}, status=400)
+    full_text = to_text(coalesce_captions(parse(vtt_file)))
+    
+    doc = VTTDocument(
+        collection = collection,
+        title = title,
+        ingested_by = user,
+        full_text = full_text
+    )
+    if audio_file:
+        doc.audio_file = audio_file
+    try:
+        doc.save()
+    except DatabaseError as e:
+        logger.error(f"Database error: {e}")
+        return JsonResponse({'error': 'Database error occurred while saving VTTDocument'}, status=500)
 
     return JsonResponse({'status_message': 'Success'})
 
@@ -538,4 +575,5 @@ urlpatterns = [
     path("users/search/", search_users, name="api_search_users"),
     path("whitelisted_email/<str:email>/", whitelisted_email, name="api_whitelist_email"),
     path("whitelisted_emails/", whitelisted_emails, name="api_whitelist_emails"),
+    path("ingest_vtt/", ingest_vtt, name="api_ingest_vtt"),
 ]

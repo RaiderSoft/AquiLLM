@@ -2,6 +2,11 @@ export interface TestComponentProps {
   message?: string;
 }
 
+export interface IngestionDashboardProps {
+  wsUrl: string;
+  onNewDocument: () => void;
+}
+
 export interface IngestionDashboardLauncherProps {
   wsUrl: string;
 }
