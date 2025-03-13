@@ -5,12 +5,13 @@ import tarfile
 import io
 import chardet
 import json
+from uuid import UUID
 from xml.dom import minidom
 from django.urls import path, include
 
 from django.core.files.base import ContentFile
 
-from .models import PDFDocument, TeXDocument, Collection, CollectionPermission, EmailWhitelist, DESCENDED_FROM_DOCUMENT
+from .models import Document, PDFDocument, TeXDocument, Collection, CollectionPermission, EmailWhitelist, DESCENDED_FROM_DOCUMENT, DuplicateDocumentError
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 
@@ -85,7 +86,11 @@ def insert_one_from_arxiv(arxiv_id, collection, user):
                                     tex_bytes = f.read()
                                     encoding = chardet.detect(tex_bytes)['encoding']
                                     if not encoding:
-                                        raise ValueError("Could not detect encoding of LaTeX source")
+                                        # been having problems with chardet not detecting ASCII correctly
+                                        if not any(x > 127 for x in tex_bytes): # test for bytes with high bit set
+                                            encoding = 'ascii'
+                                        else:
+                                            raise ValueError("Could not detect encoding of LaTeX source")
                                     content = tex_bytes.decode(encoding)
                                     tex_str += content + '\n\n'
                 doc = TeXDocument(
@@ -123,6 +128,9 @@ def ingest_arxiv(request):
         if status["errors"]:
             return JsonResponse({'error': status["errors"]}, status=500)
         return JsonResponse({'message': status["message"]})
+    except DuplicateDocumentError as e:
+        logger.error(e.message)
+        return JsonResponse({'error': e.message}, status=400)
     except DatabaseError as e:
         logger.error(f"Database error: {e}")
         return JsonResponse({'error': 'Database error occurred while saving document'}, status=500)
@@ -152,6 +160,9 @@ def ingest_pdf(request):
     doc.pdf_file = pdf_file
     try:
         doc.save()
+    except DuplicateDocumentError as e:
+        logger.error(e.message)
+        return JsonResponse({'error', e.message}, status=200)
     except DatabaseError as e:
         logger.error(f"Database error: {e}")
         return JsonResponse({'error': 'Database error occurred while saving PDFDocument'}, status=500)
@@ -190,19 +201,12 @@ def delete_document(request, doc_id):
     user = request.user
     
     # Try to find the document among all document types
-    document = None
-    doc_type = None
-    for model in DESCENDED_FROM_DOCUMENT:
-        try:
-            document = model.objects.get(id=doc_id)
-            doc_type = model.__name__
-            break
-        except model.DoesNotExist:
-            continue
+    document = Document.get_by_id(UUID(doc_id))
     
     if not document:
         return JsonResponse({'error': 'Document not found'}, status=404)
     
+    title = document.title
     # Check if user has EDIT permission for the document's collection
     if not document.collection.user_can_edit(user):
         return JsonResponse({'error': 'You do not have permission to delete this document'}, status=403)
@@ -211,7 +215,7 @@ def delete_document(request, doc_id):
         document.delete()
         return JsonResponse({
             'success': True,
-            'message': f'{doc_type} deleted successfully'
+            'message': f'{title} deleted successfully'
         })
     except Exception as e:
         logger.error(f"Error deleting document {doc_id}: {e}")
@@ -323,15 +327,6 @@ def move_collection(request, collection_id):
         }
     })
 
-def get_document_by_id(doc_id):
-    for model in DESCENDED_FROM_DOCUMENT:
-        try:
-            return model.objects.get(id=doc_id)
-        except model.DoesNotExist:
-            continue
-    raise ObjectDoesNotExist("Document not found")
-
-
 @require_http_methods(["POST"])
 @login_required
 def move_document(request, doc_id):
@@ -345,7 +340,7 @@ def move_document(request, doc_id):
         return JsonResponse({"error": "new_collection_id is required"}, status=400)
 
     try:
-        document = get_document_by_id(doc_id)
+        document = Document.get_by_id(doc_id)
     except ObjectDoesNotExist:
         return JsonResponse({"error": "Document not found"}, status=404)
 
