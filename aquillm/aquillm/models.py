@@ -273,6 +273,10 @@ def create_chunks(self, doc_id:str): #naive method, just number of characters
         doc.delete()
         raise e    
 
+class DuplicateDocumentError(ValidationError):
+    def __init__(self, message):
+        super().__init__(message)
+
 
 class Document(models.Model):
     pkid = models.BigAutoField(primary_key=True, editable=False)
@@ -314,6 +318,7 @@ class Document(models.Model):
                 return doc
         return None
 
+    
     def save(self, *args, dont_rechunk=False, **kwargs):
         if dont_rechunk:
             super().save(*args, **kwargs)
@@ -321,6 +326,8 @@ class Document(models.Model):
         if len(self.full_text) < 100:
             raise ValidationError("The full text of a document must be at least 100 characters long.")
         self.full_text_hash = self.hash_fn(self.full_text)
+        if Document.filter(collection=self.collection, full_text_hash=self.full_text_hash):
+            raise DuplicateDocumentError(f"Document with title `{self.title}` has the same contents as another document in the same collection.")
         is_new = (not (d := Document.get_by_id(doc_id=self.id))) or (self.full_text_hash != d.full_text_hash)
         super().save(*args, **kwargs)
         if is_new:
