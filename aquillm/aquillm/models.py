@@ -474,12 +474,14 @@ class TextChunk(models.Model):
     
 
     @property
-    def document(self) -> Optional[DocumentChild]:
+    def document(self) -> DocumentChild:
         ret = None
         for t in DESCENDED_FROM_DOCUMENT:
             doc = t.objects.filter(id=self.doc_id).first()
             if doc:
                 ret = doc
+        if not ret:
+            raise ValidationError(f"TextChunk {self.pk} is not associated with a document!")
         return ret
 
     @document.setter
@@ -542,7 +544,7 @@ class TextChunk(models.Model):
 
 
     @classmethod
-    def text_chunk_search(cls, query:str, top_k: int, docs: List[Type[Document]]):
+    def text_chunk_search(cls, query:str, top_k: int, docs: List[DocumentChild]):
         vector_top_k = apps.get_app_config('aquillm').vector_top_k # type: ignore
         trigram_top_k = apps.get_app_config('aquillm').trigram_top_k # type: ignore
 
