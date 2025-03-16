@@ -302,10 +302,6 @@ class HandwrittenNotesDocument(Document):
     bypass_extraction = False  
     bypass_min_length = True 
     
-    class Meta:
-        verbose_name = "Handwritten Notes Document"
-        verbose_name_plural = "Handwritten Notes Documents"
-    
     def __init__(self, *args, **kwargs):
         
         self.convert_to_latex = kwargs.pop('convert_to_latex', False) if 'convert_to_latex' in kwargs else False
@@ -322,54 +318,36 @@ class HandwrittenNotesDocument(Document):
 
     def extract_text(self):
         try:
-            logger.info(f"Attempting to extract text from image: {self.image_file.name}")
-
-            file_content = None
-            
+            # Process directly with the file object or storage file
             if default_storage.exists(self.image_file.name):
-                logger.info(f"Reading image file from storage: {self.image_file.name}")
                 with default_storage.open(self.image_file.name, 'rb') as image_file:
-                    file_content = image_file.read()
+                    # Process directly with the file object
+                    result = extract_text_from_image(image_file, convert_to_latex=self.convert_to_latex)
             elif hasattr(self.image_file, 'read'):
-                logger.info("Reading from original file object")
-                if hasattr(self.image_file, 'seek'):
-                    self.image_file.seek(0) 
-                file_content = self.image_file.read()
                 if hasattr(self.image_file, 'seek'):
                     self.image_file.seek(0)
-
-            if not file_content:
+                
+                # Process directly with the file object
+                result = extract_text_from_image(self.image_file, convert_to_latex=self.convert_to_latex)
+                
+                if hasattr(self.image_file, 'seek'):
+                    self.image_file.seek(0)
+            else:
                 raise FileNotFoundError(f"Cannot access image file: {self.image_file.name}")
                 
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
-                temp_file.write(file_content)
-                temp_path = temp_file.name
-                
-            try:
-                logger.info(f"Processing image from temp file: {temp_path}")
-                result = extract_text_from_image(temp_path, convert_to_latex=self.convert_to_latex)
-                
-                self.full_text = result.get('extracted_text', '')
-                
-                if self.convert_to_latex and 'latex_text' in result:
-                    latex = result.get('latex_text', '')
-                    if latex and latex != "NO MATH CONTENT":
-                        self.full_text += "\n\n==== LATEX VERSION ====\n\n" + latex
-                
-                logger.info(f"Successfully extracted text from image, length: {len(self.full_text)}")
-                if not self.full_text or self.full_text == "NO READABLE TEXT":
-                    logger.warning("No text found in image or extraction failed")
-                    self.full_text = "No readable text could be extracted from this image."
-            finally:
-                try:
-                    os.unlink(temp_path)
-                except Exception as cleanup_err:
-                    logger.warning(f"Failed to delete temporary file: {str(cleanup_err)}")
+            # Process the result
+            self.full_text = result.get('extracted_text', '')
+            
+            if self.convert_to_latex and 'latex_text' in result:
+                latex = result.get('latex_text', '')
+                if latex and latex != "NO MATH CONTENT":
+                    self.full_text += "\n\n==== LATEX VERSION ====\n\n" + latex
+            
+            if not self.full_text or self.full_text == "NO READABLE TEXT":
+                self.full_text = "No readable text could be extracted from this image."
                 
         except Exception as e:
             self.full_text = f"Image text extraction failed. Please try again."
-            logger.error(f"Error extracting text from image: {str(e)}", exc_info=True)
             raise
             
     @property
@@ -377,9 +355,7 @@ class HandwrittenNotesDocument(Document):
         if "==== LATEX VERSION ====" in self.full_text:
             parts = self.full_text.split("==== LATEX VERSION ====", 1)
             if len(parts) > 1:
-                # Get the content after the separator
                 latex_text = parts[1].strip()
-                # Remove any nested separator markers that might cause issues
                 latex_text = latex_text.replace("==== LATEX VERSION ====", "")
                 return latex_text
         return ""

@@ -447,63 +447,24 @@ def ingest_handwritten_notes(request):
                 if not image_file or not hasattr(image_file, 'size') or image_file.size == 0:
                     raise ValueError("Invalid or empty image file")
                 
-                logger.info(f"Processing file: {image_file.name}, size: {image_file.size} bytes, LaTeX: {convert_to_latex}")
-                
-                # Read the file content directly
+                # Reset file pointer to ensure we read from the beginning
                 image_file.seek(0)
-                file_content = image_file.read()
                 
-                # Create a temporary file for processing
-                import tempfile
-                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
-                    temp_file.write(file_content)
-                    temp_path = temp_file.name
+                # Process the image and extract text using the model's own logic
+                document = HandwrittenNotesDocument(
+                    title=title,
+                    image_file=image_file,
+                    collection=collection,
+                    ingested_by=request.user,
+                    convert_to_latex=convert_to_latex,  # Pass the LaTeX flag to the model
+                )
                 
-                try:
-                    # Extract text using our improved OCR function
-                    logger.info(f"Extracting text from: {temp_path}")
-                    result = extract_text_from_image(temp_path, convert_to_latex=convert_to_latex)
+                # Save the document, which will trigger text extraction
+                document.save()
+                
+                status_message = 'Success'
                     
-                    # Get the extracted text
-                    extracted_text = result.get('extracted_text', '')
-                    if not extracted_text:
-                        logger.warning("No text extracted from image")
-                        extracted_text = "No text could be extracted from this image."
-                    
-                    # Handle LaTeX if needed
-                    if convert_to_latex and 'latex_text' in result:
-                        latex_text = result.get('latex_text', '')
-                        if latex_text and latex_text != "NO MATH CONTENT":
-                            extracted_text += "\n\n==== LATEX VERSION ====\n\n" + latex_text
-                    
-                    # Reset file pointer for saving to database
-                    image_file.seek(0)
-                    
-                    # Create a document with the extracted text
-                    document = HandwrittenNotesDocument(
-                        title=title,
-                        image_file=image_file,
-                        collection=collection,
-                        ingested_by=request.user,
-                        full_text=extracted_text,
-                        bypass_extraction=True  # Skip extraction since we already did it
-                    )
-                    
-                    # Compute hash and save
-                    document.full_text_hash = hashlib.sha256(extracted_text.encode('utf-8')).hexdigest()
-                    document.save()
-                    
-                    status_message = 'Success'
-                    
-                finally:
-                    # Clean up temporary file
-                    try:
-                        os.unlink(temp_path)
-                    except Exception as cleanup_err:
-                        logger.warning(f"Failed to delete temporary file: {str(cleanup_err)}")
-                        
             except Exception as e:
-                logger.error(f"Error processing handwritten notes: {str(e)}", exc_info=True)
                 status_message = f'Error: {str(e)}'
         else:
             status_message = 'Invalid Form Input'
@@ -516,11 +477,6 @@ def ingest_handwritten_notes(request):
     }
     
     return render(request, 'aquillm/ingest_handwritten_notes.html', context)
-
-
-def success(request):
-    return render(request, 'aquillm/success.html')
-
 
 
 @require_http_methods(['DELETE'])

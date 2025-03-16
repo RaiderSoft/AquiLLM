@@ -39,10 +39,6 @@ class GeminiCostTracker:
             
             self.total_cost += call_cost
             
-            logger.info(f"Gemini API call: {input_tokens} input tokens, {output_tokens} output tokens")
-            logger.info(f"Cost for this call: ${call_cost:.6f}")
-            logger.info(f"Total cost so far: ${self.total_cost:.6f}")
-            
             return call_cost
     
     def get_stats(self):
@@ -62,34 +58,52 @@ cost_tracker = GeminiCostTracker()
     retry=retry_if_exception_type((ResourceExhausted, ServiceUnavailable)),
     reraise=True
 )
-def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any]:
+def extract_text_from_image(image_input, convert_to_latex=False) -> Dict[str, Any]:
+    """
+    Extract text from an image using Gemini API.
+    
+    Args:
+        image_input: Can be:
+            - A string path to an image file
+            - A file-like object with read method
+            - Bytes containing the image data
+        convert_to_latex: Whether to also convert mathematical notation to LaTeX
+        
+    Returns:
+        Dictionary with extracted_text and optionally latex_text
+    """
     result = {}
     
     try:
-        if isinstance(image_file, str) and os.path.exists(image_file):
-            with open(image_file, "rb") as f:
+        # Handle different input types to get file_content
+        if isinstance(image_input, str) and os.path.exists(image_input):
+            # Path to a file
+            with open(image_input, "rb") as f:
                 file_content = f.read()
-            file_name = os.path.basename(image_file)
+            file_name = os.path.basename(image_input)
+        
+        elif isinstance(image_input, bytes):
+            # Direct bytes content
+            file_content = image_input
+            file_name = f"image_{uuid.uuid4().hex[:8]}"
             
-        elif hasattr(image_file, 'read'):
-            if hasattr(image_file, 'tell'):
-                position = image_file.tell()
+        elif hasattr(image_input, 'read'):
+            # File-like object
+            if hasattr(image_input, 'tell'):
+                position = image_input.tell()
             
-            file_content = image_file.read()
+            file_content = image_input.read()
             
-            if hasattr(image_file, 'seek') and hasattr(image_file, 'tell'):
-                image_file.seek(position)
+            # No need to reset position as the caller should handle this if needed
             
-            file_name = getattr(image_file, 'name', f"image_{uuid.uuid4().hex[:8]}")
+            file_name = getattr(image_input, 'name', f"image_{uuid.uuid4().hex[:8]}")
             
         else:
-            raise ValueError(f"Unsupported image_file type: {type(image_file)}")
+            raise ValueError(f"Unsupported image_input type: {type(image_input)}")
         
         encoded_image = base64.b64encode(file_content).decode('utf-8')
-        logger.info(f"Successfully read image content, size: {len(file_content)} bytes")
         
     except Exception as e:
-        logger.error(f"Error reading image file: {str(e)}", exc_info=True)
         raise ValueError(f"Could not process image file: {str(e)}")
     
     try:
@@ -98,7 +112,6 @@ def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any
             raise ValueError("GEMINI_API_KEY not found in environment variables")
         
         genai.configure(api_key=api_key)
-        logger.info("Configured Gemini API")
         
         model = genai.GenerativeModel(
             model_name="gemini-1.5-pro",
@@ -135,19 +148,19 @@ def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any
             }
         ]
         
-        logger.info("Sending OCR request to Gemini")
         response = model.generate_content(content_parts)
         
         extracted_text = response.text.strip()
         result["extracted_text"] = extracted_text
-        logger.info(f"Successfully extracted text, length: {len(extracted_text)} chars")
         
+        # Handle usage tracking with fallback for different API response structures
         if hasattr(response, 'usage'):
             cost_tracker.add_usage(
                 input_tokens=response.usage.prompt_tokens,
                 output_tokens=response.usage.candidates_tokens
             )
         else:
+            # Fallback to estimation if usage data is not available
             estimated_input_tokens = len(json.dumps(content_parts)) // 4
             estimated_output_tokens = len(extracted_text) // 4
             cost_tracker.add_usage(
@@ -198,33 +211,17 @@ def extract_text_from_image(image_file, convert_to_latex=False) -> Dict[str, Any
                 }
             ]
             
-            logger.info("Sending LaTeX conversion request to Gemini")
             latex_response = model.generate_content(latex_content_parts)
             
             latex_text = latex_response.text.strip()
             if latex_text and latex_text != "NO MATH CONTENT":
                 result["latex_text"] = latex_text
-                logger.info(f"Successfully extracted LaTeX, length: {len(latex_text)} chars")
-            else:
-                logger.info("No LaTeX content found")
                 
-            if hasattr(latex_response, 'usage'):
-                cost_tracker.add_usage(
-                    input_tokens=latex_response.usage.prompt_tokens,
-                    output_tokens=latex_response.usage.candidates_tokens
-                )
-            else:
-                estimated_input_tokens = len(json.dumps(latex_content_parts)) // 4
-                estimated_output_tokens = len(latex_text) // 4
-                cost_tracker.add_usage(
-                    input_tokens=estimated_input_tokens,
-                    output_tokens=estimated_output_tokens
-                )
+            
         
         return result
             
     except Exception as e:
-        logger.error(f"Error with Gemini API: {str(e)}", exc_info=True)
         raise ValueError(f"OCR processing failed: {str(e)}")
         
 def get_gemini_cost_stats():

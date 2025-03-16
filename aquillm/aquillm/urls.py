@@ -56,7 +56,6 @@ urlpatterns = [
     path("react_test", views.react_test, name="react_test"),
     path("pdf_ingestion_monitor/<int:doc_id>/", views.pdf_ingestion_monitor, name="pdf_ingestion_monitor"),
     path('upload/', views.ingest_handwritten_notes, name='ingest_handwritten_notes'),
-    path('success/', views.success, name='success'),
     path('gemini-costs/', views.gemini_cost_monitor, name='gemini_cost_monitor')
 ] + debug_toolbar_urls()
 
