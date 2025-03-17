@@ -510,7 +510,6 @@ def ingestion_monitor(request):
                           "websocketUrl": protocol + host + "/ingest/monitor/" + doc.id + "/"}
                           for doc in in_progress])
 
-@require_http_methods(['GET'])
 @login_required
 def search_users(request):
     query = request.GET.get('query', '').strip()
@@ -520,14 +519,23 @@ def search_users(request):
         return JsonResponse({'users': []})
 
     User = get_user_model()
-    users = User.objects.filter(
-        Q(username__icontains=query) | Q(email__icontains=query) | Q(full_name__icontains=query)
-    )
+    # Only search by email
+    users = User.objects.filter(Q(email__icontains=query))
 
     if exclude_current:
         users = users.exclude(id=request.user.id)
 
-    user_list = list(users.values('id', 'username', 'email', 'full_name'))
+    # Create a list with calculated full_name
+    user_list = []
+    for user in users:
+        full_name = f"{user.first_name} {user.last_name}".strip()
+        user_list.append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'full_name': full_name
+        })
+    
     return JsonResponse({'users': user_list})
 
 @login_required
