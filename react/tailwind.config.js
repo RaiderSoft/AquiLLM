@@ -8,46 +8,46 @@ module.exports = {
   theme: {
     extend: {
         fontFamily: {
-            serif: ['Latin Modern Roman']
+          latin_modern_roman: ['Latin Modern Roman', 'serif'],
+          sans_serif: ['Helvetica', 'Arial', 'sans-serif']
         },
         colors: {
-          transparent: 'transparent',
-          current: 'currentColor',
-            gray: {
-              shade_f: '#ffffff',
-              shade_e: '#eeeeee',
-              shade_d: '#dddddd',
-              shade_c: '#cccccc',
-              shade_b: '#bbbbbb',
-              shade_a: '#aaaaaa',
-              shade_9: '#999999',
-              shade_8: '#888888',
-              shade_7: '#777777',
-              shade_6: '#666666',
-              shade_5: '#555555',
-              shade_4: '#444444',
-              shade_3: '#333333',
-              shade_2: '#222222',
-              DEFAULT: '#111111'
-            },
-            accent: {
-              light: '#A5CCF3',
-              DEFAULT: '#1C79D8',
-              dark: '#1B4979'
-            },
-            secondary_accent: {
-              light: '#F49071',
-              DEFAULT: '#F16C43',
-              dark: '#BE380E'
-            },
-            red: {
-              DEFAULT: '#EC3D3D',
-              dark: '#8C0D0D'
-            },
-            green: {
-              DEFAULT: '#69E665',
-              dark: '#198316'
-            },
+          // Use the custom property syntax. Tailwind will output utility classes like bg-gray-shade_6.
+          gray: {
+            shade_f: 'var(--color-gray-shade_f)',
+            shade_e: 'var(--color-gray-shade_e)',
+            shade_d: 'var(--color-gray-shade_d)',
+            shade_c: 'var(--color-gray-shade_c)',
+            shade_b: 'var(--color-gray-shade_b)',
+            shade_a: 'var(--color-gray-shade_a)',
+            shade_9: 'var(--color-gray-shade_9)',
+            shade_8: 'var(--color-gray-shade_8)',
+            shade_7: 'var(--color-gray-shade_7)',
+            shade_6: 'var(--color-gray-shade_6)',
+            shade_5: 'var(--color-gray-shade_5)',
+            shade_4: 'var(--color-gray-shade_4)',
+            shade_3: 'var(--color-gray-shade_3)',
+            shade_2: 'var(--color-gray-shade_2)',
+            DEFAULT: 'var(--color-gray-DEFAULT)',
+          },
+          accent: {
+            light: 'var(--color-accent-light)',
+            DEFAULT: 'var(--color-accent-DEFAULT)',
+            dark: 'var(--color-accent-dark)',
+          },
+          secondary_accent: {
+            light: 'var(--color-secondary_accent-light)',
+            DEFAULT: 'var(--color-secondary_accent-DEFAULT)',
+            dark: 'var(--color-secondary_accent-dark)',
+          },
+          red: {
+            DEFAULT: 'var(--color-red-DEFAULT)',
+            dark: 'var(--color-red-dark)',
+          },
+          green: {
+            DEFAULT: 'var(--color-green-DEFAULT)',
+            dark: 'var(--color-green-dark)',
+          },
         },
 
         keyframes: {

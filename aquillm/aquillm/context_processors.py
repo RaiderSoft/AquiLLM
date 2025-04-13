@@ -1,5 +1,7 @@
 from .models import WSConversation
 from django.urls import get_resolver
+from .models import UserSettings
+
 def nav_links(request):
     return {
         'nav_links': [
@@ -25,3 +27,13 @@ def user_conversations(request):
         convos = WSConversation.objects.filter(owner=request.user).order_by('-updated_at')
         return {'conversations': convos}
     return {}
+
+def theme_settings(request):
+    if request.user.is_authenticated:
+        try:
+            settings = UserSettings.objects.get(user=request.user)
+        except UserSettings.DoesNotExist:
+            settings = None
+    else:
+        settings = None
+    return {'user_theme_settings': settings}

@@ -33,6 +33,37 @@ from django.forms.models import model_to_dict
 import json
 logger = logging.getLogger(__name__)
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from .models import UserSettings
+from .serializers import UserSettingsSerializer
+
+class UserSettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            settings = UserSettings.objects.get(user=request.user)
+        except UserSettings.DoesNotExist:
+            # If no settings exist yet, create default settings for the user.
+            settings = UserSettings.objects.create(user=request.user)
+        serializer = UserSettingsSerializer(settings)
+        return Response(serializer.data)
+
+    def post(self, request):
+        try:
+            settings = UserSettings.objects.get(user=request.user)
+        except UserSettings.DoesNotExist:
+            settings = UserSettings(user=request.user)
+
+        serializer = UserSettingsSerializer(settings, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 
 @require_http_methods(['GET'])
 def index(request):

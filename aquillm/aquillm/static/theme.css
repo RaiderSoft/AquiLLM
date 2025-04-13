@@ -1,0 +1,100 @@
+:root {
+    /* Gray palette */
+    --color-gray-shade_f: #ffffff;
+    --color-gray-shade_e: #eeeeee;
+    --color-gray-shade_d: #dddddd;
+    --color-gray-shade_c: #cccccc;
+    --color-gray-shade_b: #bbbbbb;
+    --color-gray-shade_a: #aaaaaa;
+    --color-gray-shade_9: #999999;
+    --color-gray-shade_8: #888888;
+    --color-gray-shade_7: #777777;
+    --color-gray-shade_6: #666666;
+    --color-gray-shade_5: #555555;
+    --color-gray-shade_4: #444444;
+    --color-gray-shade_3: #333333;
+    --color-gray-shade_2: #222222;
+    --color-gray-DEFAULT:  #111111;
+  
+    /* Accent palettes */
+    --color-accent-light: #A5CCF3;
+    --color-accent-DEFAULT: #1C79D8;
+    --color-accent-dark: #1B4979;
+  
+    --color-secondary_accent-light: #F49071;
+    --color-secondary_accent-DEFAULT: #F16C43;
+    --color-secondary_accent-dark: #BE380E;
+  
+    --color-red-DEFAULT: #EC3D3D;
+    --color-red-dark: #8C0D0D;
+  
+    --color-green-DEFAULT: #69E665;
+    --color-green-dark: #198316;
+}
+
+
+.theme-aquillm_default_dark {
+    --color-gray-shade_f: #ffffff;
+    --color-gray-shade_e: #eeeeee;
+    --color-gray-shade_d: #dddddd;
+    --color-gray-shade_c: #cccccc;
+    --color-gray-shade_b: #bbbbbb;
+    --color-gray-shade_a: #aaaaaa;
+    --color-gray-shade_9: #999999;
+    --color-gray-shade_8: #888888;
+    --color-gray-shade_7: #777777;
+    --color-gray-shade_6: #666666;
+    --color-gray-shade_5: #555555;
+    --color-gray-shade_4: #444444;
+    --color-gray-shade_3: #333333;
+    --color-gray-shade_2: #222222;
+    --color-gray-DEFAULT:  #111111;
+  
+    /* Accent palettes */
+    --color-accent-light: #A5CCF3;
+    --color-accent-DEFAULT: #1C79D8;
+    --color-accent-dark: #1B4979;
+  
+    --color-secondary_accent-light: #F49071;
+    --color-secondary_accent-DEFAULT: #F16C43;
+    --color-secondary_accent-dark: #BE380E;
+  
+    --color-red-DEFAULT: #EC3D3D;
+    --color-red-dark: #8C0D0D;
+  
+    --color-green-DEFAULT: #69E665;
+    --color-green-dark: #198316;
+}
+
+.theme-aquillm_default_light {
+    --color-gray-shade_f: #111111;
+    --color-gray-shade_e: #222222;
+    --color-gray-shade_d: #333333;
+    --color-gray-shade_c: #444444;
+    --color-gray-shade_b: #555555;
+    --color-gray-shade_a: #666666;
+    --color-gray-shade_9: #777777;
+    --color-gray-shade_8: #888888;
+    --color-gray-shade_7: #999999;
+    --color-gray-shade_6: #aaaaaa;
+    --color-gray-shade_5: #bbbbbb;
+    --color-gray-shade_4: #cccccc;
+    --color-gray-shade_3: #dddddd;
+    --color-gray-shade_2: #eeeeee;
+    --color-gray-DEFAULT:  #ffffff;
+  
+    /* Accent palettes */
+    --color-accent-light: #A5CCF3;
+    --color-accent-DEFAULT: #1C79D8;
+    --color-accent-dark: #1B4979;
+  
+    --color-secondary_accent-light: #F49071;
+    --color-secondary_accent-DEFAULT: #F16C43;
+    --color-secondary_accent-dark: #BE380E;
+  
+    --color-red-DEFAULT: #EC3D3D;
+    --color-red-dark: #8C0D0D;
+  
+    --color-green-DEFAULT: #69E665;
+    --color-green-dark: #198316;
+}

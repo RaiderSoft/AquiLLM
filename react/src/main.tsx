@@ -11,6 +11,8 @@ import IngestionDashboardLauncher from './components/IngestionDashboardLauncher'
 import IngestRowContainer from './components/IngestRow';
 import WhitelistEmails from './components/WhitelistEmails';
 import ChatComponent from './components/ChatComponent';
+import ThemeSelector from './components/ThemeSelector';
+
 // Type for the components mapping
 type ComponentsMap = {
   [key: string]: React.ComponentType<any>;
@@ -41,6 +43,7 @@ window.mountReactComponent = (
     IngestRowContainer: IngestRowContainer,
     WhitelistEmails: WhitelistEmails,
     ChatComponent: ChatComponent,
+    ThemeSelector: ThemeSelector,
     // Add other components here
   };
   

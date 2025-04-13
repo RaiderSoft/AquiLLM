@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div id="theme-selector-root"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    mountReactComponent('theme-selector-root', 'ThemeSelector', {});
+  </script>
+{% endblock %}

@@ -56,6 +56,32 @@ assert (channel_layer is not None and
 
 type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument
 
+COLOR_SCHEME_CHOICES = (
+    ('aquillm_default_dark', 'Aquillm Default Dark'),
+    ('aquillm_default_light', 'Aquillm Default Light'),
+)
+
+FONT_FAMILY_CHOICES = (
+    ('latin_modern_roman', 'Latin Modern Roman'),
+    ('sans_serif', 'Sans-serif'),
+)
+
+class UserSettings(models.Model):
+    # OneToOneField ensures one settings record per user.
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
+    color_scheme = models.CharField(
+        max_length=20,
+        choices=COLOR_SCHEME_CHOICES,
+        default='aquillm_default_dark'
+    )
+    font_family = models.CharField(
+        max_length=50,
+        choices=FONT_FAMILY_CHOICES,
+        default='latin_modern_roman'
+    )
+
+    def __str__(self):
+        return f"{self.user.username}'s settings"
 
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW') -> 'CollectionQuerySet':
