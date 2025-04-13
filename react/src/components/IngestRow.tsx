@@ -1,17 +1,19 @@
 import React, { useState } from "react";
-import { FileText, Headphones } from "lucide-react";
+import { FileText, Headphones, LinkIcon } from "lucide-react";
 import { getCsrfCookie } from "../main";
 
 export enum DocType {
   PDF = "pdf",
   ARXIV = "arxiv",
   VTT = "vtt",
+  WEBPAGE = "webpage",
 }
 
 interface IngestRowsContainerProps {
   ingestArxivUrl: string;
   ingestPdfUrl: string;
-  ingestVttUrl: string; // New URL for VTT endpoint
+  ingestVttUrl: string;
+  ingestWebpageUrl: string;
   collectionId: string;
 }
 
@@ -26,6 +28,8 @@ interface IngestRowData {
   // For VTT rows
   vttTitle: string;
   vttFile: File | null;
+  // For Webpage rows
+  webpageUrl: string;
 }
 
 const selectedClasses = "bg-accent text-gray-shade_e";
@@ -72,6 +76,16 @@ const DocTypeToggle: React.FC<DocTypeToggleProps> = ({
         }`}
       >
         <Headphones size={18} />
+      </button>
+
+      <button
+        onClick={() => setDocType(DocType.WEBPAGE)}
+        title="Webpage"
+        className={`flex items-center h-[40px] w-[40px] justify-center px-2 py-1 rounded-lg transition-colors ${
+          docType === DocType.WEBPAGE ? selectedClasses : unselectedClasses
+        }`}
+      >
+        <LinkIcon size={18} />
       </button>
     </div>
   );
@@ -189,6 +203,23 @@ const VTTForm: React.FC<VTTFormProps> = ({
   );
 };
 
+interface WebpageFormProps {
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+const WebpageForm: React.FC<WebpageFormProps> = ({ value, onValueChange }) => {
+  return (
+    <input
+      type="url"
+      placeholder="Enter Webpage URL"
+      value={value}
+      onChange={(e) => onValueChange(e.target.value)}
+      className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a w-full"
+    />
+  );
+};
+
 interface ArxivFormProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -233,12 +264,17 @@ const IngestRow: React.FC<IngestRowProps> = ({ row, onDocTypeChange, onRowChange
             value={row.arxivId}
             onValueChange={(value) => onRowChange(row.id, { arxivId: value })}
           />
-        ) : (
+        ) : row.docType === DocType.VTT ? (
           <VTTForm
             vttTitle={row.vttTitle}
             vttFile={row.vttFile}
             onTitleChange={(value) => onRowChange(row.id, { vttTitle: value })}
             onFileChange={(file) => onRowChange(row.id, { vttFile: file })}
+          />
+        ) : (
+          <WebpageForm
+            value={row.webpageUrl}
+            onValueChange={(value) => onRowChange(row.id, { webpageUrl: value })}
           />
         )}
       </div>
@@ -250,207 +286,207 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
   ingestArxivUrl,
   ingestPdfUrl,
   ingestVttUrl,
+  ingestWebpageUrl,
   collectionId,
 }) => {
   const [rows, setRows] = useState<IngestRowData[]>([
-    { 
-      id: 1, 
-      docType: DocType.PDF, 
-      pdfTitle: "", 
-      pdfFile: null, 
+    {
+      id: 0,
+      docType: DocType.PDF,
+      pdfTitle: "",
+      pdfFile: null,
       arxivId: "",
       vttTitle: "",
-      vttFile: null
+      vttFile: null,
+      webpageUrl: "",
     },
   ]);
-  const [submitting, setSubmitting] = useState(false);
-  const [submissionMessage, setSubmissionMessage] = useState("");
+  const [submissionStatus, setSubmissionStatus] = useState<{
+    [key: number]: "idle" | "submitting" | "success" | "error";
+  }>({});
+  const [errorMessages, setErrorMessages] = useState<{ [key: number]: string }>(
+    {}
+  );
 
-  // Update a given row with new values
   const updateRow = (id: number, updates: Partial<IngestRowData>) => {
-    setRows((prevRows) => {
-      // Update the specified row
-      const updatedRows = prevRows.map((row) =>
-        row.id === id ? { ...row, ...updates } : row
-      );
-      
-      // In this stack behavior, the active (new) row is always at index 0
-      const activeRow = updatedRows[0];
-      
-      // Define what it means for a row to be complete
-      const isComplete =
-        activeRow.docType === DocType.PDF
-          ? activeRow.pdfFile !== null && activeRow.pdfTitle.trim() !== ""
-          : activeRow.docType === DocType.ARXIV
-          ? activeRow.arxivId.trim() !== ""
-          : activeRow.docType === DocType.VTT
-          ? activeRow.vttFile !== null && activeRow.vttTitle.trim() !== ""
-          : false;
-      
-      // Only add a new row if the active row is the one being updated and it's complete
-      if (id === activeRow.id && isComplete) {
-        updatedRows.unshift({
-          // Use a method to generate a unique id as needed
-          id: activeRow.id + 1, 
-          docType: DocType.PDF,
-          pdfTitle: "",
-          pdfFile: null,
-          arxivId: "",
-          vttTitle: "",
-          vttFile: null
-        });
-      }
-      
-      return updatedRows;
-    });
+    setRows((prevRows) =>
+      prevRows.map((row) => (row.id === id ? { ...row, ...updates } : row))
+    );
   };
-  
-  // When changing doc type, also clear the now-irrelevant fields.
+
+  const addRow = () => {
+    setRows((prevRows) => [
+      ...prevRows,
+      {
+        id: prevRows.length > 0 ? prevRows[prevRows.length - 1].id + 1 : 0,
+        docType: DocType.PDF,
+        pdfTitle: "",
+        pdfFile: null,
+        arxivId: "",
+        vttTitle: "",
+        vttFile: null,
+        webpageUrl: "",
+      },
+    ]);
+  };
+
   const updateRowDocType = (id: number, newDocType: DocType) => {
     setRows((prevRows) =>
-      prevRows.map((row) =>
-        row.id === id
-          ? { 
-              ...row, 
-              docType: newDocType, 
-              pdfTitle: "", 
-              pdfFile: null, 
-              arxivId: "",
-              vttTitle: "",
-              vttFile: null
-            }
-          : row
-      )
+      prevRows.map((row) => {
+        if (row.id === id) {
+          const newRow = { ...row, docType: newDocType };
+          if (newDocType !== DocType.PDF) {
+            newRow.pdfFile = null;
+            newRow.pdfTitle = "";
+          }
+          if (newDocType !== DocType.ARXIV) {
+            newRow.arxivId = "";
+          }
+          if (newDocType !== DocType.VTT) {
+            newRow.vttFile = null;
+            newRow.vttTitle = "";
+          }
+          if (newDocType !== DocType.WEBPAGE) {
+            newRow.webpageUrl = "";
+          }
+          return newRow;
+        }
+        return row;
+      })
     );
   };
 
   const handleSubmit = async () => {
-    setSubmitting(true);
-    setSubmissionMessage("");
-    // Only submit rows that are complete (skip the last empty row)
-    const rowsToSubmit = rows.filter((row) =>
-      row.docType === DocType.PDF
-        ? row.pdfFile !== null && row.pdfTitle.trim() !== ""
-        : row.docType === DocType.ARXIV
-        ? row.arxivId.trim() !== ""
-        : row.docType === DocType.VTT
-        ? row.vttFile !== null && row.vttTitle.trim() !== ""
-        : false
-    );
+    const csrfToken = getCsrfCookie();
+    setErrorMessages({});
 
-    try {
-      const promises = rowsToSubmit.map(async (row) => {
-        const formData = new FormData();
-        formData.append("collection", collectionId);
-        
-        if (row.docType === DocType.ARXIV) {
-          formData.append("arxiv_id", row.arxivId);
-          const response = await fetch(ingestArxivUrl, {
-            method: "POST",
-            body: formData,
-            credentials: "include",
-            headers: {
-              "X-CSRFToken": getCsrfCookie()
+    for (const row of rows) {
+      setSubmissionStatus((prev) => ({ ...prev, [row.id]: "submitting" }));
+      let url: string;
+      let body: FormData | string;
+      let headers: HeadersInit = { "X-CSRFToken": csrfToken };
+
+      try {
+        switch (row.docType) {
+          case DocType.PDF:
+            if (!row.pdfFile || !row.pdfTitle) {
+              throw new Error("PDF file and title are required.");
             }
-          });
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              `arXiv submission error for row ${row.id}: ${errorData.error}`
-            );
-          }
-          return response.json();
-        } else if (row.docType === DocType.PDF) {
-          // PDF submission: include the file and title.
-          if (row.pdfFile) {
-            formData.append("pdf_file", row.pdfFile);
-          }
-          formData.append("title", row.pdfTitle);
-          const response = await fetch(ingestPdfUrl, {
-            method: "POST",
-            body: formData,
-            credentials: "include",
-            headers: {
-              "X-CSRFToken": getCsrfCookie()
+            url = ingestPdfUrl;
+            body = new FormData();
+            body.append("pdf_file", row.pdfFile);
+            body.append("title", row.pdfTitle);
+            body.append("collection", collectionId);
+            break;
+          case DocType.ARXIV:
+            if (!row.arxivId) {
+              throw new Error("arXiv ID is required.");
             }
-          });
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              `PDF submission error for row ${row.id}: ${errorData.error}`
-            );
-          }
-          return response.json();
-        } else {
-          // VTT submission
-          if (row.vttFile) {
-            formData.append("vtt_file", row.vttFile);
-          }
-          formData.append("title", row.vttTitle);
-          const response = await fetch(ingestVttUrl, {
-            method: "POST",
-            body: formData,
-            credentials: "include",
-            headers: {
-              "X-CSRFToken": getCsrfCookie()
+            url = ingestArxivUrl;
+            body = new FormData();
+            body.append("arxiv_id", row.arxivId);
+            body.append("collection", collectionId);
+            break;
+          case DocType.VTT:
+            if (!row.vttFile || !row.vttTitle) {
+              throw new Error("VTT file and title are required.");
             }
-          });
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              `VTT submission error for row ${row.id}: ${errorData.error}`
-            );
-          }
-          return response.json();
+            url = ingestVttUrl;
+            body = new FormData();
+            body.append("vtt_file", row.vttFile);
+            body.append("title", row.vttTitle);
+            body.append("collection", collectionId);
+            break;
+          case DocType.WEBPAGE:
+            if (!row.webpageUrl) {
+              throw new Error("Webpage URL is required.");
+            }
+            try {
+              new URL(row.webpageUrl);
+            } catch (e) {
+              throw new Error("Invalid URL format.");
+            }
+            url = ingestWebpageUrl;
+            body = JSON.stringify({
+              url: row.webpageUrl,
+              collection_id: collectionId,
+            });
+            headers["Content-Type"] = "application/json";
+            break;
+          default:
+            throw new Error("Invalid document type selected.");
         }
-      });
 
-      const results = await Promise.all(promises);
-      setSubmissionMessage("Submission successful!");
-      console.log("Submission results:", results);
-      // Reset the rows to just an empty row.
-      setRows([{ 
-        id: 1, 
-        docType: DocType.PDF, 
-        pdfTitle: "", 
-        pdfFile: null, 
-        arxivId: "",
-        vttTitle: "",
-        vttFile: null
-      }]);
-    } catch (error: any) {
-      setSubmissionMessage(error.message || "An error occurred during submission.");
-      console.error("Submission error:", error);
-    } finally {
-      setSubmitting(false);
+        const response = await fetch(url, {
+          method: "POST",
+          headers: headers,
+          body: body,
+        });
+
+        if (!response.ok) {
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch (e) {
+            errorData = { error: `HTTP error! status: ${response.status}` };
+          }
+          throw new Error(
+            errorData.error || `Request failed with status ${response.status}`
+          );
+        }
+
+        setSubmissionStatus((prev) => ({ ...prev, [row.id]: "success" }));
+        updateRow(row.id, {
+          pdfTitle: "",
+          pdfFile: null,
+          arxivId: "",
+          vttTitle: "",
+          vttFile: null,
+          webpageUrl: "",
+        });
+
+      } catch (error: any) {
+        console.error("Submission error for row", row.id, ":", error);
+        setErrorMessages((prev) => ({ ...prev, [row.id]: error.message }));
+        setSubmissionStatus((prev) => ({ ...prev, [row.id]: "error" }));
+      }
     }
   };
 
   return (
-    <>
-      <div
-        id="rows-container"
-        className="max-h-[200px] overflow-y-auto flex flex-col-reverse"
-      >
-        {rows.map((row) => (
+    <div className="space-y-4">
+      {rows.map((row, index) => (
+        <div key={row.id} className="bg-gray-shade_1 p-4 rounded-lg shadow">
           <IngestRow
-            key={row.id}
             row={row}
             onDocTypeChange={updateRowDocType}
             onRowChange={updateRow}
           />
-        ))}
-
-        {submissionMessage && <div className="mt-2">{submissionMessage}</div>}
-      </div>
+          {submissionStatus[row.id] === "submitting" && (
+            <p className="text-yellow mt-2">Submitting...</p>
+          )}
+          {submissionStatus[row.id] === "success" && (
+            <p className="text-green mt-2">Submission successful!</p>
+          )}
+          {submissionStatus[row.id] === "error" && errorMessages[row.id] && (
+            <p className="text-red mt-2">Error: {errorMessages[row.id]}</p>
+          )}
+        </div>
+      ))}
+      <button
+        onClick={addRow}
+        className="bg-blue text-white px-4 py-2 rounded-lg hover:bg-blue-dark transition-colors"
+      >
+        Add Another
+      </button>
       <button
         onClick={handleSubmit}
-        disabled={submitting}
-        className="mt-4 mb-2 px-4 py-2 bg-accent rounded-[20px] text-gray-shade_e h-[40px]"
+        className="bg-green text-white px-4 py-2 rounded-lg hover:bg-green-dark transition-colors ml-4 disabled:opacity-50"
+        disabled={Object.values(submissionStatus).some(s => s === 'submitting')}
       >
-        {submitting ? "Submitting..." : "Submit All"}
+        Submit All
       </button>
-    </>
+    </div>
   );
 };
 

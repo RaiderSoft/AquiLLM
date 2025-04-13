@@ -8,11 +8,12 @@ import json
 from uuid import UUID
 from xml.dom import minidom
 from django.urls import path, include
-
+# Comment out or remove the top-level import if it exists:
+# from trafilatura import fetch_url, extract, extract_metadata
 from django.core.files.base import ContentFile
 
 from .vtt import parse, to_text, coalesce_captions
-from .models import Document, PDFDocument, TeXDocument, VTTDocument, Collection, CollectionPermission, EmailWhitelist, DESCENDED_FROM_DOCUMENT, DuplicateDocumentError
+from .models import Document, PDFDocument, TeXDocument, VTTDocument, Collection, CollectionPermission, EmailWhitelist, DESCENDED_FROM_DOCUMENT, DuplicateDocumentError, RawTextDocument
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 
@@ -26,6 +27,9 @@ from django.core.validators import FileExtensionValidator, validate_email
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import DatabaseError, transaction
 from django.db.models import Q
+
+from django.core.exceptions import PermissionDenied
+
 logger = logging.getLogger(__name__)
 
 
@@ -563,6 +567,120 @@ def whitelisted_email(request, email):
     # unreachable, just keeping the type checker happy
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
+@login_required
+@require_http_methods(["POST"])
+def ingest_webpage(request):
+    # Wtf, why does this need to be imported here?
+    from trafilatura import fetch_url, extract, extract_metadata
+    try:
+        data = json.loads(request.body)
+        url = data.get('url')
+        collection_id = data.get('collection_id')
+
+        if not url or not collection_id:
+            return JsonResponse({'error': 'Missing url or collection_id'}, status=400)
+
+        # Basic URL validation
+        if not url.startswith(('http://', 'https://')):
+             return JsonResponse({'error': 'Invalid URL format. Must start with http:// or https://'}, status=400)
+
+        collection = get_object_or_404(Collection, pk=collection_id)
+
+        # Permission Check
+        if not collection.user_can_edit(request.user):
+            # Use PermissionDenied exception
+            raise PermissionDenied("You do not have permission to add documents to this collection.")
+
+        # Fetch and parse webpage using trafilatura
+        try:
+            # Download (trafilatura handles retires internally to some extent)
+            # Adding a timeout to requests can prevent hanging indefinitely
+            logger.info(f"Attempting to fetch URL: {url}")
+            # Use the directly imported functions
+            downloaded = fetch_url(url)
+
+            if downloaded is None:
+                # Check for potential fetch errors if fetch_url returns None
+                logger.warning(f"trafilatura.fetch_url returned None for {url}") # Keeping log message as is for now
+                return JsonResponse({'error': f'Failed to fetch URL content for {url}. The page might be inaccessible, empty, or blocked.'}, status=400)
+
+            # Extract text content
+            logger.info(f"Attempting to extract text from fetched content for: {url}")
+            # favour_recall=True might get more text, adjust if needed -- REMOVED favour_recall
+            # Use the directly imported functions
+            main_text = extract(downloaded, include_comments=False, include_tables=True) # Removed favour_recall
+            metadata = extract_metadata(downloaded)
+            # Use extracted title or fallback to URL, sanitize title slightly
+            title = (metadata.title if metadata and metadata.title else url).strip().replace('\n', ' ').replace('\r', '')
+            logger.info(f"Extracted title: '{title}', Text length: {len(main_text) if main_text else 0}")
+
+
+            # Basic check on extracted text
+            # Adjusted threshold based on potential trafilatura behavior
+            min_length_threshold = 50
+            if not main_text or len(main_text.strip()) < min_length_threshold:
+                 logger.warning(f"Could not extract sufficient text (>{min_length_threshold} chars) from URL {url}. Extracted length: {len(main_text.strip() if main_text else 0)}")
+                 return JsonResponse({'error': f'Could not extract sufficient text content (> {min_length_threshold} characters) from the URL. The page might be primarily non-textual or structured in an unusual way.'}, status=400)
+
+        except Exception as e:
+            logger.error(f"Error processing URL {url} with trafilatura: {e}", exc_info=True)
+            # Provide a slightly more specific error to the user if possible, else generic
+            error_msg = f'Failed to process the webpage content. Error: {e}'
+            return JsonResponse({'error': error_msg}, status=500)
+
+
+        # Create RawTextDocument instance
+        try:
+            logger.info(f"Attempting to save RawTextDocument: {title} for collection {collection.id}")
+            # Create and save the document, letting the model's save handle chunking
+            doc = RawTextDocument(
+                title=title,
+                full_text=main_text,
+                collection=collection,
+                ingested_by=request.user,
+                source_url=url # Save the source URL
+            )
+            doc.save() # This will trigger the async chunking via model's save method
+            logger.info(f"Successfully saved RawTextDocument {doc.id} for URL {url}")
+
+        except DuplicateDocumentError as e:
+            logger.warning(f"Duplicate document error on webpage ingest: {e.message} for URL {url}")
+            return JsonResponse({'error': e.message}, status=400) # Return 400 for duplicate
+        except ValidationError as e:
+             logger.error(f"Validation error saving RawTextDocument from {url}: {e}", exc_info=True)
+             # Format validation errors nicely
+             error_message = "; ".join([f'{k}: {v[0]}' for k, v in e.message_dict.items()]) if hasattr(e, 'message_dict') else ". ".join(e.messages)
+             return JsonResponse({'error': f'Failed to save document due to validation errors: {error_message}'}, status=400)
+        except DatabaseError as e:
+            logger.error(f"Database error saving RawTextDocument from {url}: {e}", exc_info=True)
+            return JsonResponse({'error': 'A database error occurred while saving the document.'}, status=500)
+        except Exception as e: # Catch other potential errors during save
+             logger.error(f"Unexpected error saving RawTextDocument from {url}: {e}", exc_info=True)
+             return JsonResponse({'error': 'An unexpected error occurred while saving the document.'}, status=500)
+
+        # Return success response with document details
+        return JsonResponse({
+            'message': 'Successfully ingested webpage.',
+            'document_id': str(doc.id), # Stringify UUID
+            'title': doc.title
+        }, status=201) # Use 201 Created status
+
+    except json.JSONDecodeError:
+        logger.warning("Received invalid JSON in ingest_webpage request.")
+        return JsonResponse({'error': 'Invalid JSON payload'}, status=400)
+    except ObjectDoesNotExist: # Handles get_object_or_404 for Collection
+         logger.warning(f"Attempted ingest to non-existent collection ID: {collection_id}")
+         return JsonResponse({'error': 'Collection not found'}, status=404)
+    except PermissionDenied as e:
+        logger.warning(f"Permission denied for user {request.user.id} on collection {collection_id}: {e}")
+        return JsonResponse({'error': str(e)}, status=403)
+    except Exception as e:
+        # Generic catch-all for unexpected errors in the view setup phase
+        logger.error(f"Unexpected error in ingest_webpage view setup: {e}", exc_info=True)
+        return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
+
+# --- Update the urlpatterns list at the very bottom of the file ---
+
 urlpatterns = [
     path("collections/", collections, name="api_collections"),
     path("collection/<int:col_id>/", collection, name="api_collection"),
@@ -578,4 +696,6 @@ urlpatterns = [
     path("whitelisted_email/<str:email>/", whitelisted_email, name="api_whitelist_email"),
     path("whitelisted_emails/", whitelisted_emails, name="api_whitelist_emails"),
     path("ingest_vtt/", ingest_vtt, name="api_ingest_vtt"),
+    # Add the new URL pattern for webpage ingestion:
+    path("ingest_webpage/", ingest_webpage, name="api_ingest_webpage"),
 ]

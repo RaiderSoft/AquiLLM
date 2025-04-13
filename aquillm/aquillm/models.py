@@ -452,6 +452,7 @@ class TeXDocument(Document):
     pass
 
 class RawTextDocument(Document):
+    source_url = models.URLField(max_length=2000, null=True, blank=True)
     pass
 
 

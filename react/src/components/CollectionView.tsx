@@ -594,6 +594,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         ingestArxivUrl={window.apiUrls.api_ingest_arxiv}
         ingestPdfUrl={window.apiUrls.api_ingest_pdf}
         ingestVttUrl={window.apiUrls.api_ingest_vtt}
+        ingestWebpageUrl={window.apiUrls.api_ingest_webpage}
         collectionId={collectionId}
       />
 
