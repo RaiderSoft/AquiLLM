@@ -1,9 +1,10 @@
 // src/components/ThemeSelector.js
 import React, { useState, useEffect } from 'react';
+import { getCookie } from '../utils/csrf';
 
-const ThemeSelector: React.FC = () => {
+const UserSettings: React.FC = () => {
   const [themeSettings, setThemeSettings] = useState({
-    color_scheme: 'light',
+    color_scheme: 'aquillm_default_dark',
     font_family: 'latin_modern_roman'
   });
   const [loading, setLoading] = useState(true);
@@ -13,9 +14,11 @@ const ThemeSelector: React.FC = () => {
   useEffect(() => {
     fetch('/api/user-settings/', {
       credentials: 'include', // ensure cookies are sent
+      headers: { 'Accept': 'application/json' } // force a JSON response
     })
       .then(res => res.json())
       .then(data => {
+        console.log('Fetched settings:', data); // Check the structure!
         setThemeSettings(data);
         setLoading(false);
       })
@@ -40,25 +43,28 @@ interface SubmitResponse {
 
 const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     fetch('/api/user-settings/', {
-        method: 'POST', // alternatively, you can use PUT or PATCH
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(themeSettings)
+      method: 'POST', 
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      credentials: 'include',
+      body: JSON.stringify(themeSettings)
     })
-        .then(res => res.json())
-        .then((data: SubmitResponse) => {
-            alert("Settings updated!");
-            // Optionally apply theme changes immediately:
-            applyTheme(data);
-        })
-        .catch((err: Error) => console.error('Error updating settings:', err));
+      .then(res => res.json())
+      .then((data: SubmitResponse) => {
+        alert("Settings updated!");
+        applyTheme(data);
+      })
+      .catch((err: Error) => console.error('Error updating settings:', err));
 };
 
   // This helper function applies the chosen theme to the page.
   const applyTheme = ({ color_scheme, font_family }: { color_scheme: string; font_family: string }) => {
     // Remove any previously set theme classes (if using utility classes to indicate theme).
-    document.body.classList.remove('theme-light', 'theme-dark', 'theme-blue');
+    document.body.classList.remove('theme-aquillm_default_dark', 'theme-aquillm_default_light');
     document.body.classList.add(`theme-${color_scheme}`);
 
     // If you want to change the font globally, you could update a CSS variable or
@@ -85,9 +91,8 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             onChange={handleChange}
             className="border p-2 rounded"
           >
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-            <option value="blue">Blue</option>
+            <option value="aquillm_default_dark">Aquillm Default Dark</option>
+            <option value="aquillm_default_light">Aquillm Default Light</option>
           </select>
         </div>
         <div className="mb-4">
@@ -113,4 +118,4 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
   );
 };
 
-export default ThemeSelector;
+export default UserSettings;

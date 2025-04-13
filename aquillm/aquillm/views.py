@@ -40,6 +40,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import UserSettings
 from .serializers import UserSettingsSerializer
 
+from django.views.generic import TemplateView
+
 class UserSettingsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -63,6 +65,9 @@ class UserSettingsView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class UserSettingsPageView(TemplateView):
+    template_name = "aquillm/user_settings.html"
     
 
 @require_http_methods(['GET'])

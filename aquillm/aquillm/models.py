@@ -70,7 +70,7 @@ class UserSettings(models.Model):
     # OneToOneField ensures one settings record per user.
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
     color_scheme = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=COLOR_SCHEME_CHOICES,
         default='aquillm_default_dark'
     )

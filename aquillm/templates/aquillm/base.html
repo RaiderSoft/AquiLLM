@@ -16,12 +16,13 @@
     <link rel="stylesheet" href="{% static 'scrollbar.css' %}" type="text/css" charset="utf-8" />
     <link rel="stylesheet" href="{% static 'search_styling.css' %}" type="text/css" charset="utf-8" />
     <link rel="stylesheet" href="{% static 'circular_progress_bar.css' %}" type="text/css" charset="utf-8" />
+    <link rel="stylesheet" href="{% static 'theme.css' %}" type="text/css" charset="utf-8" />
+
 </head>
 <body class="
   {% if user_theme_settings %}
     theme-{{ user_theme_settings.color_scheme }} font-{{ user_theme_settings.font_family }}
-  {% endif %}
-">
+  {% endif %} ">
 
     <div id="delete-confirm-modal" class="font-sans fixed inset-0 flex items-center backdrop-blur justify-center bg-black bg-opacity-50 hidden z-[200] transition-all">
         <div class="bg-gray-shade_3 p-6 rounded shadow-md text-center border border-gray-shade_6">
