@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Folder } from './CollectionsTree';
+import { Collection } from './CollectionsTree';
 import { FileSystemItem } from '../types/FileSystemItem';
 import { FolderIcon } from '../icons/folder.tsx';
 
 interface MoveCollectionModalProps {
-  folder: Folder | null; // The collection being moved
-  collections: Folder[]; // All available collections (including nested ones)
+  folder: Collection | null; // The collection being moved
+  collections: Collection[]; // All available collections (including nested ones)
   isOpen: boolean;       // Modal visibility
   onClose: () => void;
   onSubmit: (folderId: number, newParentId: number | null) => void;
@@ -91,7 +91,7 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
   }, [collections, currentParentId]);
 
   // Build breadcrumb from currentParentId up to the root.
-  const buildBreadcrumb = (parentId: number | null): Folder[] => {
+  const buildBreadcrumb = (parentId: number | null): Collection[] => {
     if (parentId === null) return [];
     const parentFolder = collections.find(col => col.id === parentId);
     if (!parentFolder) return [];
@@ -133,7 +133,7 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
 
   return (
     <div className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black bg-opacity-75 z-[100] backdrop-blur-[10px]">
-      <div className='border-gray-shade_7 border flex flex-col items-center justify-left bg-gray-shade_3 p-[1rem] rounded-[32px] w-full max-w-[600px] position-relative box-shadow-[0_4px_6px_rgba(0,0,0,0.1)] font-sans text-gray-shade_e'> 
+      <div className='border-gray-shade_7 border flex flex-col items-center justify-left bg-gray-shade_3 p-[1rem] rounded-[32px] w-full max-w-[600px] position-relative box-shadow-[0_4px_6px_rgba(0,0,0,0.1)] text-gray-shade_e'> 
 
         <h3 style={modalStyles.title}>Move Collection</h3>
 

@@ -2,14 +2,26 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { FileSystemItem } from '../types/FileSystemItem';
 import { FolderIcon } from '../icons/folder';
 import { DocumentIcon } from '../icons/document';
-import { Folder } from './CollectionsTree';
+import { Collection } from './CollectionsTree';
 import ContextMenu from './CustomContextMenu';
+
+import { Folder, File } from 'lucide-react';
+
+const typeToTextColorClass = {
+  'collection': 'text-accent-light',
+  'document': 'text-secondary_accent-light',
+  'arxiv': 'text-secondary_accent-light',
+  'transcript': 'text-secondary_accent-light',
+  'audio': 'text-secondary_accent-light',
+  'pdf': 'text-secondary_accent-light',
+  'TeXDocument': 'text-secondary_accent-light',
+};
 
 // Props for the FileSystemViewer
 interface FileSystemViewerProps {
   mode: 'browse' | 'select';                   // The current mode
   items: FileSystemItem[];                     // The items (collections/documents) to display
-  collection: Folder;                           // The current collection
+  collection: Collection;                           // The current collection
   onOpenItem?: (item: FileSystemItem) => void; // Callback when a user clicks a row to "open" or navigate
   onRemoveItem?: (item: FileSystemItem) => void;  // Callback for removing/deleting an item
   onSelectCollection?: (item: FileSystemItem) => void; // Callback for selecting a collection (in select mode)
@@ -83,9 +95,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
 
     switch (type) {
       case 'collection':
-        return <FolderIcon />
-      case 'PDFDocument':
-        return <DocumentIcon />;
+        return <Folder size={20} />
+      default:
+        return <File size={20} />;
     }
 
   };
@@ -101,11 +113,6 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
       }
       return newSet;
     });
-  };
-
-  const getTextColorForType = (type: string) => {
-    if (type === 'collection') return '#A5CCF3'; // Blue
-    return '#F49071'; // Orange (for everything else)
   };
 
   // A convenience function to see if all displayed items are selected
@@ -217,7 +224,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
   };
 
   return (
-    <div style={{ backgroundColor: '#292929', borderRadius: '36px' }} className='font-sans border border-gray-shade_6 overflow-hidden'>
+    <div style={{ backgroundColor: '#292929', borderRadius: '36px' }} className='border border-gray-shade_6 overflow-hidden'>
       {/* Top Bar: Search, etc. */}
       <div style={{ display: 'flex', justifyContent: 'space-between'}} className='bg-gray-shade_4 p-[16px] border-b border-b-gray-shade_6'>
         <div className="flex gap-[16px]">
@@ -396,7 +403,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               <th style={{ textAlign: 'left' }}>Details</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-gray-shade_3">
             {filteredItems.length > 0 ? (
               filteredItems.map((item) => {
                 const isSelected = selectedIds.has(item.id);
@@ -404,11 +411,10 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                   <tr
                       key={item.id}
                       onContextMenu={(e) => handleContextMenu(e, item)}
-                      className='h-[40px] max-h-[40px] hover:bg-gray-shade_3 transition-colors'
+                      className={`h-[40px] max-h-[40px] hover:bg-gray-shade_3 transition-colors ${typeToTextColorClass[item.type as keyof typeof typeToTextColorClass] || ''}`}
                       style={{
                           borderBottom: '1px solid #555555',
                           cursor: 'pointer',                      
-                          color: getTextColorForType(item.type),
                           backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent', // Highlight selected rows
                       }}
                       onClick={() => {
@@ -532,7 +538,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
 
       {/* Pagination Controls (placeholder) */}
       <div
-       className='text-gray-shade_e'
+       className='text-gray-shade_e bg-gray-shade_3'
         style={{
           display: 'flex',
           justifyContent: 'flex-end',
@@ -541,9 +547,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
           padding: '1rem',
         }}
       >
-        <span>Rows per page: 10</span>
-        <button style={{ background: 'none', border: 'none', color: '#eeeeee' }}>←</button>
-        <button style={{ background: 'none', border: 'none', color: '#eeeeee' }}>→</button>
+        <span className='text-gray-shade_e'>Rows per page: 10</span>
+        <button style={{ background: 'none', border: 'none'}} className="text-gray-shade_e">←</button>
+        <button style={{ background: 'none', border: 'none'}} className="text-gray-shade_e">→</button>
       </div>
     </div>
   );

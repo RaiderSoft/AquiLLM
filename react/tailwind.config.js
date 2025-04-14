@@ -8,6 +8,13 @@ module.exports = {
   theme: {
     extend: {
         fontFamily: {
+          opendyslexic: ['"OpenDyslexic"', 'sans-serif'],
+          lexend: ['Lexend', 'sans-serif'],
+          comicsans: ['"Comic Sans"', 'cursive'],
+          // You can continue using system fonts for Verdana and Times New Roman:
+          verdana: ['Verdana', 'sans-serif'],
+          timesnewroman: ['"Times New Roman"', 'serif'],
+          // Keep your existing defaults too:
           latin_modern_roman: ['Latin Modern Roman', 'serif'],
           sans_serif: ['Helvetica', 'Arial', 'sans-serif']
         },
@@ -16,6 +23,7 @@ module.exports = {
           gray: {
             shade_f: 'var(--color-gray-shade_f)',
             shade_e: 'var(--color-gray-shade_e)',
+            shade_e_i: 'var(--color-gray-shade_e_i)',
             shade_d: 'var(--color-gray-shade_d)',
             shade_c: 'var(--color-gray-shade_c)',
             shade_b: 'var(--color-gray-shade_b)',
@@ -48,6 +56,13 @@ module.exports = {
             DEFAULT: 'var(--color-green-DEFAULT)',
             dark: 'var(--color-green-dark)',
           },
+          slight_muted_white: {
+            DEFAULT: 'var(--color-slightly-muted-white)',
+          },
+          tool_details:{
+            assistant: 'var(--color-tool-details-section-assistant)',
+            tool: 'var(--color-tool-details-section-tool)',
+          }
         },
 
         keyframes: {

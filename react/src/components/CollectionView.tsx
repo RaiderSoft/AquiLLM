@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Folder } from '../components/CollectionsTree';
+import { Collection } from '../components/CollectionsTree';
 import CollectionSettingsMenu from '../components/CollectionSettingsMenu';
 import FileSystemViewer from '../components/FileSystemViewer';
 import MoveCollectionModal from '../components/MoveCollectionModal';
@@ -23,14 +23,14 @@ interface CollectionViewProps {
 
 const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack }) => {
   // State for current collection details (children, documents)
-  const [collection, setCollection] = useState<Folder | null>(null);
+  const [collection, setCollection] = useState<Collection | null>(null);
   const [contents, setContents] = useState<CollectionContent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [movingItem, setMovingItem] = useState<FileSystemItem | Folder | null>(null);
+  const [movingItem, setMovingItem] = useState<FileSystemItem | Collection | null>(null);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
-  const [allCollections, setAllCollections] = useState<Folder[]>([]);
+  const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [batchMovingItems, setBatchMovingItems] = useState<FileSystemItem[]>([]);
   const [isBatchMoveModalOpen, setIsBatchMoveModalOpen] = useState(false);
   const [isBatchOperationLoading, setIsBatchOperationLoading] = useState(false);
@@ -499,7 +499,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   const breadcrumbs = parseBreadcrumbs();
 
   return (
-    <div style={{ padding: '2rem' }} className='font-sans'>
+    <div style={{ padding: '2rem' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'end', justifyContent: 'center' }} className='mb-[32px] px-[40px]'>
         <button
@@ -586,7 +586,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
       <div className="relative flex items-center mb-[24px]"> 
           <div className="flex-grow border-t border-gray-shade_4"></div>
-            <span className="font-sans text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Add Content</span>
+            <span className="text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Add Content</span>
           <div className="flex-grow border-t border-gray-shade_4"></div>
       </div>
 
@@ -599,7 +599,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
       <div className="relative flex items-center mb-[24px]"> 
           <div className="flex-grow border-t border-gray-shade_4"></div>
-            <span className="font-sans text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Browse</span>
+            <span className="text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Browse</span>
           <div className="flex-grow border-t border-gray-shade_4"></div>
       </div>
 
@@ -617,7 +617,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
       {/* Move Modal for moving the current collection */}
       <MoveCollectionModal
-        folder={movingItem as unknown as Folder}       // the collection or document being moved
+        folder={movingItem as unknown as Collection}       // the collection or document being moved
         collections={allCollections.filter(collection => collection.id !== movingItem?.id)} // full list of collections with parent information
         isOpen={isMoveModalOpen}
         onClose={() => { setIsMoveModalOpen(false); setMovingItem(null); }}

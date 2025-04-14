@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Send, ChevronDown, Search, Loader2 } from 'lucide-react';
 import { CircularProgressbar } from 'react-circular-progressbar';
+
 // Define TypeScript interfaces
 interface Message {
   role: 'user' | 'assistant' | 'tool';
@@ -328,8 +329,7 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
                 <input 
                   type="text" 
                   id="message-input"
-                  style={{ color: '#eeeeee', fontFamily: 'sans-serif' }}
-                  className="px-2 py-2 mr-[16px] flex-grow w-full rounded-lg bg-gray-shade_3 focus:border-0 disabled:cursor-not-allowed placeholder:text-gray-shade_7 placeholder:font-sans"
+                  className="px-2 py-2 mr-[16px] flex-grow w-full rounded-lg bg-gray-shade_3 focus:border-0 disabled:cursor-not-allowed placeholder:text-gray-shade_7 text-gray-shade_e"
                   placeholder="Type your message here..."
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
@@ -343,7 +343,7 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
                   title="Send Message"
                   disabled={inputDisabled}
                 >
-                  <Send size={16} />
+                  <Send size={16} className="text-button_text_color"/>
                 </button>
               </div>
             </div>
@@ -351,13 +351,13 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
             {/* Collections Section */}
             <div className="">
               <details 
-                className="w-full font-sans text-gray-shade_e" 
+                className="w-full text-gray-shade_e" 
                 open={showCollections}
                 onToggle={() => setShowCollections(!showCollections)}
               >
-                <summary className="cursor-pointer w-[max-content] px-[16px] py-[2px] text-gray-shade_e font-sans bg-accent h-[36px] rounded-[18px] flex items-center">
-                  <span>Select Collections</span>
-                  <span className="ml-2 text-sm">
+                <summary className="cursor-pointer w-[max-content] px-[16px] py-[2px] text-gray-shade_e bg-accent h-[36px] rounded-[18px] flex items-center">
+                  <span className="text-button_text_color">Select Collections</span>
+                  <span className="ml-2 text-sm text-button_text_color">
                     {selectedCollections.size ? `(${selectedCollections.size} selected)` : ''}
                   </span>
                 </summary>
@@ -367,7 +367,7 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
                     placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="text-sm h-[36px] w-full p-2 border rounded-lg font-sans text-gray-shade_e bg-gray-shade_3 border-gray-shade_6 mt-2"
+                    className="text-sm h-[36px] w-full p-2 border rounded-lg text-gray-shade_e bg-gray-shade_3 border-gray-shade_6 mt-2"
                   />
                 </div>
                 <div className="mt-2 p-2 border rounded-lg bg-gray-shade_3 border-gray-shade_6 max-h-[160px] overflow-y-auto">
@@ -409,14 +409,14 @@ const shouldShowSpinner = (messages: Message[]) => {
 // MessageBubble component
 const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefined, rating: number) => void }> = ({ message, onRate }) => {
   const getMessageClasses = () => {
-    let classes = "w-4/5 p-2.5 rounded-[12px] shadow-md whitespace-pre-wrap break-words font-sans";
+    let classes = "w-4/5 p-2.5 rounded-[12px] shadow-md whitespace-pre-wrap break-words";
     
     if (message.role === 'user') {
       return `${classes} user-message self-end bg-gray-shade_4 text-gray-shade_e`;
     } else if (message.role === 'assistant') {
-      return `${classes} assistant-message text-gray-shade_e bg-accent`;
+      return `${classes} assistant-message text-slight_muted_white bg-accent`;
     } else if (message.role === 'tool') {
-      return `${classes} bg-secondary_accent border border-1 border-secondary_accent-light text-gray-shade_e`;
+      return `${classes} bg-secondary_accent border border-1 border-secondary_accent-light text-slight_muted_white`;
     }
     
     return classes;
@@ -443,9 +443,9 @@ const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefi
             <strong>Called Tool: {message.tool_call_name}</strong>
             <Collapsible 
               summary="View Tool Arguments" 
-              summaryTextColor="text-gray-shade_e"
+              summaryTextColor="text-slight_muted_white"
               content={
-                <pre className="whitespace-pre-wrap break-words bg-accent-dark p-2 rounded text-gray-shade_e">
+                <pre className="whitespace-pre-wrap break-words bg-tool_details-assistant p-2 rounded text-slight_muted_white">
                   {JSON.stringify(message.tool_call_input, null, 2)}
                 </pre>
               }
@@ -456,15 +456,15 @@ const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefi
         {/* Tool output */}
         {message.role === 'tool' && (
           <>
-            <div className="mb-2 font-bold text-gray-shade_e">
+            <div className="mb-2 font-bold">
               Tool Output: {message.tool_name}
             </div>
             <Collapsible 
               summary={'exception' in (message.result_dict || {}) ? 'View Exception' : 'View Results'}
-              summaryTextColor="text-gray-shade_e"
+              summaryTextColor="text-slight_muted_white"
               isOpen={message.for_whom === 'user'}
               content={
-                <div className="bg-secondary_accent-dark p-2 rounded text-gray-shade_e">
+                <div className="bg-tool_details-tool p-2 rounded text-slight_muted_white">
                   <ToolResult result={'exception' in (message.result_dict || {}) ? 
                     message.result_dict?.exception : 
                     message.result_dict?.result} 
@@ -545,7 +545,7 @@ const ToolResult: React.FC<{ result: any, level?: number }> = ({ result, level =
               </details>
             ) : (
               <div key={index} className="mt-1">
-                <span className="font-mono text-blue-600">{key}: </span>
+                <span className="font-mono text-slight_muted_white">{key}: </span>
                 <ToolValue value={value as string | number | boolean} />
               </div>
             )
@@ -560,7 +560,7 @@ const ToolResult: React.FC<{ result: any, level?: number }> = ({ result, level =
 // Tool Value Component
 const ToolValue: React.FC<{ value: string | number | boolean }> = ({ value }) => {
   if (typeof value === 'string') {
-    return <span className="font-mono text-gray-shade_e">{`"${value}"`}</span>;
+    return <span className="font-mono text-slight_muted_white">{`"${value}"`}</span>;
   }
   return <span className="font-mono text-secondary_accent-light">{String(value)}</span>;
 };

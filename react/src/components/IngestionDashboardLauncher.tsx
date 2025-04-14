@@ -39,7 +39,7 @@ const IngestionDashboardLauncher: React.FC<IngestionDashboardLauncherProps> = ({
   return (
     <>
       {/* Clickable div that toggles the modal's visibility */}
-      <div onClick={() => setModalOpen(!modalOpen)} className="my-[5px] pl-[8px] py-[3px] font-sans text-lg w-full hover:bg-gray-shade_5 rounded-[12px] transition-all">
+      <div onClick={() => setModalOpen(!modalOpen)} className="my-[5px] pl-[8px] py-[3px] text-lg w-full hover:bg-gray-shade_5 rounded-[12px] transition-all">
         Ingestion Monitor
       </div>
 

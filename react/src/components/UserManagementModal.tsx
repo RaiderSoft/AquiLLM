@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Folder } from './CollectionsTree';
+import { Collection } from './CollectionsTree';
 import { getCookie } from '../utils/csrf';
 import formatUrl from '../utils/formatUrl';
 // Define the types for users and permissions
@@ -21,7 +21,7 @@ interface UserWithPermission extends User {
 }
 
 interface UserManagementModalProps {
-  collection: Folder | null;
+  collection: Collection | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -270,7 +270,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-shade_3 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col font-sans">
+      <div className="bg-gray-shade_3 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-gray-shade_4 flex justify-between items-center">
           <h2 className="text-xl font-semibold">
             Manage Collaborators: {collection?.name}

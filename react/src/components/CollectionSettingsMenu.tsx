@@ -4,13 +4,13 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Folder } from './CollectionsTree';
+import { Collection } from './CollectionsTree';
 
 interface CollectionSettingsMenuProps {
-  collection: Folder;                        // Collection to manage
-  onMove: (collection: Folder) => void;      // Callback for move action
-  onDelete: (collection: Folder) => void;    // Callback for delete action
-  onManageCollaborators: (collection: Folder) => void; // Callback for managing collaborators
+  collection: Collection;                        // Collection to manage
+  onMove: (collection: Collection) => void;      // Callback for move action
+  onDelete: (collection: Collection) => void;    // Callback for delete action
+  onManageCollaborators: (collection: Collection) => void; // Callback for managing collaborators
 }
 
 /**
@@ -57,7 +57,6 @@ const CollectionSettingsMenu: React.FC<CollectionSettingsMenuProps> = ({
 
       {isOpen && (
         <div 
-        className='font-sans'
         style={{
           position: 'absolute',
           right: 0,

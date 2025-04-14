@@ -1,5 +1,5 @@
 :root {
-    /* Gray palette */
+    /* Gray palette, will fallback to this if theme is not set properly */
     --color-gray-shade_f: #ffffff;
     --color-gray-shade_e: #eeeeee;
     --color-gray-shade_d: #dddddd;
@@ -15,6 +15,10 @@
     --color-gray-shade_3: #333333;
     --color-gray-shade_2: #222222;
     --color-gray-DEFAULT:  #111111;
+    
+    --color-gray-shade_e_i: #eeeeee;
+
+    --color-slightly-muted-white: #eeeeee;
   
     /* Accent palettes */
     --color-accent-light: #A5CCF3;
@@ -49,15 +53,23 @@
     --color-gray-shade_3: #333333;
     --color-gray-shade_2: #222222;
     --color-gray-DEFAULT:  #111111;
+
+    --color-gray-shade_e_i: #222222;
+
+    --color-slightly-muted-white: #eeeeee;
   
     /* Accent palettes */
     --color-accent-light: #A5CCF3;
     --color-accent-DEFAULT: #1C79D8;
     --color-accent-dark: #1B4979;
-  
+
+    --color-tool-details-section-assistant: #1B4979;
+
     --color-secondary_accent-light: #F49071;
     --color-secondary_accent-DEFAULT: #F16C43;
     --color-secondary_accent-dark: #BE380E;
+
+    --color-tool-details-section-tool: #BE380E;
   
     --color-red-DEFAULT: #EC3D3D;
     --color-red-dark: #8C0D0D;
@@ -67,6 +79,7 @@
 }
 
 .theme-aquillm_default_light {
+    /* Inverted version of the default dark theme */
     --color-gray-shade_f: #111111;
     --color-gray-shade_e: #222222;
     --color-gray-shade_d: #333333;
@@ -82,15 +95,24 @@
     --color-gray-shade_3: #dddddd;
     --color-gray-shade_2: #eeeeee;
     --color-gray-DEFAULT:  #ffffff;
+
+    --color-gray-shade_e_i: #eeeeee;
+
+    --color-slightly-muted-white: #eeeeee;
+
+    --color-tool-details-section-assistant: #1B4979;
+    --color-tool-details-section-tool: #BE380E;
   
     /* Accent palettes */
-    --color-accent-light: #A5CCF3;
+    --color-accent-light: #1B4979;
     --color-accent-DEFAULT: #1C79D8;
-    --color-accent-dark: #1B4979;
-  
-    --color-secondary_accent-light: #F49071;
+    --color-accent-dark: #A5CCF3;
+    --color-accent-dark_i: #1B4979;
+    
+    --color-secondary_accent-light: #BE380E;
     --color-secondary_accent-DEFAULT: #F16C43;
-    --color-secondary_accent-dark: #BE380E;
+    --color-secondary_accent-dark: #F49071;
+    --color-secondary_accent-dark_i: #BE380E;
   
     --color-red-DEFAULT: #EC3D3D;
     --color-red-dark: #8C0D0D;

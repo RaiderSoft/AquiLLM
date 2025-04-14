@@ -28,8 +28,8 @@ interface IngestRowData {
   vttFile: File | null;
 }
 
-const selectedClasses = "bg-accent text-gray-shade_e";
-const unselectedClasses = "bg-gray-shade_3 hover:bg-gray-shade_4";
+const selectedClasses = "bg-accent text-slight_muted_white";
+const unselectedClasses = "bg-gray-shade_3 hover:bg-gray-shade_4 text-gray-shade_e";
 
 interface DocTypeToggleProps {
   docType: DocType;
@@ -446,7 +446,7 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
       <button
         onClick={handleSubmit}
         disabled={submitting}
-        className="mt-4 mb-2 px-4 py-2 bg-accent rounded-[20px] text-gray-shade_e h-[40px]"
+        className="mt-4 mb-2 px-4 py-2 bg-accent rounded-[20px] text-slight_muted_white h-[40px]"
       >
         {submitting ? "Submitting..." : "Submit All"}
       </button>

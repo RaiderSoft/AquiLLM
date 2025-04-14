@@ -64,6 +64,11 @@ COLOR_SCHEME_CHOICES = (
 FONT_FAMILY_CHOICES = (
     ('latin_modern_roman', 'Latin Modern Roman'),
     ('sans_serif', 'Sans-serif'),
+    ('verdana', 'Verdana'),
+    ('timesnewroman', 'Times New Roman'),
+    ('opendyslexic', 'OpenDyslexic'),
+    ('lexend', "Lexend"),
+    ('comicsans', 'Comic Sans')
 )
 
 class UserSettings(models.Model):
@@ -77,7 +82,7 @@ class UserSettings(models.Model):
     font_family = models.CharField(
         max_length=50,
         choices=FONT_FAMILY_CHOICES,
-        default='latin_modern_roman'
+        default='verdana'
     )
 
     def __str__(self):

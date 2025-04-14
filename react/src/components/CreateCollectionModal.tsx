@@ -4,12 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { Folder } from './CollectionsTree';
+import { Collection } from './CollectionsTree';
 
 interface CreateCollectionModalProps {
   isOpen: boolean;                          // Controls modal visibility
   onClose: () => void;                      // Callback when modal is closed
-  onSubmit: (newCollection: Folder) => void; // Callback when new collection is created
+  onSubmit: (newCollection: Collection) => void; // Callback when new collection is created
 }
 
 /**
@@ -29,7 +29,7 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
     if (!name.trim()) return;
     
     // Create temporary collection object
-    const newCollection: Folder = {
+    const newCollection: Collection = {
       id: Date.now(), // Temporary ID, will be replaced by server
       name: name.trim(),
       parent: null,
@@ -120,7 +120,7 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
 
   return (
     <div style={modalStyles.overlay}>
-      <div style={modalStyles.content} className='font-sans'>
+      <div style={modalStyles.content}>
         <h3 style={modalStyles.title}>Create New Collection</h3>
         <form onSubmit={handleSubmit} style={modalStyles.form}>
           <div>

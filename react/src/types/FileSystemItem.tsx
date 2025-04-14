@@ -1,6 +1,6 @@
 export interface FileSystemItem {
     id: number;
-    type: 'collection' | 'pdf' | 'audio' | 'arxiv' | 'transcript' | 'document' | string;
+    type: 'collection' | 'pdf' | 'audio' | 'arxiv' | 'transcript' | 'document' | 'texdocument' | string;
     name: string;
     created_at?: string;
     updated_at?: string;

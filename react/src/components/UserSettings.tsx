@@ -5,7 +5,7 @@ import { getCookie } from '../utils/csrf';
 const UserSettings: React.FC = () => {
   const [themeSettings, setThemeSettings] = useState({
     color_scheme: 'aquillm_default_dark',
-    font_family: 'latin_modern_roman'
+    font_family: 'verdana'
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -69,7 +69,7 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 
     // If you want to change the font globally, you could update a CSS variable or
     // attach a class to <html> or <body> that Tailwind uses to control typography.
-    document.body.classList.remove('font-latin_modern_roman', 'font-sans_serif');
+    document.body.classList.remove('font-latin_modern_roman', 'font-sans_serif', 'font-lexend', 'font-comicsans', 'font-opendyslexic', 'font-timesnewroman', 'font-verdana');
     document.body.classList.add(`font-${font_family}`);
   };
 
@@ -106,11 +106,15 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
             onChange={handleChange}
             className="border p-2 rounded"
           >
-            <option value="latin_modern_roman">Latin Modern Roman (Serif)</option>
-            <option value="sans_serif">Sans-serif</option>
+            <option value="sans_serif">Sans-serif (Default)</option>
+            <option value="verdana">Verdana</option>
+            <option value="timesnewroman">Times New Roman</option>
+            <option value="opendyslexic">Open Dyslexic</option>
+            <option value="lexend">Lexend</option>
+            <option value="comicsans">Comic Sans</option>
           </select>
         </div>
-        <button type="submit" className="bg-accent-default text-white py-2 px-4 rounded">
+        <button type="submit" className="bg-accent text-slight_muted_white py-2 px-4 rounded">
           Save Settings
         </button>
       </form>

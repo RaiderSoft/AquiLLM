@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Folder } from '../components/CollectionsTree';
+import { Collection } from '../components/CollectionsTree';
 import MoveCollectionModal from '../components/MoveCollectionModal';
 import CreateCollectionModal from '../components/CreateCollectionModal';
 import CollectionSettingsMenu from '../components/CollectionSettingsMenu';
@@ -10,15 +10,15 @@ import formatUrl from '../utils/formatUrl';
 
 const CollectionsPage: React.FC = () => {
   // Remove react-router since we’ll handle navigation via props or window.location
-  const [collections, setCollectionsToView] = useState<Folder[]>([]);
-  const [allCollections, setAllCollections] = useState<Folder[]>([]);
+  const [collections, setCollectionsToView] = useState<Collection[]>([]);
+  const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [folderToMove, setFolderToMove] = useState<Folder | null>(null);
+  const [folderToMove, setFolderToMove] = useState<Collection | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [selectedCollection, setSelectedCollection] = useState<Folder | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [isUserManagementModalOpen, setIsUserManagementModalOpen] = useState<boolean>(false);
 
   const apiUrl = window.apiUrls.api_collections;
@@ -52,7 +52,7 @@ const CollectionsPage: React.FC = () => {
         }));
 
         // Filter to only include root-level collections (parent === null)
-        const rootCollections = parsedCollections.filter((col: { parent: Folder | null }) => col.parent === null);
+        const rootCollections = parsedCollections.filter((col: { parent: Collection | null }) => col.parent === null);
 
         setAllCollections(parsedCollections);
         setCollectionsToView(rootCollections);
@@ -66,7 +66,7 @@ const CollectionsPage: React.FC = () => {
   }, [apiUrl]);
 
   // Handler functions
-  const handleMoveClick = (folder: Folder) => {
+  const handleMoveClick = (folder: Collection) => {
     setFolderToMove(folder);
     setIsModalOpen(true);
   };
@@ -84,7 +84,7 @@ const CollectionsPage: React.FC = () => {
     setIsCreateModalOpen(false);
   };
 
-  const handleSubmitCreate = (newCollection: Folder) => {
+  const handleSubmitCreate = (newCollection: Collection) => {
     fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -118,7 +118,7 @@ const CollectionsPage: React.FC = () => {
         }));
 
         // Filter to only include root-level collections (parent === null)
-        const rootCollections = parsedCollections.filter((col: { parent: Folder | null }) => col.parent === null);
+        const rootCollections = parsedCollections.filter((col: { parent: Collection | null }) => col.parent === null);
 
         setAllCollections(parsedCollections);
         setCollectionsToView(rootCollections);
@@ -130,7 +130,7 @@ const CollectionsPage: React.FC = () => {
       });
   };
 
-  const handleDeleteCollection = (collection: Folder) => {
+  const handleDeleteCollection = (collection: Collection) => {
     if (window.confirm(`Are you sure you want to delete "${collection.name}"?`)) {
       fetch(formatUrl(window.apiUrls.api_collections_delete, { collection_id: collection.id }), {
         method: 'DELETE',
@@ -149,7 +149,7 @@ const CollectionsPage: React.FC = () => {
     }
   };
 
-  const handleManageCollaborators = (folder: Folder) => {
+  const handleManageCollaborators = (folder: Collection) => {
     setSelectedCollection(folder);
     setIsUserManagementModalOpen(true);
   };
@@ -194,7 +194,7 @@ const CollectionsPage: React.FC = () => {
           updated_at: new Date(col.updated_at || new Date()).toISOString(),
         }));
 
-        const rootCollections = parsedCollections.filter((col: { parent: Folder | null }) => col.parent === null);
+        const rootCollections = parsedCollections.filter((col: { parent: Collection | null }) => col.parent === null);
         setAllCollections(parsedCollections);
         setCollectionsToView(rootCollections);
       })
@@ -210,7 +210,7 @@ const CollectionsPage: React.FC = () => {
   };
 
   // Instead of useNavigate, we use the provided detailUrlBase (if any) to redirect
-  const handleCollectionClick = (collection: Folder) => {
+  const handleCollectionClick = (collection: Collection) => {
     if (detailUrlBase) {
       window.location.href = formatUrl(detailUrlBase, { col_id: collection.id });
     }
@@ -288,7 +288,7 @@ const CollectionsPage: React.FC = () => {
             <h1 className='text-2xl font-bold'>My Collections</h1>
             <button
               onClick={handleOpenCreateModal}
-              className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-sans'
+              className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded'
             >
               New Collection
             </button>
@@ -299,7 +299,7 @@ const CollectionsPage: React.FC = () => {
             {collections.map((folder) => (
               <div
                 key={folder.id}
-                className='bg-gray-shade_3 hover:bg-opacity-100 rounded-lg p-4 cursor-pointer transition duration-200 relative font-sans'
+                className='bg-gray-shade_3 hover:bg-opacity-100 rounded-lg p-4 cursor-pointer transition duration-200 relative'
                 onClick={() => {
                   if (detailUrlBase) {
                     window.location.href = formatUrl(detailUrlBase, { col_id: folder.id });
@@ -309,10 +309,10 @@ const CollectionsPage: React.FC = () => {
                 <div className='flex justify-between items-start'>
                   <div>
                     <h2 className='text-xl font-semibold mb-2'>{folder.name}</h2>
-                    <p className='text-gray-300 mb-2'>
+                    <p className='text-gray-shade_e mb-2'>
                       {folder.document_count} documents • {folder.children_count} subcollections
                     </p>
-                    <p className='text-gray-400 text-sm'>
+                    <p className='text-gray-shade_e text-sm'>
                       Created: {new Date(folder.created_at).toLocaleDateString()}
                     </p>
                   </div>
