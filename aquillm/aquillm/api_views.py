@@ -594,7 +594,7 @@ def ingest_webpage(request):
         # Fetch and parse webpage using trafilatura
         try:
             # Download (trafilatura handles retires internally to some extent)
-            # Adding a timeout to requests can prevent hanging indefinitely
+            
             logger.info(f"Attempting to fetch URL: {url}")
             # Use the directly imported functions
             downloaded = fetch_url(url)
