@@ -26,6 +26,7 @@ from django.core.validators import FileExtensionValidator, validate_email
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import DatabaseError, transaction
 from django.db.models import Q
+from aquillm.views import user_settings_api
 logger = logging.getLogger(__name__)
 
 
@@ -578,4 +579,5 @@ urlpatterns = [
     path("whitelisted_email/<str:email>/", whitelisted_email, name="api_whitelist_email"),
     path("whitelisted_emails/", whitelisted_emails, name="api_whitelist_emails"),
     path("ingest_vtt/", ingest_vtt, name="api_ingest_vtt"),
+    path('user-settings/', user_settings_api, name='api-user-settings'),
 ]

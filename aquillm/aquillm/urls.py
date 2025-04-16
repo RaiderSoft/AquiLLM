@@ -26,7 +26,7 @@ from . import views, api_views
 from .views import urlpatterns as page_urlpatterns
 from .settings import DEBUG
 from .api_views import urlpatterns as api_urlpatterns
-from .views import UserSettingsView, UserSettingsPageView
+from .views import UserSettingsPageView
 
 urlpatterns = [
     path("", views.index, name="index"),
@@ -42,8 +42,7 @@ urlpatterns = [
     path("ready/", views.health_check, name="ready"),
     path("health", views.health_check),
     path("ready", views.health_check),
-
-    path('api/user-settings/', UserSettingsView.as_view(), name='user-settings'),
+ 
     path('user-settings/', UserSettingsPageView.as_view(), name='user-settings-page'),
 ] + debug_toolbar_urls()
 

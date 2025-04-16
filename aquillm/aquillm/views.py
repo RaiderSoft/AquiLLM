@@ -33,38 +33,56 @@ from django.forms.models import model_to_dict
 import json
 logger = logging.getLogger(__name__)
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from .models import UserSettings
-from .serializers import UserSettingsSerializer
-
 from django.views.generic import TemplateView
 
-class UserSettingsView(APIView):
-    permission_classes = [IsAuthenticated]
+from .models import UserSettings, COLOR_SCHEME_CHOICES, FONT_FAMILY_CHOICES
 
-    def get(self, request):
-        try:
-            settings = UserSettings.objects.get(user=request.user)
-        except UserSettings.DoesNotExist:
-            # If no settings exist yet, create default settings for the user.
-            settings = UserSettings.objects.create(user=request.user)
-        serializer = UserSettingsSerializer(settings)
-        return Response(serializer.data)
+@require_http_methods(["GET", "POST"])
+@login_required
+def user_settings_api(request):
+    """
+    GET:  return {"color_scheme": ..., "font_family": ...}
+    POST: accept JSON {"color_scheme": ..., "font_family": ...},
+          validate, save, and return same JSON.
+    """
+    # helper dicts for validation
+    valid_color_schemes = {key for key, _ in COLOR_SCHEME_CHOICES}
+    valid_font_families = {key for key, _ in FONT_FAMILY_CHOICES}
 
-    def post(self, request):
-        try:
-            settings = UserSettings.objects.get(user=request.user)
-        except UserSettings.DoesNotExist:
-            settings = UserSettings(user=request.user)
+    # fetch or create
+    settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
 
-        serializer = UserSettingsSerializer(settings, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if request.method == "GET":
+        return JsonResponse({
+            "color_scheme": settings_obj.color_scheme,
+            "font_family": settings_obj.font_family,
+        })
+
+    # POST: parse and validate
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    color = data.get("color_scheme")
+    font  = data.get("font_family")
+
+    errors = {}
+    if color not in valid_color_schemes:
+        errors["color_scheme"] = "Invalid choice"
+    if font not in valid_font_families:
+        errors["font_family"] = "Invalid choice"
+    if errors:
+        return JsonResponse({"errors": errors}, status=400)
+
+    settings_obj.color_scheme = color
+    settings_obj.font_family  = font
+    settings_obj.save()
+
+    return JsonResponse({
+        "color_scheme": settings_obj.color_scheme,
+        "font_family": settings_obj.font_family,
+    })
     
 class UserSettingsPageView(TemplateView):
     template_name = "aquillm/user_settings.html"
