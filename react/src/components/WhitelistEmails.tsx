@@ -121,7 +121,7 @@ const WhitelistEmails: React.FC = () => {
             <span className="flex-grow">{email}</span>
             <button
               onClick={() => handleDelete(email)}
-              className="bg-gray-shade_3 border-none cursor-pointer p-0"
+              className="bg-scheme-shade_3 border-none cursor-pointer p-0"
               aria-label={`Delete ${email}`}
             >
               <Trash2 size={18} />
@@ -136,11 +136,11 @@ const WhitelistEmails: React.FC = () => {
           onChange={(e) => setNewEmail(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Add new email"
-          className="flex-grow p-2 bg-gray-shade_3 text-base border border-gray-300 rounded"
+          className="flex-grow p-2 bg-scheme-shade_3 text-base border border-gray-300 rounded"
         />
         <button
           onClick={handleAddEmail}
-          className="ml-2 p-2 text-base cursor-pointer border border-gray-300 rounded bg-gray-shade_3"
+          className="ml-2 p-2 text-base cursor-pointer border border-gray-300 rounded bg-scheme-shade_3"
           disabled={!newEmail.trim() || inputError !== null}
         >
           Add

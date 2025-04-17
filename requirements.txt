@@ -29,7 +29,7 @@ boto3
 websockets
 debugpy
 channels-redis
-djangorestframework
+#djangorestframework
 django-stubs
 celery[redis]
 pdf2image

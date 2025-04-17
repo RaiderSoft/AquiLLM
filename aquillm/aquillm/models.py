@@ -59,6 +59,9 @@ type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument
 COLOR_SCHEME_CHOICES = (
     ('aquillm_default_dark', 'Aquillm Default Dark'),
     ('aquillm_default_light', 'Aquillm Default Light'),
+    ('aquillm_default_light_accessible_chat', 'Aquillm Default Light Accessible Chat'),
+    ('aquillm_default_dark_accessible_chat', 'Aquillm Default Dark Accessible Chat'),
+    ('high_contrast', 'High Contrast'),
 )
 
 FONT_FAMILY_CHOICES = (
@@ -75,14 +78,14 @@ class UserSettings(models.Model):
     # OneToOneField ensures one settings record per user.
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
     color_scheme = models.CharField(
-        max_length=30,
+        max_length=100,
         choices=COLOR_SCHEME_CHOICES,
-        default='aquillm_default_dark'
+        default='aquillm_default_light'
     )
     font_family = models.CharField(
         max_length=50,
         choices=FONT_FAMILY_CHOICES,
-        default='verdana'
+        default='sans_serif'
     )
 
     def __str__(self):

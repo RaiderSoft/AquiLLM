@@ -8,21 +8,21 @@
             {{ error_message }}
         </div>
     {% endif %}
-    <div class="flex gap-[40px] items-center justify-center h-full w-full text-gray-shade_e font-sans">
+    <div class="flex gap-[40px] items-center justify-center h-full w-full text-text-normal font-sans">
         <div class="flex flex-col items-center justify-center">
             <form action="/search/" method="post">
                 {% csrf_token %}
                 {{ form }}
 
                 <div class="w-full flex justify-center">
-                    <input type="submit" value="Submit" class="bg-accent text-gray-shade_e p-[8px] rounded-[8px] cursor-pointer">
+                    <input type="submit" value="Submit" class="bg-accent text-text-normal p-[8px] rounded-[8px] cursor-pointer">
                 </div>
             </form>
         </div>
 
         {% if reranked_results or vector_results or trigram_result %}
-            <div class="max-h-[90%] overflow-y-auto bg-gray-shade_3 rounded-lg p-[16px] my-[64px] min-w-[580px]">     
-                <h1 style="text-align: center;" class="text-lg border-b border-gray-shade_7 pb-[16px] mb-[16px]"><strong>Search Results</strong></h1>
+            <div class="max-h-[90%] overflow-y-auto bg-scheme-shade_3 rounded-lg p-[16px] my-[64px] min-w-[580px]">     
+                <h1 style="text-align: center;" class="text-lg border-b border-border-high_contrast pb-[16px] mb-[16px]"><strong>Search Results</strong></h1>
                 {% if reranked_results %}
                     <h2 class="text-accent-light"><strong>Reranked Search Results</strong></h2>
                     <ul class="ml-[16px]">

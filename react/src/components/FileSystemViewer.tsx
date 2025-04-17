@@ -224,14 +224,14 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
   };
 
   return (
-    <div style={{ backgroundColor: '#292929', borderRadius: '36px' }} className='border border-gray-shade_6 overflow-hidden'>
+    <div style={{ backgroundColor: '#292929', borderRadius: '36px' }} className='border border-border-mid_contrast overflow-hidden'>
       {/* Top Bar: Search, etc. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between'}} className='bg-gray-shade_4 p-[16px] border-b border-b-gray-shade_6'>
+      <div style={{ display: 'flex', justifyContent: 'space-between'}} className='bg-scheme-shade_4 p-[16px] border-b border-b-scheme-shade_6'>
         <div className="flex gap-[16px]">
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             {/* Search Icon */}
             <div style={{ position: 'absolute', left: '10px', pointerEvents: 'none' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-shade_b">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-slightly_less_contrast">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
@@ -243,7 +243,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               placeholder="Search items..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className='bg-gray-shade_4 border border-gray-shade_7 placeholder:text-gray-shade_b rounded-[20px] w-[220px]'
+              className='bg-scheme-shade_4 border border-border-high_contrast placeholder:text-text-slightly_less_contrast rounded-[20px] w-[220px]'
               style={{
                 padding: '0.5rem',
                 paddingLeft: '2rem',
@@ -259,7 +259,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                 onClick={() => setSearchQuery('')}
                 title="Clear search"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-shade_b hover:text-gray-shade_d">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-slightly_less_contrast hover:text-text-very_slightly_less_contrast">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
@@ -268,9 +268,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
           </div>
 
           {/* Divider between the search bar and current location */}
-          <div className='h-full border-r border-gray-shade_6'></div>
+          <div className='h-full border-r border-border-mid_contrast'></div>
           
-          <span className='flex items-center text-align-center text-gray-shade_a text-sm'>
+          <span className='flex items-center text-align-center text-text-less_contrast text-sm'>
               Path: Root/{collection.path}
           </span>
         </div>
@@ -281,10 +281,10 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
             
             {/* Dropdown menu for batch actions */}
             {actionMenuOpen && selectedIds.size > 0 && (
-              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-gray-shade_3 ring-1 ring-black ring-opacity-5 z-10">
+              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-scheme-shade_3 ring-1 ring-black ring-opacity-5 z-10">
                 <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
                   <button
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-shade_e hover:bg-gray-shade_4"
+                    className="block w-full text-left px-4 py-2 text-sm text-text-normal hover:bg-scheme-shade_4"
                     role="menuitem"
                     onClick={() => {
                       setActionMenuOpen(false);
@@ -294,7 +294,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                     Move Selected
                   </button>
                   <button
-                    className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-shade_4"
+                    className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-scheme-shade_4"
                     role="menuitem"
                     onClick={() => {
                       setActionMenuOpen(false);
@@ -312,9 +312,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
 
       {/* Batch Actions Bar - only show when items are selected */}
       {selectedIds.size > 0 && mode === 'browse' && (
-        <div className="flex items-center justify-between bg-gray-shade_3 p-3 mb-2 rounded-md border border-gray-shade_6 transition-all duration-300 ease-in-out">
+        <div className="flex items-center justify-between bg-scheme-shade_3 p-3 mb-2 rounded-md border border-border-mid_contrast transition-all duration-300 ease-in-out">
           <div className="flex items-center">
-            <span className="text-gray-shade_d mr-4">
+            <span className="text-text-very_slightly_less_contrast mr-4">
               <strong>{selectedIds.size}</strong> {selectedIds.size === 1 ? 'item' : 'items'} selected
             </span>
             
@@ -340,7 +340,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
           </div>
           
           <button
-            className="text-gray-shade_b hover:text-gray-shade_d transition-colors duration-200"
+            className="text-text-slightly_less_contrast hover:text-text-very_slightly_less_contrast transition-colors duration-200"
             onClick={() => setSelectedIds(new Set())}
             title="Clear selection"
           >
@@ -354,8 +354,8 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
       {/* Table */}
       <div style={{ overflow: 'auto' }}>
         <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse'}}>
-          <thead className='bg-gray-shade_4'>
-            <tr className='border-b border-b-gray-shade_6 h-[40px] max-h-[40px]'>
+          <thead className='bg-scheme-shade_4'>
+            <tr className='border-b border-b-scheme-shade_6 h-[40px] max-h-[40px]'>
               <th style={{ textAlign: 'left' }} className='h-full flex items-center justify-left'>
                 <div 
                   style={{ 
@@ -365,7 +365,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
-                  className="hover:bg-gray-shade_5 rounded"
+                  className="hover:bg-scheme-shade_5 rounded"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleToggleSelectAll();
@@ -403,7 +403,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               <th style={{ textAlign: 'left' }}>Details</th>
             </tr>
           </thead>
-          <tbody className="bg-gray-shade_3">
+          <tbody className="bg-scheme-shade_3">
             {filteredItems.length > 0 ? (
               filteredItems.map((item) => {
                 const isSelected = selectedIds.has(item.id);
@@ -411,7 +411,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                   <tr
                       key={item.id}
                       onContextMenu={(e) => handleContextMenu(e, item)}
-                      className={`h-[40px] max-h-[40px] hover:bg-gray-shade_3 transition-colors ${typeToTextColorClass[item.type as keyof typeof typeToTextColorClass] || ''}`}
+                      className={`h-[40px] max-h-[40px] hover:bg-scheme-shade_3 transition-colors ${typeToTextColorClass[item.type as keyof typeof typeToTextColorClass] || ''}`}
                       style={{
                           borderBottom: '1px solid #555555',
                           cursor: 'pointer',                      
@@ -436,7 +436,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                             alignItems: 'center',
                             justifyContent: 'center',
                           }}
-                          className="hover:bg-gray-shade_5 rounded"
+                          className="hover:bg-scheme-shade_5 rounded"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleToggleSelect(item.id);
@@ -485,7 +485,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
               })
             ) : (
               <tr>
-                <td colSpan={4} className="text-center py-8 text-gray-shade_a">
+                <td colSpan={4} className="text-center py-8 text-text-less_contrast">
                   {searchQuery ? (
                     <div className="flex flex-col items-center justify-center">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
@@ -538,7 +538,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
 
       {/* Pagination Controls (placeholder) */}
       <div
-       className='text-gray-shade_e bg-gray-shade_3'
+       className='text-text-normal bg-scheme-shade_3'
         style={{
           display: 'flex',
           justifyContent: 'flex-end',
@@ -547,9 +547,9 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
           padding: '1rem',
         }}
       >
-        <span className='text-gray-shade_e'>Rows per page: 10</span>
-        <button style={{ background: 'none', border: 'none'}} className="text-gray-shade_e">←</button>
-        <button style={{ background: 'none', border: 'none'}} className="text-gray-shade_e">→</button>
+        <span className='text-text-normal'>Rows per page: 10</span>
+        <button style={{ background: 'none', border: 'none'}} className="text-text-normal">←</button>
+        <button style={{ background: 'none', border: 'none'}} className="text-text-normal">→</button>
       </div>
     </div>
   );

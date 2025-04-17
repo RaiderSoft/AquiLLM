@@ -302,7 +302,7 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
       </div>
 
       {/* Fixed bottom section for usage bar and input */}
-      <div className="sticky bottom-0 w-full bg-gray-shade_2 border-t border-gray-shade_6 mt-[16px]">
+      <div className="sticky bottom-0 w-full bg-scheme-shade_2 border-t border-border-mid_contrast mt-[16px]">
         {/* Usage Bar */}
         <div className="w-[80%] bg-gray-shade_1 mx-auto flex gap-4 justify-center pt-3">
           <div className="text-center mt-1 text-sm text-gray-700">
@@ -324,12 +324,12 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
         {/* Message Input Section */}
         <div className="w-[80%] mx-auto mb-[32px]">
           <div className="flex items-center justify-center mt-[16px] w-full gap-[32px]">
-            <div className="flex justify-start flex-col gap-[8px] bg-gray-shade_3 py-2 px-4 rounded-[32px] w-full">
+            <div className="flex justify-start flex-col gap-[8px] bg-scheme-shade_3 py-2 px-4 rounded-[32px] w-full">
               <div className="flex flex-grow items-center w-full">
                 <input 
                   type="text" 
                   id="message-input"
-                  className="px-2 py-2 mr-[16px] flex-grow w-full rounded-lg bg-gray-shade_3 focus:border-0 disabled:cursor-not-allowed placeholder:text-gray-shade_7 text-gray-shade_e"
+                  className="px-2 py-2 mr-[16px] flex-grow w-full rounded-lg bg-scheme-shade_3 focus:border-0 disabled:cursor-not-allowed placeholder:text-text-lower_contrast text-text-normal element-border"
                   placeholder="Type your message here..."
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
@@ -339,7 +339,7 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
                 />
                 <button 
                   onClick={sendMessage}
-                  className="p-4 bg-accent text-gray-shade_e rounded-[24px] disabled:cursor-not-allowed mr-[-8px]"
+                  className="p-4 bg-accent text-text-normal rounded-[24px] disabled:cursor-not-allowed mr-[-8px]"
                   title="Send Message"
                   disabled={inputDisabled}
                 >
@@ -351,11 +351,11 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
             {/* Collections Section */}
             <div className="">
               <details 
-                className="w-full text-gray-shade_e" 
+                className="w-full text-text-normal" 
                 open={showCollections}
                 onToggle={() => setShowCollections(!showCollections)}
               >
-                <summary className="cursor-pointer w-[max-content] px-[16px] py-[2px] text-gray-shade_e bg-accent h-[36px] rounded-[18px] flex items-center">
+                <summary className="cursor-pointer w-[max-content] px-[16px] py-[2px] text-text-normal bg-accent h-[36px] rounded-[18px] flex items-center">
                   <span className="text-button_text_color">Select Collections</span>
                   <span className="ml-2 text-sm text-button_text_color">
                     {selectedCollections.size ? `(${selectedCollections.size} selected)` : ''}
@@ -367,12 +367,12 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
                     placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="text-sm h-[36px] w-full p-2 border rounded-lg text-gray-shade_e bg-gray-shade_3 border-gray-shade_6 mt-2"
+                    className="text-sm h-[36px] w-full p-2 border rounded-lg text-text-normal bg-scheme-shade_3 border-border-mid_contrast mt-2"
                   />
                 </div>
-                <div className="mt-2 p-2 border rounded-lg bg-gray-shade_3 border-gray-shade_6 max-h-[160px] overflow-y-auto">
+                <div className="mt-2 p-2 border rounded-lg bg-scheme-shade_3 border-border-mid_contrast max-h-[160px] overflow-y-auto">
                   {filteredCollections.map(collection => (
-                    <div key={collection.id} className="flex items-center p-2 hover:bg-gray-shade_4 rounded">
+                    <div key={collection.id} className="flex items-center p-2 hover:bg-scheme-shade_4 rounded">
                       <input
                         type="checkbox"
                         id={`collection-${collection.id}`}
@@ -409,14 +409,14 @@ const shouldShowSpinner = (messages: Message[]) => {
 // MessageBubble component
 const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefined, rating: number) => void }> = ({ message, onRate }) => {
   const getMessageClasses = () => {
-    let classes = "w-4/5 p-2.5 rounded-[12px] shadow-md whitespace-pre-wrap break-words";
+    let classes = "w-4/5 p-2.5 rounded-[12px] shadow-md whitespace-pre-wrap break-words element-border text-text-normal";
     
     if (message.role === 'user') {
-      return `${classes} user-message self-end bg-gray-shade_4 text-gray-shade_e`;
+      return `${classes} user-message self-end bg-scheme-shade_3`;
     } else if (message.role === 'assistant') {
-      return `${classes} assistant-message text-slight_muted_white bg-accent`;
+      return `${classes} assistant-message text-slight_muted_white chat-bubble-left-border-assistant`;
     } else if (message.role === 'tool') {
-      return `${classes} bg-secondary_accent border border-1 border-secondary_accent-light text-slight_muted_white`;
+      return `${classes} border border-1 border-secondary_accent-light text-slight_muted_white chat-bubble-left-border-tool`;
     }
     
     return classes;
@@ -443,9 +443,9 @@ const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefi
             <strong>Called Tool: {message.tool_call_name}</strong>
             <Collapsible 
               summary="View Tool Arguments" 
-              summaryTextColor="text-slight_muted_white"
+              summaryTextColor="text-text-normal"
               content={
-                <pre className="whitespace-pre-wrap break-words bg-tool_details-assistant p-2 rounded text-slight_muted_white">
+                <pre className="whitespace-pre-wrap break-words bg-tool_details-assistant p-2 rounded text-text-normal">
                   {JSON.stringify(message.tool_call_input, null, 2)}
                 </pre>
               }
@@ -461,10 +461,10 @@ const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefi
             </div>
             <Collapsible 
               summary={'exception' in (message.result_dict || {}) ? 'View Exception' : 'View Results'}
-              summaryTextColor="text-slight_muted_white"
+              summaryTextColor="text-text-normal"
               isOpen={message.for_whom === 'user'}
               content={
-                <div className="bg-tool_details-tool p-2 rounded text-slight_muted_white">
+                <div className="bg-tool_details-tool p-2 rounded text-text-normal">
                   <ToolResult result={'exception' in (message.result_dict || {}) ? 
                     message.result_dict?.exception : 
                     message.result_dict?.result} 
@@ -545,7 +545,7 @@ const ToolResult: React.FC<{ result: any, level?: number }> = ({ result, level =
               </details>
             ) : (
               <div key={index} className="mt-1">
-                <span className="font-mono text-slight_muted_white">{key}: </span>
+                <span className="font-mono">{key}: </span>
                 <ToolValue value={value as string | number | boolean} />
               </div>
             )
@@ -560,7 +560,7 @@ const ToolResult: React.FC<{ result: any, level?: number }> = ({ result, level =
 // Tool Value Component
 const ToolValue: React.FC<{ value: string | number | boolean }> = ({ value }) => {
   if (typeof value === 'string') {
-    return <span className="font-mono text-slight_muted_white">{`"${value}"`}</span>;
+    return <span className="font-mono">{`"${value}"`}</span>;
   }
   return <span className="font-mono text-secondary_accent-light">{String(value)}</span>;
 };
@@ -608,7 +608,7 @@ const UserLogo: React.FC = () => {
     <svg 
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 26 26"
-      className="w-6 h-6 fill-current text-gray-shade_b"
+      className="w-6 h-6 fill-current text-text-slightly_less_contrast"
     >
       <path d="M16.0352 0.932185C19.1653 1.30585 21.474 2.60517 22.9611 4.83017C24.4657 7.0551 25.2179 9.62823 25.2179 12.5496C25.2179 16.1333 24.1284 19.2159 21.9495 21.7975C19.7705 24.3791 17.1679 25.6699 14.1415 25.6699C12.4641 25.6699 10.9336 25.2283 9.55025 24.3451C8.16677 23.445 7.2416 22.358 6.77475 21.0842C6.30784 19.8104 6.07438 18.0185 6.07438 15.7086V7.2759C6.07438 5.74727 5.92724 4.70272 5.63296 4.14227C5.33924 3.58178 4.7945 3.30153 3.99874 3.30153C2.8401 3.30153 2.07916 4.43948 1.7159 6.71538H0.782104C1.0068 2.85988 2.69291 0.932129 5.84044 0.932129C6.91256 0.932129 7.79452 1.20388 8.4863 1.74739C9.19531 2.29089 9.67953 2.91931 9.93895 3.63266C10.2157 4.32902 10.3541 5.61134 10.3541 7.47963V16.0398C10.3541 18.044 10.4664 19.5557 10.6911 20.5747C10.9333 21.5768 11.4608 22.4006 12.2735 23.046C13.1036 23.6914 14.0115 24.0141 14.9972 24.0141C16.6573 24.0141 17.9976 23.0715 19.0179 21.1862C20.0382 19.2839 20.5484 16.422 20.5484 12.6005C20.5484 9.18668 20.1679 6.67295 19.407 5.05934C18.646 3.42887 17.4701 2.35884 15.8791 1.84927L16.0352 0.932185Z" />
     </svg>

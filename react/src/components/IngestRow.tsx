@@ -29,7 +29,7 @@ interface IngestRowData {
 }
 
 const selectedClasses = "bg-accent text-slight_muted_white";
-const unselectedClasses = "bg-gray-shade_3 hover:bg-gray-shade_4 text-gray-shade_e";
+const unselectedClasses = "bg-scheme-shade_3 hover:bg-scheme-shade_4 text-text-normal";
 
 interface DocTypeToggleProps {
   docType: DocType;
@@ -114,8 +114,8 @@ const PDFForm: React.FC<PDFFormProps> = ({
     <div className="flex gap-4">
       <label
         htmlFor="pdf-file-upload"
-        className={`cursor-pointer flex items-center justify-center border border-gray-shade_6 p-2 rounded-lg transition-colors flex-grow h-[40px] ${
-          pdfFile ? "bg-green-dark" : "hover:bg-gray-shade_3"
+        className={`cursor-pointer flex items-center justify-center border border-border-mid_contrast p-2 rounded-lg transition-colors flex-grow h-[40px] ${
+          pdfFile ? "bg-green-dark" : "hover:bg-scheme-shade_3"
         }`}
       >
         {pdfFile ? "File Selected" : "Select PDF File"}
@@ -137,7 +137,7 @@ const PDFForm: React.FC<PDFFormProps> = ({
         placeholder="Enter PDF title"
         value={pdfTitle}
         onChange={(e) => onTitleChange(e.target.value)}
-        className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a flex-grow"
+        className="bg-scheme-shade_3 border border-border-mid_contrast p-2 rounded-lg h-[40px] placeholder:text-text-less_contrast flex-grow"
       />
     </div>
   );
@@ -160,8 +160,8 @@ const VTTForm: React.FC<VTTFormProps> = ({
     <div className="flex gap-4">
       <label
         htmlFor="vtt-file-upload"
-        className={`cursor-pointer flex items-center justify-center border border-gray-shade_6 p-2 rounded-lg transition-colors flex-grow h-[40px] ${
-          vttFile ? "bg-green-dark" : "hover:bg-gray-shade_3"
+        className={`cursor-pointer flex items-center justify-center border border-border-mid_contrast p-2 rounded-lg transition-colors flex-grow h-[40px] ${
+          vttFile ? "bg-green-dark" : "hover:bg-scheme-shade_3"
         }`}
       >
         {vttFile ? "File Selected" : "Select VTT File"}
@@ -183,7 +183,7 @@ const VTTForm: React.FC<VTTFormProps> = ({
         placeholder="Enter VTT title"
         value={vttTitle}
         onChange={(e) => onTitleChange(e.target.value)}
-        className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a flex-grow"
+        className="bg-scheme-shade_3 border border-border-mid_contrast p-2 rounded-lg h-[40px] placeholder:text-text-less_contrast flex-grow"
       />
     </div>
   );
@@ -201,7 +201,7 @@ const ArxivForm: React.FC<ArxivFormProps> = ({ value, onValueChange }) => {
       placeholder="Enter arXiv ID"
       value={value}
       onChange={(e) => onValueChange(e.target.value)}
-      className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a"
+      className="bg-scheme-shade_3 border border-border-mid_contrast p-2 rounded-lg h-[40px] placeholder:text-text-less_contrast"
     />
   );
 };

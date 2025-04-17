@@ -1,31 +1,31 @@
 {# aquillm/templates/partials/conversation_list.html #}
-<div class="conversation-dropdown-container bg-gray-shade_4 text-sm rounded-[12px] flex flex-col">
-    <input type="text" id="conversation-search" placeholder="Search conversations..." class="conversation-search h-[28px] bg-gray-shade_6 placeholder:text-gray-shade_a pl-[8px] mt-[8px] ml-[8px] mr-[8px] rounded-[8px] flex-grow-1" />
+<div class="conversation-dropdown-container bg-scheme-shade_4 text-sm rounded-[12px] flex flex-col element-border">
+    <input type="text" id="conversation-search" placeholder="Search conversations..." class="conversation-search h-[28px] bg-scheme-shade_6 placeholder:text-text-less_contrast pl-[8px] mt-[8px] ml-[8px] mr-[8px] rounded-[8px] flex-grow-1" />
 
     {% if conversations %}
         <ul class="conversation-list overflow-y-auto max-h-[240px] pb-[8px]">
         {% for conversation in conversations %}
             <li id="convo-{{ conversation.id }}" class="conversation-item relative mt-[8px] ml-[8px]">
-                <div class="flex justify-between items-center rounded-[8px] pl-[8px] mr-[8px] hover:bg-gray-shade_5 h-[40px]">
+                <div class="flex justify-between items-center rounded-[8px] pl-[8px] mr-[8px] hover:bg-scheme-shade_5 h-[40px]">
                     <a href="{% url 'ws_convo' convo_id=conversation.pk %}" class="conversation-link max-w-[150px] p-1 rounded-[4px] overflow-hidden" style="white-space: nowrap; text-overflow: ellipsis;">
                         {{ conversation.name|default:"Untitled Conversation" }}
                     </a>
 
-                    <span class="options-icon px-[8px] py-[4px] mr-[8px] hover:bg-gray-shade_6 rounded-[4px]" style="cursor: pointer;" onclick="openConversationModal(event, {{ conversation.id }})">
+                    <span class="options-icon px-[8px] py-[4px] mr-[8px] hover:bg-scheme-shade_6 rounded-[4px]" style="cursor: pointer;" onclick="openConversationModal(event, {{ conversation.id }})">
                         &#8942;
                     </span>
                 </div>
                 <!-- Modal popover; initially hidden -->
-                <div id="modal-{{ conversation.id }}" class="conversation-modal absolute left-full top-0 ml-[20px] z-50 hidden p-[8px] rounded-[12px] border border-gray-shade_6 bg-gray-shade_3 shadow-lg"> 
-                    <span class="block text-sm text-gray-shade_e w-full">
+                <div id="modal-{{ conversation.id }}" class="conversation-modal absolute left-full top-0 ml-[20px] z-50 hidden p-[8px] rounded-[12px] border border-border-mid_contrast bg-scheme-shade_3 shadow-lg"> 
+                    <span class="block text-sm text-text-normal w-full">
                         {{ conversation.name|default:"Untitled Conversation" }}
                     </span>
 
-                    <p class="text-sm text-gray-shade_a">
+                    <p class="text-sm text-text-less_contrast">
                         Created: {{ conversation.created_at|date:"F j, Y, g:i a" }}
                     </p>
 
-                    <p class="text-sm text-gray-shade_a">
+                    <p class="text-sm text-text-less_contrast">
                         Last Updated: {{ conversation.updated_at|date:"F j, Y, g:i a" }}
                     </p>
 

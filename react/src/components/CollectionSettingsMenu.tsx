@@ -45,7 +45,7 @@ const CollectionSettingsMenu: React.FC<CollectionSettingsMenuProps> = ({
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>
       <button
-        className='hover:bg-gray-shade_5 rounded-md p-2'
+        className='hover:bg-scheme-shade_5 rounded-md p-2'
         style={{ cursor: 'pointer' }}
         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
       >

@@ -5,7 +5,7 @@
 
 {% block content %}
     <!-- Add your page-specific content here -->
-    <div class="flex flex-col items-center justify-center h-full w-full text-gray-shade_e">
+    <div class="flex flex-col items-center justify-center h-full w-full text-text-normal">
 
         <svg width="500" height="500" viewBox="0 0 48 57" fill="none" xmlns="http://www.w3.org/2000/svg" class="fixed">
             <g clip-path="url(#clip0_42_32)">
@@ -42,7 +42,7 @@
         {% else %}
         {% csrf_token %}
 
-            <h1 class="font-sans text-5xl border-b border-gray-shade_e pb-[24px] mb-[24px] pointer-events-none w-[30%] text-center z-50">Welcome to AquiLLM</h1>
+            <h1 class="font-sans text-5xl border-b border-scheme-shade_14 pb-[24px] mb-[24px] pointer-events-none w-[30%] text-center z-50">Welcome to AquiLLM</h1>
 
             <div class="font-sans z-50">
                 <form method="post" action="{% url 'account_login' %}">

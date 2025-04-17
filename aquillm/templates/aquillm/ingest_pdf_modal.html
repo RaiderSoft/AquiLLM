@@ -1,7 +1,7 @@
 <!-- aquillm/ingest_pdf_modal.html -->
 
-<div class="bg-gray-shade_4 flex items-center justify-center h-[80px]">
-    <span class="font-sans text-gray-shade_e text-2xl font-bold">
+<div class="bg-scheme-shade_4 flex items-center justify-center h-[80px]">
+    <span class="font-sans text-text-normal text-2xl font-bold">
         Ingest PDF
     </span>
 </div>
@@ -12,7 +12,7 @@
     </div>
 {% endif %}
 
-<form action="{% url 'ingest_pdf' %}" method="post" enctype="multipart/form-data" class="flex flex-col justify-center p-[32px] text-gray-shade_e font-sans h-full">
+<form action="{% url 'ingest_pdf' %}" method="post" enctype="multipart/form-data" class="flex flex-col justify-center p-[32px] text-text-normal font-sans h-full">
 
     {% csrf_token %}
     <div class="form-group w-full">
@@ -22,7 +22,7 @@
         {% endif %}
     </div>
 
-    <div class="flex-grow border-t h-[0px] border-gray-shade_a my-[32px]"></div>
+    <div class="flex-grow border-t h-[0px] border-border-higher_contrast my-[32px]"></div>
 
     <div class="form-group w-full flex flex-col items-center justify-center">
         <span style="transform: translateY(-4px)" class="text-xl">
@@ -38,7 +38,7 @@
             </label>
             
             <!-- Display selected file name -->
-            <span id="file-name" class="ml-[32px] text-gray-shade_a">No file chosen</span>
+            <span id="file-name" class="ml-[32px] text-text-less_contrast">No file chosen</span>
             
             <!-- Render the hidden file input -->
             {{ form.pdf_file }}
@@ -50,7 +50,7 @@
 
     </div>
 
-    <div class="flex-grow border-t h-[0px] border-gray-shade_a my-[32px]"></div>
+    <div class="flex-grow border-t h-[0px] border-border-higher_contrast my-[32px]"></div>
 
     <div class="form-group">
         <label class="block font-medium">Collection</label>
@@ -61,7 +61,7 @@
         {% endif %}
     </div>
 
-    <div class="flex-grow border-t border-gray-shade_a my-[32px]"></div>
+    <div class="flex-grow border-t border-border-higher_contrast my-[32px]"></div>
 
     <input type="submit" value="Submit" class="w-full bg-accent hover:bg-blue-600 h-[40px] text-white font-bold p-2 rounded-[20px] transition-colors">
 </form>

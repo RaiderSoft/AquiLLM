@@ -299,7 +299,7 @@ const CollectionsPage: React.FC = () => {
             {collections.map((folder) => (
               <div
                 key={folder.id}
-                className='bg-gray-shade_3 hover:bg-opacity-100 rounded-lg p-4 cursor-pointer transition duration-200 relative'
+                className='bg-scheme-shade_3 hover:bg-opacity-100 rounded-lg p-4 cursor-pointer transition duration-200 relative element-border' 
                 onClick={() => {
                   if (detailUrlBase) {
                     window.location.href = formatUrl(detailUrlBase, { col_id: folder.id });
@@ -309,10 +309,10 @@ const CollectionsPage: React.FC = () => {
                 <div className='flex justify-between items-start'>
                   <div>
                     <h2 className='text-xl font-semibold mb-2'>{folder.name}</h2>
-                    <p className='text-gray-shade_e mb-2'>
+                    <p className='text-text-normal mb-2'>
                       {folder.document_count} documents • {folder.children_count} subcollections
                     </p>
-                    <p className='text-gray-shade_e text-sm'>
+                    <p className='text-text-normal text-sm'>
                       Created: {new Date(folder.created_at).toLocaleDateString()}
                     </p>
                   </div>

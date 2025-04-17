@@ -270,8 +270,8 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-shade_3 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="px-6 py-4 border-b border-gray-shade_4 flex justify-between items-center">
+      <div className="bg-scheme-shade_3 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="px-6 py-4 border-b border-border-low_contrast flex justify-between items-center">
           <h2 className="text-xl font-semibold">
             Manage Collaborators: {collection?.name}
           </h2>
@@ -283,7 +283,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({
         </div>
 
         {/* Help information about permission inheritance */}
-        <div className="px-6 py-3 bg-gray-shade_4 border-b border-gray-shade_3">
+        <div className="px-6 py-3 bg-scheme-shade_4 border-b border-border-lower_contrast">
           <div className="flex items-start">
             <svg className="w-5 h-5 mt-0.5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

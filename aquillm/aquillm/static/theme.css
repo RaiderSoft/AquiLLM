@@ -1,22 +1,23 @@
 :root {
     /* Gray palette, will fallback to this if theme is not set properly */
-    --color-gray-shade_f: #ffffff;
-    --color-gray-shade_e: #eeeeee;
-    --color-gray-shade_d: #dddddd;
-    --color-gray-shade_c: #cccccc;
-    --color-gray-shade_b: #bbbbbb;
-    --color-gray-shade_a: #aaaaaa;
-    --color-gray-shade_9: #999999;
-    --color-gray-shade_8: #888888;
-    --color-gray-shade_7: #777777;
-    --color-gray-shade_6: #666666;
-    --color-gray-shade_5: #555555;
-    --color-gray-shade_4: #444444;
-    --color-gray-shade_3: #333333;
-    --color-gray-shade_2: #222222;
-    --color-gray-DEFAULT:  #111111;
+
+    --color-scheme-shade-15:#ffffff;
+    --color-scheme-shade-14:#eeeeee;
+    --color-scheme-shade-13:#dddddd;
+    --color-scheme-shade-12:#cccccc;
+    --color-scheme-shade-11:#bbbbbb;
+    --color-scheme-shade-10:#aaaaaa;
+    --color-scheme-shade-9:#999999;
+    --color-scheme-shade-8:#888888;
+    --color-scheme-shade-7:#777777;
+    --color-scheme-shade-6:#666666;
+    --color-scheme-shade-5:#555555;
+    --color-scheme-shade-4:#444444;
+    --color-scheme-shade-3:#333333;
+    --color-scheme-shade-2:#222222;
+    --color-scheme-shade-1: #111111;
     
-    --color-gray-shade_e_i: #eeeeee;
+    --color-scheme-shade_14_i: #eeeeee;
 
     --color-slightly-muted-white: #eeeeee;
   
@@ -38,23 +39,44 @@
 
 
 .theme-aquillm_default_dark {
-    --color-gray-shade_f: #ffffff;
-    --color-gray-shade_e: #eeeeee;
-    --color-gray-shade_d: #dddddd;
-    --color-gray-shade_c: #cccccc;
-    --color-gray-shade_b: #bbbbbb;
-    --color-gray-shade_a: #aaaaaa;
-    --color-gray-shade_9: #999999;
-    --color-gray-shade_8: #888888;
-    --color-gray-shade_7: #777777;
-    --color-gray-shade_6: #666666;
-    --color-gray-shade_5: #555555;
-    --color-gray-shade_4: #444444;
-    --color-gray-shade_3: #333333;
-    --color-gray-shade_2: #222222;
-    --color-gray-DEFAULT:  #111111;
+    --color-scheme-shade-15: #ffffff;
+    --color-scheme-shade-14: #eeeeee;
+    --color-scheme-shade-13: #dddddd;
+    --color-scheme-shade-12: #cccccc;
+    --color-scheme-shade-11: #bbbbbb;
+    --color-scheme-shade-10: #aaaaaa;
+    --color-scheme-shade-9: #999999;
+    --color-scheme-shade-8: #888888;
+    --color-scheme-shade-7: #777777;
+    --color-scheme-shade-6: #666666;
+    --color-scheme-shade-5: #555555;
+    --color-scheme-shade-4: #444444;
+    --color-scheme-shade-3: #333333;
+    --color-scheme-shade-2: #222222;
+    --color-scheme-shade-1: #111111;
 
-    --color-gray-shade_e_i: #222222;
+    --color-border-higher-contrast: #aaaaaa;
+    --color-border-high-contrast: #777777;
+    --color-border-mid-contrast: #666666;
+    --color-border-low-contrast: #444444;
+    --color-border-lower-contrast: #333333;
+    --color-border-boolean: transparent;
+
+    --color-text-normal: #eeeeee;
+    --color-text-very-slightly-less-contrast: #dddddd;
+    --color-text-slightly-less-contrast: #bbbbbb;
+    --color-text-less-contrast: #aaaaaa;
+    --color-text-low-contrast: #999999;
+    --color-text-lower-contrast: #777777;
+
+    --element-border: 1px solid var(--color-border-boolean);
+
+    --chat-bubble-left-border-assistant: transparent;
+    --chat-bubble-left-border-tool: transparent;
+    --chat-bubble-background-assistant: var(--color-accent-DEFAULT);
+    --chat-bubble-background-tool: var(--color-secondary_accent-DEFAULT);
+
+    --color-scheme-shade_14_i: #222222;
 
     --color-slightly-muted-white: #eeeeee;
   
@@ -76,27 +98,51 @@
   
     --color-green-DEFAULT: #69E665;
     --color-green-dark: #198316;
+
+    --color-contrast: #eeeeee;
 }
 
 .theme-aquillm_default_light {
     /* Inverted version of the default dark theme */
-    --color-gray-shade_f: #111111;
-    --color-gray-shade_e: #222222;
-    --color-gray-shade_d: #333333;
-    --color-gray-shade_c: #444444;
-    --color-gray-shade_b: #555555;
-    --color-gray-shade_a: #666666;
-    --color-gray-shade_9: #777777;
-    --color-gray-shade_8: #888888;
-    --color-gray-shade_7: #999999;
-    --color-gray-shade_6: #aaaaaa;
-    --color-gray-shade_5: #bbbbbb;
-    --color-gray-shade_4: #cccccc;
-    --color-gray-shade_3: #dddddd;
-    --color-gray-shade_2: #eeeeee;
-    --color-gray-DEFAULT:  #ffffff;
+    --color-scheme-shade-15: #111111;
+    --color-scheme-shade-14:#222222;
+    --color-scheme-shade-13:#333333;
+    --color-scheme-shade-12:#444444;
+    --color-scheme-shade-11:#555555;
+    --color-scheme-shade-10:#666666;
+    --color-scheme-shade-9:#777777;
+    --color-scheme-shade-8:#888888;
+    --color-scheme-shade-7:#999999;
+    --color-scheme-shade-6:#aaaaaa;
+    --color-scheme-shade-5:#bbbbbb;
+    --color-scheme-shade-4:#cccccc;
+    --color-scheme-shade-3:#dddddd;
+    --color-scheme-shade-2:#eeeeee;
+    --color-scheme-shade-1: #ffffff;
 
-    --color-gray-shade_e_i: #eeeeee;
+    --color-border-higher-contrast: #333333;
+    --color-border-high-contrast: #444444;
+    --color-border-mid-contrast: #888888;
+    --color-border-low-contrast: #999999;
+    --color-border-lower-contrast: #aaaaaa;
+
+    --color-border-boolean: transparent;
+
+    --color-text-normal: #222222;
+    --color-text-very-slightly-less-contrast: #333333;
+    --color-text-slightly-less-contrast: #555555;
+    --color-text-less-contrast: #666666;
+    --color-text-low-contrast: #777777;
+    --color-text-lower-contrast: #999999;
+
+    --element-border: 1px solid var(--color-border-boolean);
+
+    --chat-bubble-left-border-assistant: transparent;
+    --chat-bubble-left-border-tool: transparent;
+    --chat-bubble-background-assistant: var(--color-accent-DEFAULT);
+    --chat-bubble-background-tool: var(--color-secondary_accent-DEFAULT);
+
+    --color-scheme-shade_14_i: #eeeeee;
 
     --color-slightly-muted-white: #eeeeee;
 
@@ -119,4 +165,222 @@
   
     --color-green-DEFAULT: #69E665;
     --color-green-dark: #198316;
+
+    --color-contrast: #222222;
+}
+
+.theme-aquillm_default_light_accessible_chat {
+    --color-scheme-shade-15: #111111;
+    --color-scheme-shade-14:#222222;
+    --color-scheme-shade-13:#333333;
+    --color-scheme-shade-12:#444444;
+    --color-scheme-shade-11:#555555;
+    --color-scheme-shade-10:#666666;
+    --color-scheme-shade-9:#777777;
+    --color-scheme-shade-8:#888888;
+    --color-scheme-shade-7:#999999;
+    --color-scheme-shade-6:#aaaaaa;
+    --color-scheme-shade-5:#bbbbbb;
+    --color-scheme-shade-4:#cccccc;
+    --color-scheme-shade-3:#dddddd;
+    --color-scheme-shade-2:#eeeeee;
+    --color-scheme-shade-1: #ffffff;
+
+    --color-border-higher-contrast: #333333;
+    --color-border-high-contrast: #444444;
+    --color-border-mid-contrast: #888888;
+    --color-border-low-contrast: #999999;
+    --color-border-lower-contrast: #aaaaaa;
+
+    --color-border-boolean: transparent;
+
+    --color-text-normal: #222222;
+    --color-text-very-slightly-less-contrast: #333333;
+    --color-text-slightly-less-contrast: #555555;
+    --color-text-less-contrast: #666666;
+    --color-text-low-contrast: #777777;
+    --color-text-lower-contrast: #999999;
+
+    --element-border: 1px solid var(--color-border-boolean);
+
+    --chat-bubble-left-border-assistant: 3px solid var(--color-accent-DEFAULT);
+    --chat-bubble-left-border-tool: 3px solid var(--color-secondary_accent-DEFAULT);
+    --chat-bubble-background-assistant: var(--color-scheme-shade-3);
+    --chat-bubble-background-tool: var(--color-scheme-shade-3);
+
+    --color-scheme-shade_14_i: #eeeeee;
+
+    --color-slightly-muted-white: #eeeeee;
+
+    --color-tool-details-section-assistant: var(--color-scheme-shade-4);
+    --color-tool-details-section-tool: var(--color-scheme-shade-4);
+  
+    /* Accent palettes */
+    --color-accent-light: #1B4979;
+    --color-accent-DEFAULT: #1C79D8;
+    --color-accent-dark: #A5CCF3;
+    --color-accent-dark_i: #1B4979;
+    
+    --color-secondary_accent-light: #BE380E;
+    --color-secondary_accent-DEFAULT: #F16C43;
+    --color-secondary_accent-dark: #F49071;
+    --color-secondary_accent-dark_i: #BE380E;
+  
+    --color-red-DEFAULT: #EC3D3D;
+    --color-red-dark: #8C0D0D;
+  
+    --color-green-DEFAULT: #69E665;
+    --color-green-dark: #198316;
+
+    --color-contrast: #222222;
+}
+
+.theme-aquillm_default_dark_accessible_chat {
+    --color-scheme-shade-15: #ffffff;
+    --color-scheme-shade-14: #eeeeee;
+    --color-scheme-shade-13: #dddddd;
+    --color-scheme-shade-12: #cccccc;
+    --color-scheme-shade-11: #bbbbbb;
+    --color-scheme-shade-10: #aaaaaa;
+    --color-scheme-shade-9: #999999;
+    --color-scheme-shade-8: #888888;
+    --color-scheme-shade-7: #777777;
+    --color-scheme-shade-6: #666666;
+    --color-scheme-shade-5: #555555;
+    --color-scheme-shade-4: #444444;
+    --color-scheme-shade-3: #333333;
+    --color-scheme-shade-2: #222222;
+    --color-scheme-shade-1: #111111;
+
+    --color-border-higher-contrast: #aaaaaa;
+    --color-border-high-contrast: #777777;
+    --color-border-mid-contrast: #666666;
+    --color-border-low-contrast: #444444;
+    --color-border-lower-contrast: #333333;
+    --color-border-boolean: transparent;
+
+    --color-text-normal: #eeeeee;
+    --color-text-very-slightly-less-contrast: #dddddd;
+    --color-text-slightly-less-contrast: #bbbbbb;
+    --color-text-less-contrast: #aaaaaa;
+    --color-text-low-contrast: #999999;
+    --color-text-lower-contrast: #777777;
+
+    --element-border: 1px solid var(--color-border-boolean);
+
+    --chat-bubble-left-border-assistant: 3px solid var(--color-accent-DEFAULT);
+    --chat-bubble-left-border-tool: 3px solid var(--color-secondary_accent-DEFAULT);
+    --chat-bubble-background-assistant: var(--color-scheme-shade-3);
+    --chat-bubble-background-tool: var(--color-scheme-shade-3);
+
+    --color-scheme-shade_14_i: #222222;
+
+    --color-slightly-muted-white: #eeeeee;
+  
+    /* Accent palettes */
+    --color-accent-light: #A5CCF3;
+    --color-accent-DEFAULT: #1C79D8;
+    --color-accent-dark: #1B4979;
+
+    --color-tool-details-section-assistant:  var(--color-scheme-shade-4);
+    --color-tool-details-section-tool:  var(--color-scheme-shade-4);
+
+    --color-secondary_accent-light: #F49071;
+    --color-secondary_accent-DEFAULT: #F16C43;
+    --color-secondary_accent-dark: #BE380E;
+  
+    --color-red-DEFAULT: #EC3D3D;
+    --color-red-dark: #8C0D0D;
+  
+    --color-green-DEFAULT: #69E665;
+    --color-green-dark: #198316;
+
+    --color-contrast: #eeeeee;
+}
+
+.theme-high_contrast {
+    /* Inverted version of the default dark theme */
+    --color-scheme-shade-15: #111111;
+    --color-scheme-shade-14: #111111;
+    --color-scheme-shade-13: #111111;
+    --color-scheme-shade-12: #111111;
+    --color-scheme-shade-11: #111111;
+    --color-scheme-shade-10: #111111;
+    --color-scheme-shade-9: #111111;
+    --color-scheme-shade-8: #111111;
+    --color-scheme-shade-7: #111111;
+    --color-scheme-shade-6: #111111;
+    --color-scheme-shade-5: #111111;
+    --color-scheme-shade-4: #111111;
+    --color-scheme-shade-3: #111111;
+    --color-scheme-shade-2: #111111;
+
+    --color-border-higher-contrast: #eeeeee;
+    --color-border-high-contrast: #eeeeee;
+    --color-border-mid-contrast: #eeeeee;
+    --color-border-low-contrast: #eeeeee;
+    --color-border-lower-contrast: #eeeeee;
+    --color-border-boolean: #eeeeee;
+
+    --element-border: 1px solid var(--color-border-boolean);
+
+    --color-text-normal: #eeeeee;
+    --color-text-very-slightly-less-contrast: #eeeeee;
+    --color-text-slightly-less-contrast: #eeeeee;
+    --color-text-less-contrast: #eeeeee;
+    --color-text-low-contrast: #eeeeee;
+    --color-text-lower-contrast: #eeeeee;
+
+    --color-text-normal: #eeeeee;
+    --color-text-very-slightly-less-contrast: #eeeeee;
+    --color-text-slightly-less-contrast: #eeeeee;
+    --color-text-less-contrast: #eeeeee;
+    --color-text-low-contrast: #eeeeee;
+    --color-text-lower-contrast: #eeeeee;
+
+    --chat-bubble-left-border-assistant: 1px solid #eeeeee;
+    --chat-bubble-left-border-tool: 1px solid #eeeeee;
+    --chat-bubble-background-assistant: #111111;
+    --chat-bubble-background-tool: #111111;
+
+    --color-scheme-shade_14_i: #eeeeee;
+
+    --color-slightly-muted-white: #eeeeee;
+
+    --color-tool-details-section-assistant: #222222;
+    --color-tool-details-section-tool: #222222;
+  
+    /* Accent palettes */
+    --color-accent-light: #1B4979;
+    --color-accent-DEFAULT: #1C79D8;
+    --color-accent-dark: #A5CCF3;
+    --color-accent-dark_i: #1B4979;
+    
+    --color-secondary_accent-light: #BE380E;
+    --color-secondary_accent-DEFAULT: #F16C43;
+    --color-secondary_accent-dark: #F49071;
+    --color-secondary_accent-dark_i: #BE380E;
+  
+    --color-red-DEFAULT: #EC3D3D;
+    --color-red-dark: #8C0D0D;
+  
+    --color-green-DEFAULT: #69E665;
+    --color-green-dark: #198316;
+
+    --color-contrast: #eeeeee;
+}
+
+/* used to determine if the element should have a border. */
+.element-border {
+    border: var(--element-border);
+}
+
+.chat-bubble-left-border-assistant {
+    border-left: var(--chat-bubble-left-border-assistant);
+    background: var(--chat-bubble-background-assistant);
+}
+
+.chat-bubble-left-border-tool {
+    border-left: var(--chat-bubble-left-border-tool);
+    background: var(--chat-bubble-background-tool);
 }

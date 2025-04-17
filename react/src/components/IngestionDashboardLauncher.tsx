@@ -11,7 +11,7 @@ interface IngestionDashboardModalProps {
 
 const IngestionDashboardModal: React.FC<IngestionDashboardModalProps> = ({ wsUrl, onClose, onNewDocument }) => {
   return (
-    <div className="fixed bg-gray-shade_3 rounded-t-lg shadow-lg bottom-0 left-1/2 max-w-2xl right-0 z-50 flex items-end justify-center pointer-events-auto">
+    <div className="fixed bg-scheme-shade_3 rounded-t-lg shadow-lg bottom-0 left-1/2 max-w-2xl right-0 z-50 flex items-end justify-center pointer-events-auto">
       {/* Modal container styled as a bottom sheet */}
       <div
         className="relative w-full rounded-t-lg shadow-lg"
@@ -39,7 +39,7 @@ const IngestionDashboardLauncher: React.FC<IngestionDashboardLauncherProps> = ({
   return (
     <>
       {/* Clickable div that toggles the modal's visibility */}
-      <div onClick={() => setModalOpen(!modalOpen)} className="my-[5px] pl-[8px] py-[3px] text-lg w-full hover:bg-gray-shade_5 rounded-[12px] transition-all">
+      <div onClick={() => setModalOpen(!modalOpen)} className="my-[5px] pl-[8px] py-[3px] text-lg w-full hover:bg-scheme-shade_5 rounded-[12px] transition-all">
         Ingestion Monitor
       </div>
 

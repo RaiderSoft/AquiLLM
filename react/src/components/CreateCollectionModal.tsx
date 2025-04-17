@@ -131,7 +131,7 @@ const CreateCollectionModal: React.FC<CreateCollectionModalProps> = ({ isOpen, o
               id="collectionName"
               type="text"
               value={name}
-              className="bg-gray-shade_4 border border-gray-shade_7 rounded-md p-2 text-gray-shade_1"
+              className="bg-scheme-shade_4 border border-border-high_contrast rounded-md p-2 text-gray-shade_1"
               onChange={(e) => setName(e.target.value)}
               style={modalStyles.input}
               placeholder="Enter collection name"

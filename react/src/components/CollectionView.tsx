@@ -543,7 +543,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
             {breadcrumbs.map((crumb, index) => (
               <li key={`${crumb.name}-${index}`} className="inline-flex items-center">
                 {index > 0 && (
-                  <svg className="w-3 h-3 mx-1 text-gray-shade_7" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                  <svg className="w-3 h-3 mx-1 text-text-lower_contrast" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
                     <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4"/>
                   </svg>
                 )}
@@ -553,14 +553,14 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
                     href={formatUrl(window.pageUrls.collection, {col_id: crumb.id})}
                     className={`ml-1 text-sm ${index === breadcrumbs.length - 1 
                       ? 'text-blue-500 font-medium' 
-                      : 'text-gray-shade_b hover:text-blue-400'}`}
+                      : 'text-text-slightly_less_contrast hover:text-blue-400'}`}
                   >
                     {crumb.name}
                   </a>
                 ) : (
                   <a 
                     href={window.pageUrls.user_collections}
-                    className="ml-1 text-sm text-gray-shade_b hover:text-blue-400"
+                    className="ml-1 text-sm text-text-slightly_less_contrast hover:text-blue-400"
                   >
                     {crumb.name}
                   </a>
@@ -585,9 +585,9 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
       )}
 
       <div className="relative flex items-center mb-[24px]"> 
-          <div className="flex-grow border-t border-gray-shade_4"></div>
-            <span className="text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Add Content</span>
-          <div className="flex-grow border-t border-gray-shade_4"></div>
+          <div className="flex-grow border-t border-border-low_contrast"></div>
+            <span className="text-xs px-[8px] bg-dark-mode-background text-text-lower_contrast">Add Content</span>
+          <div className="flex-grow border-t border-border-low_contrast"></div>
       </div>
 
       <IngestRowContainer
@@ -598,9 +598,9 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
       />
 
       <div className="relative flex items-center mb-[24px]"> 
-          <div className="flex-grow border-t border-gray-shade_4"></div>
-            <span className="text-xs px-[8px] bg-dark-mode-background text-gray-shade_7">Browse</span>
-          <div className="flex-grow border-t border-gray-shade_4"></div>
+          <div className="flex-grow border-t border-border-low_contrast"></div>
+            <span className="text-xs px-[8px] bg-dark-mode-background text-text-lower_contrast">Browse</span>
+          <div className="flex-grow border-t border-border-low_contrast"></div>
       </div>
 
       <FileSystemViewer
@@ -659,7 +659,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
       {/* Loading Indicator for Batch Operations */}
       {isBatchOperationLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-shade_3 p-6 rounded-lg shadow-xl flex flex-col items-center">
+          <div className="bg-scheme-shade_3 p-6 rounded-lg shadow-xl flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
             <p className="text-white text-lg">Processing items...</p>
           </div>

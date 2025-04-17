@@ -133,13 +133,13 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
 
   return (
     <div className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black bg-opacity-75 z-[100] backdrop-blur-[10px]">
-      <div className='border-gray-shade_7 border flex flex-col items-center justify-left bg-gray-shade_3 p-[1rem] rounded-[32px] w-full max-w-[600px] position-relative box-shadow-[0_4px_6px_rgba(0,0,0,0.1)] text-gray-shade_e'> 
+      <div className='border-border-high_contrast border flex flex-col items-center justify-left bg-scheme-shade_3 p-[1rem] rounded-[32px] w-full max-w-[600px] position-relative box-shadow-[0_4px_6px_rgba(0,0,0,0.1)] text-text-normal'> 
 
         <h3 style={modalStyles.title}>Move Collection</h3>
 
         {/* Breadcrumb Navigation */}
         <div style={modalStyles.breadcrumb} className='flex flex-col items-center justify-center'>
-          <span className='text-gray-shade_a'>
+          <span className='text-text-less_contrast'>
             <strong>{folder.name}</strong> will be moved to:
           </span>
           <div>          
@@ -163,14 +163,14 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
             type="button"
             onClick={handleMoveToRoot}
             style={modalStyles.moveToRootButton}
-            className='bg-gray-shade_4 hover:bg-gray-shade_6 transition-all w-full'
+            className='bg-scheme-shade_4 hover:bg-scheme-shade_6 transition-all w-full'
           >
             Move to Root Level
           </button>
         )}
 
         <div className='w-full flex justify-left'>
-          <button onClick={handleGoBack} style={{ marginRight: '32px' }} className='text-gray-shade_a hover:bg-gray-shade_6 transition-all rounded-[8px] p-[4px] mb-[8px]'>
+          <button onClick={handleGoBack} style={{ marginRight: '32px' }} className='text-text-less_contrast hover:bg-scheme-shade_6 transition-all rounded-[8px] p-[4px] mb-[8px]'>
                   ← Back
           </button>
         </div>
@@ -181,7 +181,7 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
             <li
               key={item.id}
               style={modalStyles.listItem}
-              className='hover:bg-gray-shade_4 transition-all rounded-[8px] text-accent-light flex items-center justify-left gap-[16px]'
+              className='hover:bg-scheme-shade_4 transition-all rounded-[8px] text-accent-light flex items-center justify-left gap-[16px]'
               onClick={() => handleItemClick({ id: item.id, type: 'collection', name: item.name })}
             >
               {insertFolderIcon()}
@@ -200,7 +200,7 @@ const MoveCollectionModal: React.FC<MoveCollectionModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className='bg-gray-shade_6'
+            className='bg-scheme-shade_6'
             style={{ ...modalStyles.button, ...modalStyles.cancelButton }}
           >
             Cancel

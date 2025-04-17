@@ -76,7 +76,7 @@ class SearchForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         collections_attrs = {
-            'class': 'rounded-lg bg-gray-shade_3 mb-4 max-h-[300px] overflow-y-auto px-4 py-2 border border-gray-shade_7',
+            'class': 'rounded-lg bg-scheme-shade_3 mb-4 max-h-[300px] overflow-y-auto px-4 py-2 border border-border-high_contrast',
         }
         self.fields['collections'] = UserCollectionMultipleChoiceField(
             user=user,
@@ -86,14 +86,14 @@ class SearchForm(forms.Form):
         )
 
     query_attrs = {
-        'class': 'w-full h-full resize-none p-3 mb-4 rounded-md bg-gray-shade_3 placeholder:text-gray-shade_a text-wrap text-gray-shade_e',
+        'class': 'w-full h-full resize-none p-3 mb-4 rounded-md bg-scheme-shade_3 placeholder:text-text-less_contrast text-wrap text-text-normal',
         'rows': 4,
         'placeholder': 'Send a message'}
     
     query = forms.CharField(label="Query", widget=forms.Textarea(attrs=query_attrs), max_length=10000)
 
     top_k_attrs = {
-        'class': 'w-full p-2 rounded-md bg-gray-shade_3 placeholder:text-gray-shade_9 text-gray-shade_e mb-4',
+        'class': 'w-full p-2 rounded-md bg-scheme-shade_3 placeholder:text-text-low_contrast text-text-normal mb-4',
     }
 
     top_k = forms.IntegerField(widget=forms.NumberInput(attrs=top_k_attrs), min_value=1, max_value=200, initial=5)
@@ -104,12 +104,12 @@ class ArXiVForm(forms.Form):
         label="Article arXiv Identifier",  
         widget=forms.TextInput(attrs={
             'placeholder': 'Article arXiv Identifier:', 
-            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+            'class': 'rounded-[8px] w-full p-2 bg-scheme-shade_4 border border-border-high_contrast placeholder:gray-shade_9' 
         })
     )
 
     # collections_attrs = {
-    #     'class': 'rounded-md bg-lightest-primary max-h-[200px] overflow-y-auto bg-gray-shade_3 border-gray-shade_7',
+    #     'class': 'rounded-md bg-lightest-primary max-h-[200px] overflow-y-auto bg-scheme-shade_3 border-border-high_contrast',
     # }
 
     # collection = forms.ChoiceField(widget=forms.RadioSelect(attrs=collections_attrs))
@@ -121,7 +121,7 @@ class ArXiVForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         collections_attrs = {
-           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-scheme-shade_4 border border-border-high_contrast',
         }
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,
@@ -136,7 +136,7 @@ class PDFDocumentForm(forms.Form):
         label="Article Title",  
         widget=forms.TextInput(attrs={
             'placeholder': 'Article Title:', 
-            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+            'class': 'rounded-[8px] w-full p-2 bg-scheme-shade_4 border border-border-high_contrast placeholder:gray-shade_9' 
         })
     )
 
@@ -152,7 +152,7 @@ class PDFDocumentForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         collections_attrs = {
-           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-scheme-shade_4 border border-border-high_contrast',
         }
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,
@@ -166,7 +166,7 @@ class VTTDocumentForm(forms.Form):
         label="Transcript Title",  
         widget=forms.TextInput(attrs={
             'placeholder': 'Transcript Title:', 
-            'class': 'rounded-[8px] w-full p-2 bg-gray-shade_4 border border-gray-shade_7 placeholder:gray-shade_9' 
+            'class': 'rounded-[8px] w-full p-2 bg-scheme-shade_4 border border-border-high_contrast placeholder:gray-shade_9' 
         })
     )
 
@@ -190,7 +190,7 @@ class VTTDocumentForm(forms.Form):
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         collections_attrs = {
-           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-gray-shade_4 border border-gray-shade_7',
+           'class': 'rounded-lg max-h-[200px] overflow-y-auto bg-scheme-shade_4 border border-border-high_contrast',
         }
         self.fields['collection'] = UserCollectionSingleChoiceField(
             user=user,

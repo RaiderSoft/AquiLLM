@@ -64,7 +64,7 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
   // This helper function applies the chosen theme to the page.
   const applyTheme = ({ color_scheme, font_family }: { color_scheme: string; font_family: string }) => {
     // Remove any previously set theme classes (if using utility classes to indicate theme).
-    document.body.classList.remove('theme-aquillm_default_dark', 'theme-aquillm_default_light');
+    document.body.classList.remove('theme-aquillm_default_dark', 'theme-aquillm_default_light', 'theme-aquillm_default_light_accessible_chat', 'theme-aquillm_default_dark_accessible_chat', 'theme-high_contrast');
     document.body.classList.add(`theme-${color_scheme}`);
 
     // If you want to change the font globally, you could update a CSS variable or
@@ -93,6 +93,9 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
           >
             <option value="aquillm_default_dark">Aquillm Default Dark</option>
             <option value="aquillm_default_light">Aquillm Default Light</option>
+            <option value="aquillm_default_dark_accessible_chat">Aquillm Default Dark - Accessible Chat</option>
+            <option value="aquillm_default_light_accessible_chat">Aquillm Default Light - Accessible Chat</option>
+            <option value="high_contrast">High Contrast</option>
           </select>
         </div>
         <div className="mb-4">
