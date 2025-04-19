@@ -343,7 +343,7 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
                   title="Send Message"
                   disabled={inputDisabled}
                 >
-                  <Send size={16} className="text-button_text_color"/>
+                  <Send size={16} className="text-white"/>
                 </button>
               </div>
             </div>
@@ -356,8 +356,8 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
                 onToggle={() => setShowCollections(!showCollections)}
               >
                 <summary className="cursor-pointer w-[max-content] px-[16px] py-[2px] text-text-normal bg-accent h-[36px] rounded-[18px] flex items-center">
-                  <span className="text-button_text_color">Select Collections</span>
-                  <span className="ml-2 text-sm text-button_text_color">
+                  <span className="text-white">Select Collections</span>
+                  <span className="ml-2 text-sm text-white">
                     {selectedCollections.size ? `(${selectedCollections.size} selected)` : ''}
                   </span>
                 </summary>
@@ -409,14 +409,14 @@ const shouldShowSpinner = (messages: Message[]) => {
 // MessageBubble component
 const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefined, rating: number) => void }> = ({ message, onRate }) => {
   const getMessageClasses = () => {
-    let classes = "w-4/5 p-2.5 rounded-[12px] shadow-md whitespace-pre-wrap break-words element-border text-text-normal";
+    let classes = "w-4/5 p-2.5 rounded-[12px] shadow-md whitespace-pre-wrap break-words element-border";
     
     if (message.role === 'user') {
-      return `${classes} user-message self-end bg-scheme-shade_3`;
+      return `${classes} user-message self-end bg-scheme-shade_3 text-text-normal`;
     } else if (message.role === 'assistant') {
-      return `${classes} assistant-message text-slight_muted_white chat-bubble-left-border-assistant`;
+      return `${classes} assistant-message chat-bubble-left-border-assistant text-text-non_user_text_bubble`;
     } else if (message.role === 'tool') {
-      return `${classes} border border-1 border-secondary_accent-light text-slight_muted_white chat-bubble-left-border-tool`;
+      return `${classes} border border-1 border-secondary_accent-light chat-bubble-left-border-tool text-text-non_user_text_bubble`;
     }
     
     return classes;
@@ -443,9 +443,9 @@ const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefi
             <strong>Called Tool: {message.tool_call_name}</strong>
             <Collapsible 
               summary="View Tool Arguments" 
-              summaryTextColor="text-text-normal"
+              summaryTextColor="text-text-non_user_text_bubble"
               content={
-                <pre className="whitespace-pre-wrap break-words bg-tool_details-assistant p-2 rounded text-text-normal">
+                <pre className="whitespace-pre-wrap break-words bg-tool_details-assistant p-2 rounded text-text-non_user_text_bubble">
                   {JSON.stringify(message.tool_call_input, null, 2)}
                 </pre>
               }
@@ -461,10 +461,10 @@ const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefi
             </div>
             <Collapsible 
               summary={'exception' in (message.result_dict || {}) ? 'View Exception' : 'View Results'}
-              summaryTextColor="text-text-normal"
+              summaryTextColor="text-text-non_user_text_bubble"
               isOpen={message.for_whom === 'user'}
               content={
-                <div className="bg-tool_details-tool p-2 rounded text-text-normal">
+                <div className="bg-tool_details-tool p-2 rounded text-text-non_user_text_bubble">
                   <ToolResult result={'exception' in (message.result_dict || {}) ? 
                     message.result_dict?.exception : 
                     message.result_dict?.result} 
@@ -525,7 +525,7 @@ const ToolResult: React.FC<{ result: any, level?: number }> = ({ result, level =
       return (
         <details open={level < 1} className="mt-1">
           <summary className="cursor-pointer font-mono hover:text-blue-600">Array</summary>
-          <div className="pl-4 border-l-2 border-gray-300 mt-1">
+          <div className="pl-4 border-l-2 border-gray-300 mt-1 text-text-non_user_text_bubble">
             {result.map((item, index) => (
               <ToolResult key={index} result={item} level={level + 1} />
             ))}
@@ -539,7 +539,7 @@ const ToolResult: React.FC<{ result: any, level?: number }> = ({ result, level =
             typeof value === 'object' && value !== null ? (
               <details key={index} open={level < 1} className="mt-1">
                 <summary className="cursor-pointer font-mono hover:text-blue-600">{key}</summary>
-                <div className="pl-4 border-l-2 border-gray-300 mt-1">
+                <div className="pl-4 border-l-2 border-gray-300 mt-1 text-text-non_user_text_bubble">
                   <ToolResult result={value} level={level + 1} />
                 </div>
               </details>
@@ -560,7 +560,7 @@ const ToolResult: React.FC<{ result: any, level?: number }> = ({ result, level =
 // Tool Value Component
 const ToolValue: React.FC<{ value: string | number | boolean }> = ({ value }) => {
   if (typeof value === 'string') {
-    return <span className="font-mono">{`"${value}"`}</span>;
+    return <span className="font-mono text-text-non_user_text_bubble">{`"${value}"`}</span>;
   }
   return <span className="font-mono text-secondary_accent-light">{String(value)}</span>;
 };

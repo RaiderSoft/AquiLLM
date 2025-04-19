@@ -2,6 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { getCookie } from '../utils/csrf';
 
+const themeDescriptions: Record<string, string> = {
+  aquillm_default_dark:
+    'A sleek, dark‑mode palette with deep charcoal backgrounds and subtle accent colors for low‑light environments. The blue you see comes from the color the star Altair primarily emits according to its spectrogram, which is the brightest star in the constellation Aquila, depicted in our logo. The orange, in contrast yet complement, is the color Altair emits the least of.',
+  aquillm_default_light:
+    'A clean, light color scheme with white backgrounds and gentle grays—perfect for well‑lit desks. The blue you see comes from the color the star Altair primarily emits according to its spectrogram, which is the brightest star in the constellation Aquila, depicted in our logo. The orange, in contrast yet complement, is the color Altair emits the least of.',
+  aquillm_default_dark_accessible_chat:
+    'Dark mode optimized for the chat page that omits the full blue and orange background of chat bubbles in favor of better readability.',
+  aquillm_default_light_accessible_chat:
+    'Light mode optimized for the chat page that omits the full blue and orange background of chat bubbles in favor of better readability.',
+  high_contrast:
+    'Maximum contrast everywhere: bold borders, stark black‑on‑white text, and clear focus indicators.',
+};
+
 const UserSettings: React.FC = () => {
   const [themeSettings, setThemeSettings] = useState({
     color_scheme: 'aquillm_default_dark',
@@ -77,49 +90,70 @@ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
   if (error) return <div>Error loading settings.</div>;
 
   return (
-    <div className="p-4">
+    <div className="p-[30px]">
       <h2 className="mb-4 text-xl font-bold">Select Your Theme</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="color_scheme" className="block mb-1">
-            Color Scheme:
-          </label>
-          <select
-            id="color_scheme"
-            name="color_scheme"
-            value={themeSettings.color_scheme}
-            onChange={handleChange}
-            className="border p-2 rounded"
+      {/* Flex container: form on left, description on right */}
+      <form onSubmit={handleSubmit} className="flex">
+        {/* Left column: controls */}
+        <div className="w-1/2 pr-4">
+          <div className="mb-4">
+            <label htmlFor="color_scheme" className="block mb-1">
+              Color Scheme:
+            </label>
+            <select
+              id="color_scheme"
+              name="color_scheme"
+              value={themeSettings.color_scheme}
+              onChange={handleChange}
+              className="border p-2 rounded w-full bg-scheme-shade_3 text-text-normal"
+            >
+              <option value="aquillm_default_dark">
+                Aquillm Default Dark
+              </option>
+              <option value="aquillm_default_light">
+                Aquillm Default Light
+              </option>
+              <option value="aquillm_default_dark_accessible_chat">
+                Aquillm Default Dark – Accessible Chat
+              </option>
+              <option value="aquillm_default_light_accessible_chat">
+                Aquillm Default Light – Accessible Chat
+              </option>
+              <option value="high_contrast">High Contrast</option>
+            </select>
+          </div>
+          <div className="mb-4">
+            <label htmlFor="font_family" className="block mb-1">
+              Font Family:
+            </label>
+            <select
+              id="font_family"
+              name="font_family"
+              value={themeSettings.font_family}
+              onChange={handleChange}
+              className="border p-2 rounded w-full bg-scheme-shade_3 text-text-normal"
+            >
+              <option value="sans_serif">Sans‑serif (Default)</option>
+              <option value="verdana">Verdana</option>
+              <option value="timesnewroman">Times New Roman</option>
+              <option value="opendyslexic">Open Dyslexic</option>
+              <option value="lexend">Lexend</option>
+              <option value="comicsans">Comic Sans (Helps with dyslexia!)</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white py-2 px-4 rounded"
           >
-            <option value="aquillm_default_dark">Aquillm Default Dark</option>
-            <option value="aquillm_default_light">Aquillm Default Light</option>
-            <option value="aquillm_default_dark_accessible_chat">Aquillm Default Dark - Accessible Chat</option>
-            <option value="aquillm_default_light_accessible_chat">Aquillm Default Light - Accessible Chat</option>
-            <option value="high_contrast">High Contrast</option>
-          </select>
+            Save Settings
+          </button>
         </div>
-        <div className="mb-4">
-          <label htmlFor="font_family" className="block mb-1">
-            Font Family:
-          </label>
-          <select
-            id="font_family"
-            name="font_family"
-            value={themeSettings.font_family}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          >
-            <option value="sans_serif">Sans-serif (Default)</option>
-            <option value="verdana">Verdana</option>
-            <option value="timesnewroman">Times New Roman</option>
-            <option value="opendyslexic">Open Dyslexic</option>
-            <option value="lexend">Lexend</option>
-            <option value="comicsans">Comic Sans</option>
-          </select>
+
+        {/* Right column: description */}
+        <div className="w-1/2 pl-4 border-l">
+          <h3 className="font-semibold mb-2">Theme Description</h3>
+          <p>{themeDescriptions[themeSettings.color_scheme]}</p>
         </div>
-        <button type="submit" className="bg-accent text-slight_muted_white py-2 px-4 rounded">
-          Save Settings
-        </button>
       </form>
     </div>
   );

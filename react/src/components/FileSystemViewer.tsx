@@ -355,7 +355,7 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
       <div style={{ overflow: 'auto' }}>
         <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse'}}>
           <thead className='bg-scheme-shade_4'>
-            <tr className='border-b border-b-scheme-shade_6 h-[40px] max-h-[40px]'>
+            <tr className='border-b border-l border-r border-border-mid_contrast h-[40px] max-h-[40px]'>
               <th style={{ textAlign: 'left' }} className='h-full flex items-center justify-left'>
                 <div 
                   style={{ 
@@ -411,9 +411,8 @@ const FileSystemViewer: React.FC<FileSystemViewerProps> = ({
                   <tr
                       key={item.id}
                       onContextMenu={(e) => handleContextMenu(e, item)}
-                      className={`h-[40px] max-h-[40px] hover:bg-scheme-shade_3 transition-colors ${typeToTextColorClass[item.type as keyof typeof typeToTextColorClass] || ''}`}
+                      className={`h-[40px] max-h-[40px] hover:bg-scheme-shade_3 transition-colors border border-border-mid_contrast ${typeToTextColorClass[item.type as keyof typeof typeToTextColorClass] || ''}`}
                       style={{
-                          borderBottom: '1px solid #555555',
                           cursor: 'pointer',                      
                           backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent', // Highlight selected rows
                       }}

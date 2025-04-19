@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <div id="account-menu-modal" class="flex flex-col items-left gap-[16px] absolute top-[10%] right-[5%] p-[16px] rounded-[12px] bg-scheme-shade_4 border border-border-mid_contrast hidden text-text-normal">
+    <div id="account-menu-modal" class="flex z-50 flex-col items-left gap-[16px] absolute top-[10%] right-[5%] p-[16px] rounded-[12px] bg-scheme-shade_4 border border-border-mid_contrast hidden text-text-normal">
         <p class="w-full text-center border-b border-border-mid_contrast">
             <strong>{{ user.username }}</strong>
         </p>
@@ -351,12 +351,12 @@
         sidebarLinks.forEach(link => {  
             // Check if the link matches the current page URL
             if (link.getAttribute("href") === currentPath && link.classList.contains("no-highlight") === false) {
-                link.classList.add("bg-scheme-shade_5", "text-white"); 
+                link.classList.add("bg-scheme-shade_5"); 
             }
 
             // the link on the element and the browser are different, so check for this specific case
             if (link.getAttribute("href") === "/new_ws_convo/" && currentPath.includes("/ws_convo") && link.classList.contains("no-highlight") === false){
-                link.classList.add("bg-scheme-shade_5", "text-white");
+                link.classList.add("bg-scheme-shade_5");
             }
         });
 

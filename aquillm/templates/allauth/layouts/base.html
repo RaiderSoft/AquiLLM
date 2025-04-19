@@ -6,6 +6,7 @@
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="icon" type="image/png" href="{% static 'images/aquila-small-light.ico' %}" media="(prefers-color-scheme: dark)"/>
         <link rel="icon" type="image/png" href="{% static 'images/aquila-small-dark.ico' %}" media="(prefers-color-scheme: light)"/>
+        <link rel="stylesheet" href="{% static 'theme.css' %}" type="text/css" charset="utf-8" />
     
         <link rel="stylesheet" href="https://lalten.github.io/lmweb/style/latinmodern-mono.css" type="text/css" charset="utf-8" />
         <script>
@@ -13,46 +14,76 @@
                 theme: {
                     extend: {
                         fontFamily: {
-                            serif: ['Latin Modern Roman']
+                        opendyslexic: ['"OpenDyslexic"', 'sans-serif'],
+                        lexend: ['Lexend', 'sans-serif'],
+                        comicsans: ['"Comic Sans"', 'cursive'],
+                        verdana: ['Verdana', 'sans-serif'],
+                        timesnewroman: ['"Times New Roman"', 'serif'],
+                        latin_modern_roman: ['Latin Modern Roman', 'serif'],
+                        sans_serif: ['Helvetica', 'Arial', 'sans-serif']
                         },
                         colors: {
-                        transparent: 'transparent',
-                        current: 'currentColor',
-                            gray: {
-                                shade_f: '#ffffff',
-                                shade_e: '#eeeeee',
-                                shade_d: '#dddddd',
-                                shade_c: '#cccccc',
-                                shade_b: '#bbbbbb',
-                                shade_a: '#aaaaaa',
-                                shade_9: '#999999',
-                                shade_8: '#888888',
-                                shade_7: '#777777',
-                                shade_6: '#666666',
-                                shade_5: '#555555',
-                                shade_4: '#444444',
-                                shade_3: '#333333',
-                                shade_2: '#222222',
-                                DEFAULT: '#111111'
-                            },
-                            accent: {
-                                light: '#A5CCF3',
-                                DEFAULT: '#1C79D8',
-                                dark: '#1B4979'
-                            },
-                            secondary_accent: {
-                                light: '#F49071',
-                                DEFAULT: '#F16C43',
-                                dark: '#BE380E'
-                            },
-                            red: {
-                                DEFAULT: '#EC3D3D',
-                                dark: '#8C0D0D'
-                            },
-                            green: {
-                                DEFAULT: '#69E665',
-                                dark: '#198316'
-                            },
+                        // Use the custom property syntax. Tailwind will output utility classes like bg-scheme-shade_6.
+                        scheme: {
+                            shade_15: 'var(--color-scheme-shade-15)',
+                            shade_14: 'var(--color-scheme-shade-14)',
+                            shade_13: 'var(--color-scheme-shade-13)',
+                            shade_12: 'var(--color-scheme-shade-12)',
+                            shade_11: 'var(--color-scheme-shade-11)',
+                            shade_10: 'var(--color-scheme-shade-10)',
+                            shade_9: 'var(--color-scheme-shade-9)',
+                            shade_8: 'var(--color-scheme-shade-8)',
+                            shade_7: 'var(--color-scheme-shade-7)',
+                            shade_6: 'var(--color-scheme-shade-6)',
+                            shade_5: 'var(--color-scheme-shade-5)',
+                            shade_4: 'var(--color-scheme-shade-4)',
+                            shade_3: 'var(--color-scheme-shade-3)',
+                            shade_2: 'var(--color-scheme-shade-2)',
+                            shade_1: 'var(--color-scheme-shade-1)',
+                            DEFAULT: 'var(--color-scheme-shade-1)',
+                            contrast: 'var(--color-contrast)',
+                        },
+                        border:{
+                            higher_contrast: 'var(--color-border-higher-contrast)',
+                            high_contrast: 'var(--color-border-high-contrast)',
+                            mid_contrast: 'var(--color-border-mid-contrast)',
+                            low_contrast: 'var(--color-border-low-contrast)',
+                            lower_contrast: 'var(--color-border-lower-contrast)',
+                            boolean: 'var(--color-border-boolean)',
+                        },
+                        text: {
+                            normal: 'var(--color-text-normal)',
+                            very_slightly_less_contrast: 'var(--color-text-very-slightly-less-contrast)',
+                            slightly_less_contrast: 'var(--color-text-slightly-less-contrast)',
+                            less_contrast: 'var(--color-text-less-contrast)',
+                            low_contrast: 'var(--color-text-low-contrast)',
+                            lower_contrast: 'var(--color-text-lower-contrast)',
+                        },
+                        accent: {
+                            light: 'var(--color-accent-light)',
+                            DEFAULT: 'var(--color-accent-DEFAULT)',
+                            dark: 'var(--color-accent-dark)',
+                        },
+                        secondary_accent: {
+                            light: 'var(--color-secondary_accent-light)',
+                            DEFAULT: 'var(--color-secondary_accent-DEFAULT)',
+                            dark: 'var(--color-secondary_accent-dark)',
+                        },
+                        red: {
+                            DEFAULT: 'var(--color-red-DEFAULT)',
+                            dark: 'var(--color-red-dark)',
+                        },
+                        green: {
+                            DEFAULT: 'var(--color-green-DEFAULT)',
+                            dark: 'var(--color-green-dark)',
+                        },
+                        slight_muted_white: {
+                            DEFAULT: 'var(--color-slightly-muted-white)',
+                        },
+                        tool_details:{
+                            assistant: 'var(--color-tool-details-section-assistant)',
+                            tool: 'var(--color-tool-details-section-tool)',
+                        }
                         },
 
                         keyframes: {
@@ -68,7 +99,7 @@
                         },
                         },
                     },
-                },
+                }
             }
         </script>
         <meta charset="utf-8">
@@ -78,7 +109,7 @@
             {% block head_title %}{% endblock %}
         </title>
     </head>
-    <body class="min-h-screen flex flex-col font-sans">
+    <body class="min-h-screen flex flex-col font-sans theme-aquillm_default_dark">
         <header class="bg-gray-800 text-white">
         </header>
         {% block body %}

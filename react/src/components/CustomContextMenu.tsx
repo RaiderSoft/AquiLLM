@@ -28,15 +28,14 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
         position: 'fixed',
         top: y,
         left: x,
-        backgroundColor: '#444444',
         boxShadow: '0px 2px 8px rgba(0,0,0,0.2)',
-        border: '1px solid #777777',
         borderRadius: '8px',
         zIndex: 2000,
       }}
+      className='bg-scheme-shade_4 border border-border-high_contrast'
       onMouseLeave={onClose}
     >
-      <ul style={{ listStyle: 'none', padding: '8px', margin: 0 }}>
+      <ul style={{ listStyle: 'none', padding: '8px', margin: 0 }} className='text-text-normal'>
         <li
           style={{ padding: '4px 8px', cursor: 'pointer' }}
           onClick={() => { onViewDetails(item); onClose(); }}

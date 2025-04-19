@@ -52,6 +52,8 @@ module.exports = {
             less_contrast: 'var(--color-text-less-contrast)',
             low_contrast: 'var(--color-text-low-contrast)',
             lower_contrast: 'var(--color-text-lower-contrast)',
+            non_user_text_bubble: 'var(--non-user-chat-bubble-text-color)',
+            
           },
           accent: {
             light: 'var(--color-accent-light)',
