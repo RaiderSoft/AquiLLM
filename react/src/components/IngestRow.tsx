@@ -30,6 +30,7 @@ interface IngestRowData {
   vttFile: File | null;
   // For Webpage rows
   webpageUrl: string;
+  webpageCrawlDepth: number; // Add crawl depth state
 }
 
 const selectedClasses = "bg-accent text-gray-shade_e";
@@ -204,19 +205,45 @@ const VTTForm: React.FC<VTTFormProps> = ({
 };
 
 interface WebpageFormProps {
-  value: string;
-  onValueChange: (value: string) => void;
+  urlValue: string;
+  depthValue: number;
+  onUrlChange: (value: string) => void;
+  onDepthChange: (value: number) => void;
 }
 
-const WebpageForm: React.FC<WebpageFormProps> = ({ value, onValueChange }) => {
+const WebpageForm: React.FC<WebpageFormProps> = ({
+  urlValue,
+  depthValue,
+  onUrlChange,
+  onDepthChange,
+}) => {
+  const handleDepthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    // Allow 0, 1, 2, etc. Prevent negative numbers.
+    onDepthChange(isNaN(value) || value < 0 ? 0 : value);
+  };
+
   return (
-    <input
-      type="url"
-      placeholder="Enter Webpage URL"
-      value={value}
-      onChange={(e) => onValueChange(e.target.value)}
-      className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a w-full"
-    />
+    <div className="flex gap-4 items-center">
+      <input
+        type="url"
+        placeholder="Enter Webpage URL"
+        value={urlValue}
+        onChange={(e) => onUrlChange(e.target.value)}
+        className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] placeholder:text-gray-shade_a flex-grow"
+      />
+      <div className="flex items-center gap-2">
+         <label htmlFor="crawl-depth" className="text-sm text-gray-shade_c whitespace-nowrap">Crawl Depth:</label>
+         <input
+           id="crawl-depth"
+           type="number"
+           min="0" // 0 means only the initial page
+           value={depthValue}
+           onChange={handleDepthChange}
+           className="bg-gray-shade_3 border border-gray-shade_6 p-2 rounded-lg h-[40px] w-20 text-center"
+         />
+      </div>
+    </div>
   );
 };
 
@@ -273,8 +300,10 @@ const IngestRow: React.FC<IngestRowProps> = ({ row, onDocTypeChange, onRowChange
           />
         ) : (
           <WebpageForm
-            value={row.webpageUrl}
-            onValueChange={(value) => onRowChange(row.id, { webpageUrl: value })}
+            urlValue={row.webpageUrl}
+            depthValue={row.webpageCrawlDepth}
+            onUrlChange={(value) => onRowChange(row.id, { webpageUrl: value })}
+            onDepthChange={(value) => onRowChange(row.id, { webpageCrawlDepth: value })}
           />
         )}
       </div>
@@ -299,10 +328,11 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
       vttTitle: "",
       vttFile: null,
       webpageUrl: "",
+      webpageCrawlDepth: 1, // Default crawl depth
     },
   ]);
   const [submissionStatus, setSubmissionStatus] = useState<{
-    [key: number]: "idle" | "submitting" | "success" | "error";
+    [key: number]: "idle" | "submitting" | "success" | "error" | "initiated"; // Add 'initiated' state
   }>({});
   const [errorMessages, setErrorMessages] = useState<{ [key: number]: string }>(
     {}
@@ -326,6 +356,7 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
         vttTitle: "",
         vttFile: null,
         webpageUrl: "",
+        webpageCrawlDepth: 1, // Default crawl depth for new rows
       },
     ]);
   };
@@ -348,6 +379,7 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
           }
           if (newDocType !== DocType.WEBPAGE) {
             newRow.webpageUrl = "";
+            newRow.webpageCrawlDepth = 1; // Reset depth when switching away
           }
           return newRow;
         }
@@ -410,6 +442,7 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
             body = JSON.stringify({
               url: row.webpageUrl,
               collection_id: collectionId,
+              depth: row.webpageCrawlDepth, // Include depth in payload
             });
             headers["Content-Type"] = "application/json";
             break;
@@ -423,7 +456,29 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
           body: body,
         });
 
-        if (!response.ok) {
+        // Handle different success statuses
+        if (response.ok) {
+           if (row.docType === DocType.WEBPAGE && response.status === 202) {
+             // Specific handling for async webpage crawl initiation
+             setSubmissionStatus((prev) => ({ ...prev, [row.id]: "initiated" }));
+             // Optionally keep the URL input field populated until final confirmation via WebSocket
+             // updateRow(row.id, { webpageUrl: "" }); // Don't clear immediately
+           } else {
+             // Standard success handling for other types or synchronous responses
+             setSubmissionStatus((prev) => ({ ...prev, [row.id]: "success" }));
+             // Clear inputs on standard success
+             updateRow(row.id, {
+               pdfTitle: "",
+               pdfFile: null,
+               arxivId: "",
+               vttTitle: "",
+               vttFile: null,
+               // Clear webpage URL only on standard success, not initiated
+               webpageUrl: row.docType !== DocType.WEBPAGE ? "" : row.webpageUrl,
+             });
+           }
+        } else {
+          // Handle errors (status codes 4xx, 5xx)
           let errorData;
           try {
             errorData = await response.json();
@@ -434,16 +489,6 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
             errorData.error || `Request failed with status ${response.status}`
           );
         }
-
-        setSubmissionStatus((prev) => ({ ...prev, [row.id]: "success" }));
-        updateRow(row.id, {
-          pdfTitle: "",
-          pdfFile: null,
-          arxivId: "",
-          vttTitle: "",
-          vttFile: null,
-          webpageUrl: "",
-        });
 
       } catch (error: any) {
         console.error("Submission error for row", row.id, ":", error);
@@ -467,6 +512,9 @@ const IngestRowsContainer: React.FC<IngestRowsContainerProps> = ({
           )}
           {submissionStatus[row.id] === "success" && (
             <p className="text-green mt-2">Submission successful!</p>
+          )}
+          {submissionStatus[row.id] === "initiated" && (
+             <p className="text-blue mt-2">Webpage crawl initiated...</p> // Message for initiated state
           )}
           {submissionStatus[row.id] === "error" && errorMessages[row.id] && (
             <p className="text-red mt-2">Error: {errorMessages[row.id]}</p>

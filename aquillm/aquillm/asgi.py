@@ -21,13 +21,16 @@ from channels.security.websocket import AllowedHostsOriginValidator
 
 from chat.routing import websocket_urlpatterns as chat_patterns
 from ingest.routing import websocket_urlpatterns as ingest_patterns
+# Import the new crawl status patterns
+from .routing import websocket_urlpatterns as crawl_status_patterns
 
 application = ProtocolTypeRouter(
     {
         "http": asgi_app,
         "websocket": AllowedHostsOriginValidator(
             AuthMiddlewareStack(
-                URLRouter(chat_patterns + ingest_patterns)
+                # Add the new patterns to the URLRouter
+                URLRouter(chat_patterns + ingest_patterns + crawl_status_patterns)
             )
         )
 

@@ -9,8 +9,11 @@ from uuid import UUID
 from xml.dom import minidom
 from django.urls import path, include
 # Comment out or remove the top-level import if it exists:
-# from trafilatura import fetch_url, extract, extract_metadata
+# from trafilatura import fetch_url, extract, extract_metadata # Keep commented or remove if not used elsewhere
 from django.core.files.base import ContentFile
+
+# Import the new Celery task
+from .crawler_tasks import crawl_and_ingest_webpage
 
 from .vtt import parse, to_text, coalesce_captions
 from .models import Document, PDFDocument, TeXDocument, VTTDocument, Collection, CollectionPermission, EmailWhitelist, DESCENDED_FROM_DOCUMENT, DuplicateDocumentError, RawTextDocument
@@ -570,109 +573,63 @@ def whitelisted_email(request, email):
 @login_required
 @require_http_methods(["POST"])
 def ingest_webpage(request):
-    # Wtf, why does this need to be imported here?
-    from trafilatura import fetch_url, extract, extract_metadata
+    """
+    API endpoint to initiate asynchronous webpage crawling and ingestion.
+    """
     try:
         data = json.loads(request.body)
         url = data.get('url')
         collection_id = data.get('collection_id')
+        # Get depth, default to 1 if not provided or invalid type
+        try:
+            depth = int(data.get('depth', 1))
+            if depth < 0:
+                 depth = 0 # Ensure depth is non-negative (0 means initial page only)
+        except (ValueError, TypeError):
+            depth = 1 # Default to 1 if conversion fails
 
         if not url or not collection_id:
+            logger.warning("Ingest webpage request missing url or collection_id.")
             return JsonResponse({'error': 'Missing url or collection_id'}, status=400)
 
         # Basic URL validation
         if not url.startswith(('http://', 'https://')):
+             logger.warning(f"Invalid URL format received: {url}")
              return JsonResponse({'error': 'Invalid URL format. Must start with http:// or https://'}, status=400)
 
-        collection = get_object_or_404(Collection, pk=collection_id)
+        # Use try-except for fetching collection to handle 404 within the main try block
+        try:
+            collection = Collection.objects.get(pk=collection_id)
+        except Collection.DoesNotExist:
+             logger.warning(f"Attempted ingest to non-existent collection ID: {collection_id}")
+             return JsonResponse({'error': 'Collection not found'}, status=404)
 
         # Permission Check
         if not collection.user_can_edit(request.user):
-            # Use PermissionDenied exception
+            logger.warning(f"Permission denied for user {request.user.id} on collection {collection_id} during webpage ingest.")
+            # Raise PermissionDenied to be caught by the outer exception handler
             raise PermissionDenied("You do not have permission to add documents to this collection.")
 
-        # Fetch and parse webpage using trafilatura
+        # --- Delegate to Celery Task ---
         try:
-            # Download (trafilatura handles retires internally to some extent)
-            
-            logger.info(f"Attempting to fetch URL: {url}")
-            # Use the directly imported functions
-            downloaded = fetch_url(url)
+            logger.info(f"Dispatching crawl_and_ingest_webpage task for URL: {url}, Collection: {collection_id}, User: {request.user.id}, Depth: {depth}")
+            # Call the Celery task asynchronously, passing the validated depth.
+            crawl_and_ingest_webpage.delay(url, collection_id, request.user.id, max_depth=depth)
 
-            if downloaded is None:
-                # Check for potential fetch errors if fetch_url returns None
-                logger.warning(f"trafilatura.fetch_url returned None for {url}") # Keeping log message as is for now
-                return JsonResponse({'error': f'Failed to fetch URL content for {url}. The page might be inaccessible, empty, or blocked.'}, status=400)
+            # Return 202 Accepted immediately
+            return JsonResponse({'message': 'Webpage crawl initiated successfully.'}, status=202)
 
-            # Extract text content
-            logger.info(f"Attempting to extract text from fetched content for: {url}")
-            # favour_recall=True might get more text, adjust if needed -- REMOVED favour_recall
-            # Use the directly imported functions
-            main_text = extract(downloaded, include_comments=False, include_tables=True) # Removed favour_recall
-            metadata = extract_metadata(downloaded)
-            # Use extracted title or fallback to URL, sanitize title slightly
-            title = (metadata.title if metadata and metadata.title else url).strip().replace('\n', ' ').replace('\r', '')
-            logger.info(f"Extracted title: '{title}', Text length: {len(main_text) if main_text else 0}")
-
-
-            # Basic check on extracted text
-            # Adjusted threshold based on potential trafilatura behavior
-            min_length_threshold = 50
-            if not main_text or len(main_text.strip()) < min_length_threshold:
-                 logger.warning(f"Could not extract sufficient text (>{min_length_threshold} chars) from URL {url}. Extracted length: {len(main_text.strip() if main_text else 0)}")
-                 return JsonResponse({'error': f'Could not extract sufficient text content (> {min_length_threshold} characters) from the URL. The page might be primarily non-textual or structured in an unusual way.'}, status=400)
-
-        except Exception as e:
-            logger.error(f"Error processing URL {url} with trafilatura: {e}", exc_info=True)
-            # Provide a slightly more specific error to the user if possible, else generic
-            error_msg = f'Failed to process the webpage content. Error: {e}'
-            return JsonResponse({'error': error_msg}, status=500)
-
-
-        # Create RawTextDocument instance
-        try:
-            logger.info(f"Attempting to save RawTextDocument: {title} for collection {collection.id}")
-            # Create and save the document, letting the model's save handle chunking
-            doc = RawTextDocument(
-                title=title,
-                full_text=main_text,
-                collection=collection,
-                ingested_by=request.user,
-                source_url=url # Save the source URL
-            )
-            doc.save() # This will trigger the async chunking via model's save method
-            logger.info(f"Successfully saved RawTextDocument {doc.id} for URL {url}")
-
-        except DuplicateDocumentError as e:
-            logger.warning(f"Duplicate document error on webpage ingest: {e.message} for URL {url}")
-            return JsonResponse({'error': e.message}, status=400) # Return 400 for duplicate
-        except ValidationError as e:
-             logger.error(f"Validation error saving RawTextDocument from {url}: {e}", exc_info=True)
-             # Format validation errors nicely
-             error_message = "; ".join([f'{k}: {v[0]}' for k, v in e.message_dict.items()]) if hasattr(e, 'message_dict') else ". ".join(e.messages)
-             return JsonResponse({'error': f'Failed to save document due to validation errors: {error_message}'}, status=400)
-        except DatabaseError as e:
-            logger.error(f"Database error saving RawTextDocument from {url}: {e}", exc_info=True)
-            return JsonResponse({'error': 'A database error occurred while saving the document.'}, status=500)
-        except Exception as e: # Catch other potential errors during save
-             logger.error(f"Unexpected error saving RawTextDocument from {url}: {e}", exc_info=True)
-             return JsonResponse({'error': 'An unexpected error occurred while saving the document.'}, status=500)
-
-        # Return success response with document details
-        return JsonResponse({
-            'message': 'Successfully ingested webpage.',
-            'document_id': str(doc.id), # Stringify UUID
-            'title': doc.title
-        }, status=201) # Use 201 Created status
+        except Exception as task_dispatch_error:
+             # Catch potential errors during task dispatch (e.g., Celery broker connection issues)
+             logger.error(f"Failed to dispatch crawl_and_ingest_webpage task for URL {url}: {task_dispatch_error}", exc_info=True)
+             return JsonResponse({'error': 'Failed to initiate webpage crawl task.'}, status=500)
 
     except json.JSONDecodeError:
         logger.warning("Received invalid JSON in ingest_webpage request.")
         return JsonResponse({'error': 'Invalid JSON payload'}, status=400)
-    except ObjectDoesNotExist: # Handles get_object_or_404 for Collection
-         logger.warning(f"Attempted ingest to non-existent collection ID: {collection_id}")
-         return JsonResponse({'error': 'Collection not found'}, status=404)
+    # Note: ObjectDoesNotExist for Collection is handled inside the main try block now
     except PermissionDenied as e:
-        logger.warning(f"Permission denied for user {request.user.id} on collection {collection_id}: {e}")
+        # This will catch the PermissionDenied raised earlier
         return JsonResponse({'error': str(e)}, status=403)
     except Exception as e:
         # Generic catch-all for unexpected errors in the view setup phase

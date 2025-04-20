@@ -39,3 +39,6 @@ chardet
 tiktoken
 trafilatura
 beautifulsoup4
+
+selenium>=4.0.0
+webdriver-manager>=4.0.0

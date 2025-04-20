@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
 import { Folder } from '../components/CollectionsTree';
 import CollectionSettingsMenu from '../components/CollectionSettingsMenu';
 import FileSystemViewer from '../components/FileSystemViewer';
@@ -6,6 +6,7 @@ import MoveCollectionModal from '../components/MoveCollectionModal';
 import { FileSystemItem } from '../types/FileSystemItem';
 import { getCookie } from '../utils/csrf';
 import IngestRowContainer from '../components/IngestRow';
+import IngestionDashboard from '../components/IngestionDashboard'; // Import the dashboard
 import formatUrl from '../utils/formatUrl';
 
 interface CollectionContent {
@@ -42,32 +43,21 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
     permission_level: string | null;
   } | null>(null);
 
-  // Fetch current collection details (children and documents)
-  useEffect(() => {
+  // Function to refetch collection data
+  const fetchCollectionData = useCallback(() => {
+    setLoading(true); // Show loading indicator during refetch
     fetch(formatUrl(window.apiUrls.api_collection, { col_id: collectionId }), {
-      headers: {
-        'Accept': 'application/json'
-      }
+      headers: { 'Accept': 'application/json' }
     })
       .then(res => {
         if (!res.ok) {
-          return res.json().then(err => {
-            throw new Error(err.error || 'Failed to fetch collection');
-          });
+          return res.json().then(err => { throw new Error(err.error || 'Failed to fetch collection'); });
         }
         return res.json();
       })
       .then(data => {
-        if (!data.collection) {
-          throw new Error('Invalid response format');
-        }
-
-        // Store permission source information
-        if (data.permission_source) {
-          setPermissionSource(data.permission_source);
-        }
-
-        // Set collection data (including children)
+        if (!data.collection) throw new Error('Invalid response format');
+        if (data.permission_source) setPermissionSource(data.permission_source);
         setCollection({
           id: data.collection.id,
           name: data.collection.name,
@@ -77,47 +67,31 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
           children: data.children || [],
           document_count: data.documents?.length || 0,
           children_count: data.children?.length || 0,
-          created_at: data.collection.created_at
-            ? new Date(data.collection.created_at).toLocaleString()
-            : new Date().toLocaleString(),
-          updated_at: data.collection.updated_at
-            ? new Date(data.collection.updated_at).toISOString()
-            : new Date().toISOString(),
+          created_at: data.collection.created_at ? new Date(data.collection.created_at).toLocaleString() : new Date().toLocaleString(),
+          updated_at: data.collection.updated_at ? new Date(data.collection.updated_at).toISOString() : new Date().toISOString(),
         });
-
-        console.log(collection);
-
-        // Transform documents data
         const transformedDocuments = (data.documents || []).map((doc: any) => ({
-          id: doc.id,
-          type: doc.type || 'document',
-          name: doc.title || 'Untitled',
-          created_at: doc.created_at
-            ? new Date(doc.created_at).toLocaleString()
-            : new Date().toLocaleString(),
-          document_count: 0,
+          id: doc.id, type: doc.type || 'document', name: doc.title || 'Untitled',
+          created_at: doc.created_at ? new Date(doc.created_at).toLocaleString() : new Date().toLocaleString(), document_count: 0,
         }));
-
-        // Transform children (sub-collections) data
         const transformedChildren = (data.children || []).map((child: any) => ({
-          id: child.id,
-          type: 'collection', // explicitly mark it as a collection
-          name: child.name,
-          created_at: new Date(child.created_at || new Date()).toLocaleString(),
-          document_count: child.document_count,
+          id: child.id, type: 'collection', name: child.name,
+          created_at: new Date(child.created_at || new Date()).toLocaleString(), document_count: child.document_count,
         }));
-
-        // Merge children and documents for the file system viewer
-        const combinedItems = [...transformedChildren, ...transformedDocuments];
-        setContents(combinedItems);
+        setContents([...transformedChildren, ...transformedDocuments]);
         setLoading(false);
       })
       .catch(err => {
-        console.error('Error:', err);
+        console.error('Error refetching collection:', err);
         setError(err.message);
         setLoading(false);
       });
-  }, [collectionId]);
+  }, [collectionId]); // Dependency array includes collectionId
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCollectionData();
+  }, [fetchCollectionData]); // Use the memoized fetch function
 
   // Fetch all available collections (for moving purposes)
   useEffect(() => {
@@ -157,6 +131,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
   const handleRenameItem = () => {
     // TODO: Implement rename functionality
+    console.log("Rename item clicked");
   }
 
   // Navigation handlers
@@ -170,11 +145,13 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
 
   const handleManageCollaborators = () => {
     // TODO: Implement collaborator management
+    console.log("Manage collaborators clicked");
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete "${collection?.name}"?`)) {
-      fetch(formatUrl(window.apiUrls.api_delete_collection, { collection_id: collection?.id }), {
+    // Add null check for collection before accessing id
+    if (collection && window.confirm(`Are you sure you want to delete "${collection.name}"?`)) {
+      fetch(formatUrl(window.apiUrls.api_delete_collection, { collection_id: collection.id }), {
         method: 'DELETE',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
         credentials: 'include'
@@ -184,6 +161,9 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
           // After successful deletion, navigate back
           if (onBack) {
             onBack();
+          } else {
+             // If no onBack prop, maybe redirect to parent or collections page
+             window.location.href = window.pageUrls.user_collections;
           }
         })
         .catch((err) => {
@@ -192,6 +172,7 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
         });
     }
   };
+  // End of re-inserted functions
 
   const handleRemoveItem = (item: FileSystemItem) => {
     if (window.confirm(`Are you sure you want to remove "${item.name}"?`)) {
@@ -236,7 +217,13 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   // Handler for moving the current collection.
   const handleMoveSubmit = (itemId: number, newParentId: number | null) => {
     if (!movingItem) return;
-    if (movingItem.type === 'collection') {
+
+    // Type guard to check if movingItem is a FileSystemItem (which has 'type')
+    const isFileSystemItem = (item: any): item is FileSystemItem => {
+      return item && typeof item === 'object' && 'type' in item;
+    };
+
+    if (isFileSystemItem(movingItem) && movingItem.type === 'collection') {
       // Call collection move endpoint:
       fetch(formatUrl(window.apiUrls.api_move_collection, { collection_id: itemId }), {
         method: 'POST',
@@ -497,6 +484,10 @@ const CollectionView: React.FC<CollectionViewProps> = ({ collectionId, onBack })
   };
   
   const breadcrumbs = parseBreadcrumbs();
+
+  // Construct WebSocket URL base
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsBaseUrl = `${wsProtocol}//${window.location.host}`;
 
   return (
     <div style={{ padding: '2rem' }} className='font-sans'>
