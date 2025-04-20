@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Send, ChevronDown, Search, Loader2 } from 'lucide-react';
 import { CircularProgressbar } from 'react-circular-progressbar';
+import ReactMarkdown from 'react-markdown';
 // Define TypeScript interfaces
 interface Message {
   role: 'user' | 'assistant' | 'tool';
@@ -87,7 +88,7 @@ const Chat: React.FC<ChatProps> = ({ convoId }) => {
       setCollections(data.collections);
       
       // Select all collections by default
-      const allCollectionIds = new Set(data.collections.map((c: Collection) => c.id));
+      const allCollectionIds = new Set(data.collections.map((c: Collection) => c.id as string));
       setSelectedCollections(allCollectionIds);
     } catch (error) {
       console.error('Error fetching collections:', error);
@@ -433,8 +434,15 @@ const MessageBubble: React.FC<{ message: Message, onRate: (uuid: string | undefi
       
       <div className={getMessageClasses()}>
         {/* Message content */}
-        {message.role !== 'tool' && (
+        {message.role === 'user' && (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        )}
+        {message.role === 'assistant' && !message.tool_call_input && (
+          <div className="prose prose-invert max-w-none">
+            <ReactMarkdown>
+              {message.content}
+            </ReactMarkdown>
+          </div>
         )}
         
         {/* Tool call details for assistant */}
