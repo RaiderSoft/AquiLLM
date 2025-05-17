@@ -12,10 +12,16 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+ 
+
+# ─── .env LOADING ──────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv(BASE_DIR / '.env')   
+# ───────────────────────────────────────────────────────────────────────────────
+ 
+ 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -23,16 +29,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
-if os.environ.get('DJANGO_DEBUG'):
-    print("Debug is enabled.")
-    DEBUG = True
-
-SECRET_KEY = ""
+ 
+DEBUG = os.getenv('DJANGO_DEBUG', '').lower() in ('1', 'true', 'yes')
 if DEBUG:
-    SECRET_KEY = "django-insecure-_fj8e0)w#wu48c673prc3$%+h36!df0#)0upbl6t%x#_w3zk60"
+    print("⚠️  Debug is ENABLED")
+
+# SECRET_KEY: fail fast if missing
+if DEBUG:
+    SECRET_KEY = 'django-insecure-_fj8e0)w#wu48c673prc3$%+h36!df0#)0upbl6t%x#_w3zk60'   # only for dev
 else:
-    SECRET_KEY = os.environ['SECRET_KEY']
+    SECRET_KEY = os.environ['SECRET_KEY']     # KeyError if not set
 
 # Application definition
 
@@ -57,6 +63,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'debug_toolbar',
 ]
+ 
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -235,14 +242,29 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [('redis', 6379)],
+            # Add these timeout settings
+            "expiry": 120,  # 2 minutes expiry for messages
+            "capacity": 1000,  # Maximum number of messages in queue
+            "channel_capacity": {
+                # Default channel capacity
+                "http.request": 100,
+                # All WebSocket channels have this capacity
+                "websocket.send.*": 500,
+            },
         },
     }
 }
 
-CELERY_BROKER_URL = "redis://redis:6379"
-CELERY_RESULT_BACKEND = "redis://redis:6379"
+# Zotero API settings
+ZOTERO_API_KEY      = os.environ['ZOTERO_API_KEY']
+ZOTERO_LIBRARY_ID   = os.environ['ZOTERO_LIBRARY_ID']
+ZOTERO_LIBRARY_TYPE = os.getenv('ZOTERO_LIBRARY_TYPE', 'group')
+
+CELERY_BROKER_URL     = os.getenv('CELERY_BROKER_URL',     'redis://redis:1212/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:1212/1')
 CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 
+ 
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 os.makedirs(LOGS_DIR, exist_ok=True)
 

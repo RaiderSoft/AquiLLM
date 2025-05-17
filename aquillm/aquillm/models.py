@@ -16,7 +16,7 @@ from pypdf import PdfReader
 
 import functools 
 
-# for hashing full_text of documents to ensure unique contents
+ 
 import hashlib
 
 from django.template import Context
@@ -56,7 +56,79 @@ assert (channel_layer is not None and
 
 type DocumentChild = PDFDocument | TeXDocument | RawTextDocument | VTTDocument
 
-
+class ZoteroTextChunk(models.Model):
+    """Store chunks of Zotero PDF text with embeddings"""
+    item_key = models.CharField(max_length=50)
+    chunk_number = models.IntegerField()
+    content = models.TextField()
+    embedding = VectorField(dimensions=1024, blank=True, null=True)  # Match TextChunk dimension
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['item_key', 'chunk_number']
+        indexes = [
+            models.Index(fields=['item_key']),
+            HnswIndex(
+                name='zotero_chunk_embedding_index',
+                fields=['embedding'],
+                m=16,
+                ef_construction=64,
+                opclasses=['vector_l2_ops']
+            ),
+        ]
+        ordering = ['item_key', 'chunk_number']
+    
+    def save(self, *args, **kwargs):
+        if not self.embedding:
+            self.get_chunk_embedding()
+        super().save(*args, **kwargs)
+    
+    @retry(wait=wait_exponential())
+    def get_chunk_embedding(self, callback:Optional[Callable[[], None]]=None):
+        self.embedding = get_embedding(self.content, input_type='search_document')
+        if callback:
+            callback()
+    
+    @classmethod
+    def rerank(cls, query:str, chunks, top_k: int):
+        cohere = apps.get_app_config('aquillm').cohere_client
+        response = cohere.rerank(
+            model="rerank-english-v3.0",
+            query=query,
+            documents=list([{"content": chunk.content, "id": chunk.pk} for chunk in chunks]),
+            rank_fields=['content'],
+            top_n=top_k,
+            return_documents=True 
+        )
+        ranked_list = list([result.document.id for result in response.results])
+        preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(ranked_list)])
+        return cls.objects.filter(pk__in=ranked_list).order_by(preserved)
+    
+    @classmethod
+    def text_chunk_search(cls, query:str, top_k: int, item_keys: Optional[List[str]]=None):
+        vector_top_k = apps.get_app_config('aquillm').vector_top_k
+        trigram_top_k = apps.get_app_config('aquillm').trigram_top_k
+        
+        try:
+            queryset = cls.objects.all()
+            if item_keys:
+                queryset = queryset.filter(item_key__in=item_keys)
+            
+            vector_results = queryset.order_by(L2Distance('embedding', get_embedding(query)))[:vector_top_k]
+            trigram_results = queryset.annotate(similarity = TrigramSimilarity('content', query)
+            ).filter(similarity__gt=0.000001).order_by('-similarity')[:trigram_top_k]
+            reranked_results = cls.rerank(query, vector_results | trigram_results, top_k)
+            return vector_results, trigram_results, reranked_results
+        except DatabaseError as e:
+            logger.error(f"Database error during search: {str(e)}")
+            raise e
+        except ValidationError as e:
+            logger.error(f"Validation error during search: {str(e)}")
+            raise e
+        except Exception as e:
+            logger.error(f"Unexpected error during search: {str(e)}")
+            raise e
+            
 class CollectionQuerySet(models.QuerySet):
     def filter_by_user_perm(self, user, perm='VIEW') -> 'CollectionQuerySet':
         perm_options = []

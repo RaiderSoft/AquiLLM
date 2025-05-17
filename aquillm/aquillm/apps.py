@@ -85,4 +85,3 @@ class AquillmConfig(AppConfig):
             self.llm_interface = OpenAIInterface(self.openai_client, "gpt-4o")
         else:
             raise ValueError(f"Invalid LLM choice: {llm_choice}")
-

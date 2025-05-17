@@ -37,3 +37,6 @@ pdf2image
 google-genai
 chardet
 tiktoken
+pyzotero
+requests
+ 
