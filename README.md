@@ -8,7 +8,7 @@
 [![Django](https://img.shields.io/badge/Django-5.1-green.svg)](https://www.djangoproject.com/)
 [![React](https://img.shields.io/badge/React-Frontend-61DAFB.svg)](https://reactjs.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://www.docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 
 
 **AquiLLM is an open-source RAG (Retrieval-Augmented Generation) application designed specifically for researchers.** It helps you manage, search, and interact with your research documents using AI, streamlining your literature review and knowledge discovery process. Upload various document formats, organize them into collections, and chat with an AI that understands your library's content.
@@ -52,23 +52,28 @@ This assumes you have Docker and Docker Compose installed.
     cp .env.example .env
     ```
 3.  **Edit the .env file with your specific configuration:**
-    - Database settings: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_NAME, POSTGRES_HOST
-    - At least one LLM API key (ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY)
-    - Set LLM_CHOICE to your preferred provider (CLAUDE, OPENAI, GEMINI)
-    - Google OAuth credentials (GOOGLE_OAUTH2_CLIENT_ID, GOOGLE_OAUTH2_CLIENT_SECRET)
-    - Email access permissions (ALLOWED_EMAIL_DOMAINS, ALLOWED_EMAIL_ADDRESSES)
-    - Set HOST_NAME for your domain or use 'localhost' for development
+    - **LLM API Key**: At least one is REQUIRED (ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY)
+    - **LLM_CHOICE**: Set to your preferred provider (CLAUDE, OPENAI, GEMINI)
+    - **Database and Storage settings**: Default values in .env.example work with Docker Compose
+    - **Google OAuth credentials**: Only required for production (DJANGO_DEBUG=0)
+    - **Email permissions**: Only required for production (DJANGO_DEBUG=0)
 
 4.  **Build and run using Docker Compose:**
     ```bash
-    docker compose up --build -d # -d runs in detached mode
+    docker compose up --build web
     ```
-5.  **Access the application:**
+
+5.  **Create a superuser account:**
+    ```bash
+    docker compose exec web python manage.py createsuperuser
+    ```
+
+6.  **Access the application:**
     Open your browser to `http://localhost:8080`
 
-6.  **Log in:** Use a whitelisted SOU or UCLA email address.
+7.  **Log in:** Use the superuser credentials you just created.
 
-7.  **Stop the application:**
+8.  **Stop the application:**
     ```bash
     docker compose down
     ```
@@ -146,22 +151,23 @@ AquiLLM requires several environment variables to be set up for proper operation
 
 2. Open the `.env` file in a text editor and configure the following critical settings:
 
-   - **Authentication**: The application uses Google OAuth for login
-     - `GOOGLE_OAUTH2_CLIENT_ID` and `GOOGLE_OAUTH2_CLIENT_SECRET`: Create these at [Google Cloud Console](https://console.cloud.google.com/)
-     - `ALLOWED_EMAIL_DOMAINS`: Comma-separated list of email domains that can register (e.g., `example.edu,example.org`)
-     - `ALLOWED_EMAIL_ADDRESSES`: Specific email addresses allowed to access the application
-
-   - **LLM API Keys**: At least one of these is required:
+   - **LLM API Keys**: At least one of these is REQUIRED:
      - `ANTHROPIC_API_KEY`: For Claude models (recommended)
      - `OPENAI_API_KEY`: For GPT models
      - `GEMINI_API_KEY`: For Google Gemini models
      - Set `LLM_CHOICE` to your preferred provider (`CLAUDE`, `OPENAI`, or `GEMINI`)
 
+   - **Authentication (Optional for Development)**: The application can use Google OAuth for login in production
+     - `GOOGLE_OAUTH2_CLIENT_ID` and `GOOGLE_OAUTH2_CLIENT_SECRET`: Create these at [Google Cloud Console](https://console.cloud.google.com/)
+     - `ALLOWED_EMAIL_DOMAINS`: Comma-separated list of email domains that can register (e.g., `example.edu,example.org`)
+     - `ALLOWED_EMAIL_ADDRESSES`: Specific email addresses allowed to access the application
+     - **For development, you can skip this and create a superuser instead**
+
    - **Other Settings**:
      - `HOST_NAME`: Your domain name (for production) or `localhost` (for development)
-     - Database and Storage settings (default values work with Docker Compose)
+     - Database and Storage settings (default values in .env.example work with Docker Compose)
 
-   For development purposes, you may also want to set:
+   For development purposes, the default setting is:
    ```
    DJANGO_DEBUG=1
    ```
@@ -186,12 +192,18 @@ AquiLLM requires several environment variables to be set up for proper operation
 
    This will take several minutes to complete. You'll see lots of text output as the application builds and starts.
 
-4. When you see messages that look like the application is ready (such as "Starting development server"), open your web browser and go to:
+4. Create a user account. Open a new command prompt/terminal window (keep the first one running) and run:
+   ```
+   docker compose exec web python manage.py createsuperuser
+   ```
+   Follow the prompts to create your username, email, and password.
+
+5. When you see messages that look like the application is ready (such as "Starting development server"), open your web browser and go to:
    ```
    http://localhost:8080
    ```
 
-5. Log in with your Google account
+6. Log in with the superuser credentials you just created
 
 ### Step 5: Using AquiLLM After Installation
 
@@ -210,7 +222,7 @@ After you've built AquiLLM once, you can start it faster next time:
    ```
    http://localhost:8080
    ```
-5. Log in with a SOU or UCLA email
+5. Log in with your superuser credentials
 
 ### Step 6: Stopping AquiLLM
 
@@ -335,7 +347,7 @@ Please review the `CONTRIBUTING.md` file (if it exists) for more detailed guidel
 
 ## License
 
-This project is licensed under MIT
+This project is licensed under GPL v2
 
 ## Contact & Support
 
@@ -402,5 +414,3 @@ AquiLLM uses environment variables for configuration. Below is a comprehensive e
 \* Required in production, auto-generated in development mode  
 \*\* Required for Handwritten Notes Ingestion  
 | At least one LLM API key is required, corresponding to your selected LLM_CHOICE
-
-
