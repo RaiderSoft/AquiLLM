@@ -63,6 +63,12 @@ This file tracks all contributors to the AquiLLM project for academic credit and
 - Testing infrastructure
 - Documentation
 
+## Academic Information
+
+**Institution:** Southern Oregon University  
+**Research Grant Principal Investigator:** Professor Bernie Boscoe *(Secured funding and oversaw research process)*  
+**Project Supervisor:** Professor Daniel DeFreez *(Oversaw project development and flow)*  
+
 ---
 
 ## How to Add Your Contribution
@@ -72,12 +78,6 @@ When adding your name, please include:
 2. **Your primary role/area of focus**
 3. **Specific contributions or features you worked on**
 4. **Time period of contribution** (if applicable)
-
-## Academic Information
-
-**Institution:** Southern Oregon University  
-**Research Grant Principal Investigator:** Professor Bernie Boscoe *(Secured funding and oversaw research process)*  
-**Project Supervisor:** Professor Daniel DeFreez *(Oversaw project development and flow)*  
 
 ---
 
