@@ -8,7 +8,7 @@
 [![Django](https://img.shields.io/badge/Django-5.1-green.svg)](https://www.djangoproject.com/)
 [![React](https://img.shields.io/badge/React-Frontend-61DAFB.svg)](https://reactjs.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://www.docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 
 
 **AquiLLM is an open-source RAG (Retrieval-Augmented Generation) application designed specifically for researchers.** It helps you manage, search, and interact with your research documents using AI, streamlining your literature review and knowledge discovery process. Upload various document formats, organize them into collections, and chat with an AI that understands your library's content.
@@ -347,7 +347,7 @@ Please review the `CONTRIBUTING.md` file (if it exists) for more detailed guidel
 
 ## License
 
-This project is licensed under MIT
+This project is licensed under GPL v2
 
 ## Contact & Support
 
