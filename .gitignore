@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+1# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -170,3 +170,4 @@ aquillm/staticfiles
 aquillm/aquillm/static/js/dist
 aquillm/aquillm/static/index.css 
 react/node_modules/
+node_modules
