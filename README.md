@@ -1,5 +1,7 @@
-To run in dev mode: 
+To run nextjs frontend
 ```
-docker compose up web
+cd nestjs-chat
 ```
-default dev user and password are dev/rickbailey
+```
+npm run start:dev
+```
